@@ -19,7 +19,7 @@ func complete() Run {
 		Input:       &InputContext{Brief: Brief{Text: "A shop for second-hand bikes.\n"}, Files: map[string]string{"notes.md": "Spain first.\n"}},
 		Context:     "# Contexto\n\nSecond-hand bikes.\n",
 		Triage:      &Triage{Complexity: "moderate", Caps: Caps{Epics: 4, StoriesPerEpic: 6}, ResearchDimensions: []string{"market"}, ContextPresent: []string{"brief"}, MissingQuestions: []string{}, ProjectType: "new_product"},
-		Research:    &Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []string{"https://example.com/market"}}}},
+		Research:    &Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []Source{{URL: "https://example.com/market", Title: "Market", Supports: "Crowded."}}}}},
 		Analysis:    &Analysis{Personas: []string{"seller"}, Functionalities: []string{"list a bike"}, Flows: []string{"sell"}, Questions: []string{"fees?"}},
 		Epics:       Epics{{ID: "E1", Title: "Selling", Text: "Sellers list bikes."}},
 		Tickets:     map[string]Story{"E1-1": {Epic: "E1", Title: "List a bike", Text: "As a seller", Acceptance: []string{"the bike shows up"}}},

@@ -33,7 +33,7 @@ func TestValidateRejects(t *testing.T) {
 	if story.Validate() == nil {
 		t.Error("a story without acceptance validates")
 	}
-	research := Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []string{}}}}
+	research := Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []Source{}}}}
 	if research.Validate() == nil {
 		t.Error("a research dimension with empty sources validates")
 	}

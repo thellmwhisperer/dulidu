@@ -3,6 +3,7 @@ package pipeline
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -61,12 +62,23 @@ func (t Triage) Validate() error {
 	return errors.Join(errs...)
 }
 
+// Validate is nil for a dimension with text and at least one source, every field of each filled.
+func (d Dimension) Validate() error {
+	errs := []error{need(!blank(d.Text), "no text"), need(len(d.Sources) > 0, "no sources")}
+	for _, s := range d.Sources {
+		errs = append(errs, need(!blank(s.URL) && !blank(s.Title) && !blank(s.Supports), "a source lacks url, title or supports"))
+	}
+	return errors.Join(errs...)
+}
+
+// Validate allows an empty list, triage switching no dimension on, but not a missing one.
 func (r Research) Validate() error {
-	errs := []error{need(len(r.Dimensions) > 0, "research: no dimensions")}
+	errs := []error{need(r.Dimensions != nil, "research: no dimensions")}
 	for _, d := range r.Dimensions {
-		errs = append(errs, need(!blank(d.Name), "research: a dimension has no name"),
-			need(!blank(d.Text), "research "+d.Name+": no text"),
-			need(filled(d.Sources), "research "+d.Name+": no sources"))
+		errs = append(errs, need(!blank(d.Name), "research: a dimension has no name"))
+		if err := d.Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("research %s: %w", d.Name, err))
+		}
 	}
 	return errors.Join(errs...)
 }
