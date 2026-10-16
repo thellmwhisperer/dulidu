@@ -100,6 +100,21 @@ func TestProjectUnknownKeyIsNamed(t *testing.T) {
 	}
 }
 
+func TestProjectRejectsSecondYAMLDocument(t *testing.T) {
+	for _, c := range []struct{ extra, want string }{
+		{"foo: 1", "config incomplete: foo"},
+		{"platform: mobile", "config incomplete: multiple documents"},
+	} {
+		root, home := t.TempDir(), t.TempDir()
+		path := filepath.Join(root, "dulidu.yaml")
+		write(t, path, full(t)+"---\n"+c.extra+"\n")
+		_, _, err := Load(root, home)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Fatalf("second YAML document %q: %v", c.extra, err)
+		}
+	}
+}
+
 func TestProjectLaterLayerOverridesOnlyWhatItSets(t *testing.T) {
 	p := load(t, full(t), "steps:\n  research:\n    model: deep\nexclusions: []\n")
 	if err := p.Complete(); err != nil {

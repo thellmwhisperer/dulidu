@@ -13,7 +13,7 @@ dulidu release vX.Y.Z # builds and publishes a tagged release
 ```
 
 Configuration is layered: built-in defaults, `~/.config/dulidu/config.yaml`, then the repository's `dulidu.yaml`.
-Set the agent CLI, model, effort and timeout in the `dulidu.yaml` template written by `dulidu init`. The agent uses its installed CLI and existing authentication.
+`dulidu init` writes a template with every required project and step key. Each step has its own agent CLI, model and effort, with suggested defaults. Top-level harness, model and effort configure `doctor --agent`. Every required key must be present across the layers, even when empty; unknown keys are rejected. Errors name the key as `config incomplete: <key>`. The agent uses its installed CLI and existing authentication.
 
 `update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit. Publication uses `origin` even if `GH_REPO` is set.
 

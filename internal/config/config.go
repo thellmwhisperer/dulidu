@@ -74,5 +74,15 @@ func decode(path string, c *Config) (bool, error) {
 	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
 		return true, fmt.Errorf("%s: %w", path, err)
 	}
-	return true, nil
+	var extra yaml.Node
+	if err := dec.Decode(&extra); err != nil {
+		if errors.Is(err, io.EOF) {
+			return true, nil
+		}
+		return true, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := c.declare(&extra, ""); err != nil {
+		return true, fmt.Errorf("%s: %w", path, err)
+	}
+	return true, fmt.Errorf("%s: config incomplete: multiple documents", path)
 }
