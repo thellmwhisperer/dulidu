@@ -34,7 +34,7 @@ type Caps struct {
 	StoriesPerEpic int `json:"stories_per_epic"`
 }
 
-// Research is what was found, one entry per dimension.
+// Research is research.json: one entry per dimension triage switched on, none when it switched on none.
 type Research struct {
 	Dimensions []Dimension `json:"dimensions"`
 }
@@ -43,7 +43,14 @@ type Research struct {
 type Dimension struct {
 	Name    string   `json:"name"`
 	Text    string   `json:"text"`
-	Sources []string `json:"sources"`
+	Sources []Source `json:"sources"`
+}
+
+// Source is where a dimension's text comes from, as the model cites it: unfetched and unchecked.
+type Source struct {
+	URL      string `json:"url"`
+	Title    string `json:"title"`
+	Supports string `json:"supports"` // the claim of the text it backs
 }
 
 // Analysis is the brief taken apart.
@@ -80,7 +87,8 @@ type Report struct {
 	Steps   []Step    `json:"steps"`
 }
 
-// Step is one step of a run; Finished is zero while it runs. Note says what code changed in its output, as a clamp.
+// Step is one step of a run; Finished is zero while it runs. Note says what code changed in its output, as a clamp,
+// or what the step covered, as research's dimensions.
 type Step struct {
 	Name     string    `json:"name"`
 	Status   string    `json:"status"`

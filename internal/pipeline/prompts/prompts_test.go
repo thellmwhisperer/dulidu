@@ -60,6 +60,24 @@ func TestAllRender(t *testing.T) {
 	}
 }
 
+func TestResearchPromptsAskForTextAndSources(t *testing.T) {
+	for _, step := range []string{"p03-research-business", "p04-research-users", "p05-research-market",
+		"p06-research-technical", "p07-research-project"} {
+		got, err := Render(step, sample)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, `Respond with one JSON object and nothing else: {"text": `) ||
+			!strings.Contains(got, `"sources": [{"url": `) || !strings.Contains(got, `"title": `) ||
+			!strings.Contains(got, `"supports": `) || !strings.Contains(got, sample["Input"].(string)) {
+			t.Errorf("%s does not ask for text and sources on its input:\n%s", step, got)
+		}
+		if strings.Contains(got, "no JSON") || strings.Contains(got, "paragraph: no") {
+			t.Errorf("%s still asks for prose only:\n%s", step, got)
+		}
+	}
+}
+
 func TestNoProductLeaks(t *testing.T) {
 	forbidden := regexp.MustCompile(`(?i)wall ?papi|react native|monorepo|\d+\s*(lines|loc)\b|lines of (production )?code|` +
 		`(?-i:iOS)`)

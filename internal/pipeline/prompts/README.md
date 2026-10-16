@@ -17,7 +17,7 @@ Sources are in the reference snapshot c10131b, `poc/src/pipeline/`. Removed sent
 |---|---|---|---|
 | P01 | `triage.ts:6-18, 54-56` | `p01-triage-classifier` | A named company in the complex example, now an enterprise dashboard. |
 | P02 | `steps/step0-research.ts:6-15, 48-54` | `p02-research-full` | Nothing. |
-| P03 | `steps/step0-research.ts:21, 56-62` | `p03-research-business` | Dash before "no JSON" is a colon. |
+| P03 | `steps/step0-research.ts:21, 56-62` | `p03-research-business` | The paragraph-only, no-JSON answer is one JSON object, `{text, sources: [{url, title, supports}]}`, for the research step. |
 | P04 | `steps/step0-research.ts:26, 56-62` | `p04-research-users` | Same. |
 | P05 | `steps/step0-research.ts:31, 56-62` | `p05-research-market` | Same. |
 | P06 | `steps/step0-research.ts:36, 56-62` | `p06-research-technical` | Same. |

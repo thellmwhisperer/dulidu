@@ -96,10 +96,10 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 2 || report.Steps[0].Name != "input" ||
+	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[0].Name != "input" ||
 		report.Steps[0].Status != "done" || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" ||
 		report.Steps[1].Model != "opus" || report.Steps[1].Harness != "claude" ||
-		!strings.Contains(report.Steps[1].Note, "clamped") {
+		!strings.Contains(report.Steps[1].Note, "clamped") || report.Steps[2].Name != "research" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if read(t, filepath.Join(dir, "input", "pattern.png")) != png || read(t, filepath.Join(dir, "input", "notes.md")) != "Spain first.\n" {
@@ -111,7 +111,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	}
 
 	before := map[string]string{}
-	for _, name := range []string{"triage.json", "report.json", "contexto.md"} {
+	for _, name := range []string{"triage.json", "report.json", "contexto.md", "research.json"} {
 		before[name] = read(t, filepath.Join(dir, name))
 	}
 	r, err := pipeline.Read(dir)

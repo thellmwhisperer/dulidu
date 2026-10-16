@@ -14,16 +14,17 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/config"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/input"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/research"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/triage"
 	agent "github.com/thellmwhisperer/dulidu/internal/run"
 )
 
 // runCmd is dulidu run: a new run folder in .dulidu/runs with the brief and its attachments in input/ and
-// contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md. It
-// prints contexto.md's path.
+// contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md, and,
+// when triage asks no questions, research.json, the research step. It prints contexto.md's path.
 func runCmd() *cobra.Command {
 	var attach []string
-	c := &cobra.Command{Use: "run <brief.md> [--attach <path>...]", Short: "Package a brief and its attachments into contexto.md and triage it",
+	c := &cobra.Command{Use: "run <brief.md> [--attach <path>...]", Short: "Package a brief and its attachments into contexto.md, triage and research it",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			in, err := input.Load(args[0], attach)
@@ -87,14 +88,23 @@ func runCmd() *cobra.Command {
 			if err := errors.Join(err, pipeline.Write(dir, r)); err != nil {
 				return err
 			}
-			// Triage is the last step yet: its missing_questions, if any, wait in triage.json for the questions step.
 			step = c.Step("triage")
 			step.Harness = cmp.Or(step.Harness, "claude")
 			a = agent.Agent{Harness: step.Harness, Model: c.Steps.Triage.Model, Effort: c.Steps.Triage.Effort, Timeout: limit}
-			if err := triage.Run(dir, &r, step, c.MaxEpics, c.MaxStoriesPerEpic, func(prompt string) (string, error) {
-				return a.Run(dir, prompt, func(string) error { return nil })
-			}); err != nil {
+			// ask runs a, the current step's agent.
+			ask := func(prompt string) (string, error) { return a.Run(dir, prompt, func(string) error { return nil }) }
+			if err := triage.Run(dir, &r, step, c.MaxEpics, c.MaxStoriesPerEpic, ask); err != nil {
 				return err
+			}
+			// Research is the last step yet. Triage's missing_questions, if any, wait in triage.json for the questions
+			// step, which goes on to research.
+			if len(r.Triage.MissingQuestions) == 0 {
+				step = c.Step("research")
+				step.Harness = cmp.Or(step.Harness, "claude")
+				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Research.Model, Effort: c.Steps.Research.Effort, Timeout: limit}
+				if err := research.Run(dir, &r, step, ask); err != nil {
+					return err
+				}
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), filepath.Join(dir, "contexto.md"))
 			return err
