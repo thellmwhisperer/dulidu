@@ -70,8 +70,16 @@ func TestInitWritesConfigAndIgnoresDuliduOnce(t *testing.T) {
 				t.Fatalf("dulidu.yaml from init does not load: %v", err)
 			}
 			var keys map[string]any
-			if err := yaml.Unmarshal([]byte(first), &keys); err != nil || len(keys) != 0 {
-				t.Fatalf("dulidu.yaml must have no configuration keys: %v, %v", keys, err)
+			if err := yaml.Unmarshal([]byte(first), &keys); err != nil {
+				t.Fatal(err)
+			}
+			if len(keys) != 4 {
+				t.Fatalf("dulidu.yaml has %d keys, want 4: %v", len(keys), keys)
+			}
+			for _, key := range []string{"harness", "model", "effort", "agent_timeout"} {
+				if value, ok := keys[key]; !ok || value != "" {
+					t.Errorf("dulidu.yaml %s = %v, want empty string", key, value)
+				}
 			}
 			if out, err := exec.Command("git", "check-ignore", "-q", "--no-index", "--", ".dulidu/").CombinedOutput(); err != nil {
 				t.Fatalf(".dulidu/ is not ignored by Git: %v\n%s", err, out)
@@ -120,6 +128,26 @@ func TestInitAddsRepositoryIgnoreDespiteLocalExclude(t *testing.T) {
 	}
 	if got := read(t, ignore); got != ".dulidu/\n" {
 		t.Fatalf("second init changed .gitignore: %q", got)
+	}
+}
+
+func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
+	dir := repo(t)
+	if code, out, errOut := dulidu(t, "init"); code != 0 {
+		t.Fatalf("dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	var fields map[string]any
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(dir, "dulidu.yaml"))), &fields); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"harness", "model", "effort", "agent_timeout"}
+	if len(fields) != len(want) {
+		t.Fatalf("dulidu.yaml has %d keys, want %d: %v", len(fields), len(want), fields)
+	}
+	for _, key := range want {
+		if value, ok := fields[key]; !ok || value != "" {
+			t.Errorf("dulidu.yaml %s = %v, want empty string", key, value)
+		}
 	}
 }
 

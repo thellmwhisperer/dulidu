@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-161741-2
+status: accepted
+category: alien_code
+title: "Dropped claude's `--thinking-display summarized` flag. It only fills thinking blocks for a transcript log that nothing reads now."
+created_at: 2026-10-16
+incident:
+  pattern: "Dropped claude's `--thinking-display summarized` flag. It only fills thinking blocks for a transcript log that nothing reads now."
+  what_went_wrong: "The copied implementation included code beyond this ticket; the simplification removed it."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_feature
+      example: "Dropped claude's `--thinking-display summarized` flag. It only fills thinking blocks for a transcript log that nothing reads now."
+      artifact: "internal/run/agent.go"
+match:
+  family: speculative_feature
+  artifact: "internal/run/agent.go"

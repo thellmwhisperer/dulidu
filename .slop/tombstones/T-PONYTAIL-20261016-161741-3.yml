@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-161741-3
+status: accepted
+category: alien_code
+title: "Removed the log parameter from talk and say, plus the mirrored log.Write of every ACP message and the now-unused io import."
+created_at: 2026-10-16
+incident:
+  pattern: "Removed the log parameter from talk and say, plus the mirrored log.Write of every ACP message and the now-unused io import."
+  what_went_wrong: "The copied implementation included code beyond this ticket; the simplification removed it."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_feature
+      example: "Removed the log parameter from talk and say, plus the mirrored log.Write of every ACP message and the now-unused io import."
+      artifact: "internal/run/acp.go"
+match:
+  family: speculative_feature
+  artifact: "internal/run/acp.go"
