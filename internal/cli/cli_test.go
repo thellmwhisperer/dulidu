@@ -66,15 +66,19 @@ func TestInitWritesConfigAndIgnoresDuliduOnce(t *testing.T) {
 			if !strings.HasPrefix(first, "# ") {
 				t.Fatalf("dulidu.yaml is not commented:\n%s", first)
 			}
-			if _, _, err := config.Load(dir, os.Getenv("HOME")); err != nil {
+			cfg, _, err := config.Load(dir, os.Getenv("HOME"))
+			if err == nil {
+				err = cfg.Complete()
+			}
+			if err != nil {
 				t.Fatalf("dulidu.yaml from init does not load: %v", err)
 			}
 			var keys map[string]any
 			if err := yaml.Unmarshal([]byte(first), &keys); err != nil {
 				t.Fatal(err)
 			}
-			if len(keys) != 4 {
-				t.Fatalf("dulidu.yaml has %d keys, want 4: %v", len(keys), keys)
+			if len(keys) != 12 {
+				t.Fatalf("dulidu.yaml has %d keys, want 12: %v", len(keys), keys)
 			}
 			for _, key := range []string{"harness", "model", "effort", "agent_timeout"} {
 				if value, ok := keys[key]; !ok || value != "" {
@@ -141,8 +145,15 @@ func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"harness", "model", "effort", "agent_timeout"}
-	if len(fields) != len(want) {
-		t.Fatalf("dulidu.yaml has %d keys, want %d: %v", len(fields), len(want), fields)
+	project := []string{"platform", "project_type", "max_epics", "max_stories_per_epic", "ticket_size", "exclusions",
+		"video_frame_seconds", "steps"}
+	if len(fields) != len(want)+len(project) {
+		t.Fatalf("dulidu.yaml has %d keys, want %d: %v", len(fields), len(want)+len(project), fields)
+	}
+	for _, key := range project {
+		if _, ok := fields[key]; !ok {
+			t.Errorf("dulidu.yaml lacks %s", key)
+		}
 	}
 	for _, key := range want {
 		if value, ok := fields[key]; !ok || value != "" {

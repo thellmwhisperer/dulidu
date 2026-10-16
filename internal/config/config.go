@@ -14,14 +14,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is dulidu's configuration: the agent CLI, its model and effort, passed through untouched, and how long
-// it may take, a Go duration, "" for the default. The prompts (#4) bring theirs, each with a line in dulidu
-// init's template. Any other key in a layer is an error.
+// Config is dulidu's configuration: the agent CLI doctor greets, its model and effort, passed through untouched,
+// and how long it may take, a Go duration, "" for the default; then the project the steps work on and each
+// step's agent, every one a line in dulidu init's template. Any other key in a layer is an error.
 type Config struct {
-	Harness      string `yaml:"harness"`
-	Model        string `yaml:"model"`
-	Effort       string `yaml:"effort"`
-	AgentTimeout string `yaml:"agent_timeout"`
+	Harness           string   `yaml:"harness"`
+	Model             string   `yaml:"model"`
+	Effort            string   `yaml:"effort"`
+	AgentTimeout      string   `yaml:"agent_timeout"`
+	Platform          string   `yaml:"platform"`
+	ProjectType       string   `yaml:"project_type"`
+	MaxEpics          int      `yaml:"max_epics"`
+	MaxStoriesPerEpic int      `yaml:"max_stories_per_epic"`
+	TicketSize        string   `yaml:"ticket_size"`
+	Exclusions        []string `yaml:"exclusions"`
+	VideoFrameSeconds int      `yaml:"video_frame_seconds"`
+	Steps             Steps    `yaml:"steps"`
+
+	set map[string]bool // every key a layer declared, dotted, empty or not
 }
 
 // Layers is the files Load reads, in order: the machine's under home, then the repository's under root.
@@ -43,8 +53,8 @@ func Load(root, home string) (c Config, found []string, err error) {
 	return c, found, nil
 }
 
-// decode decodes the file at path, if any, over v and says whether there was one. A key v lacks is an error.
-func decode(path string, v any) (bool, error) {
+// decode decodes the file at path, if any, over c and says whether there was one. A key c lacks is an error.
+func decode(path string, c *Config) (bool, error) {
 	b, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
@@ -52,9 +62,16 @@ func decode(path string, v any) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	var n yaml.Node
+	if err := yaml.Unmarshal(b, &n); err != nil {
+		return true, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := c.declare(&n, ""); err != nil {
+		return true, fmt.Errorf("%s: %w", path, err)
+	}
 	dec := yaml.NewDecoder(bytes.NewReader(b))
 	dec.KnownFields(true)
-	if err := dec.Decode(v); err != nil && !errors.Is(err, io.EOF) {
+	if err := dec.Decode(c); err != nil && !errors.Is(err, io.EOF) {
 		return true, fmt.Errorf("%s: %w", path, err)
 	}
 	return true, nil
