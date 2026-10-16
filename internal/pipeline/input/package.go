@@ -1,5 +1,6 @@
 // Package input packages a run's brief and the files that came with it into contexto.md, the one text file every
-// later step reads: text as text, images as their metadata and a cheap model's description.
+// later step reads: text as text, images and videos as their metadata, frames, transcript and a cheap model's
+// description.
 package input
 
 import (
@@ -16,7 +17,11 @@ import (
 
 // kinds is every attachment extension input reads, by the kind of section it makes.
 var kinds = map[string]string{".pdf": "pdf", ".docx": "docx", ".md": "text", ".txt": "text", ".json": "text",
-	".png": "image", ".jpg": "image", ".webp": "image", ".heic": "image"}
+	".png": "image", ".jpg": "image", ".webp": "image", ".heic": "image", ".mp4": "video", ".mov": "video",
+	".webm": "video"}
+
+// FrameSeconds is the seconds between video frames when dulidu.yaml leaves video_frame_seconds empty.
+const FrameSeconds = 10
 
 // Ask is the input step's agent: its plain-text answer to prompt, run in the run folder.
 type Ask func(prompt string) (string, error)
@@ -27,6 +32,7 @@ type section struct {
 	size             int
 	body             []string
 	image            string // what the model describes for it, relative to the run folder; "" for nothing
+	video, audio     bool   // a probed video, for frames; with an audio track, for a transcript
 }
 
 func (s *section) add(text ...string) { s.body = append(s.body, text...) }
@@ -59,9 +65,15 @@ func Load(brief string, paths []string) (pipeline.InputContext, error) {
 	return in, in.Validate()
 }
 
-// Package is contexto.md for in, whose files are already in dir/input: first everything code can do, the same
-// bytes every time, then one ask per image.
+// Package is PackageEvery with a frame every FrameSeconds.
 func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
+	return PackageEvery(dir, in, FrameSeconds, ask)
+}
+
+// PackageEvery is contexto.md for in, whose files are already in dir/input: first everything code can do, the same
+// bytes every time, a video's frame every seconds under dir/input/frames/<video>/, then one ask per image and per
+// video's contact sheet. A video without ffmpeg or whisper-cli gets a note in its section instead.
+func PackageEvery(dir string, in pipeline.InputContext, seconds int, ask Ask) (string, error) {
 	files := []*section{{name: "brief.md", kind: "brief", size: len(in.Brief.Text), body: []string{in.Brief.Text}}}
 	for _, name := range slices.Sorted(maps.Keys(in.Files)) {
 		s := &section{name: name, kind: kinds[strings.ToLower(filepath.Ext(name))], size: len(in.Files[name])}
@@ -75,6 +87,8 @@ func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
 			text, err = pdf(path)
 		case "docx":
 			text, err = docx(path)
+		case "video":
+			err = s.probeVideo(path)
 		default:
 			err = s.probe(path)
 		}
@@ -87,10 +101,17 @@ func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
 		files = append(files, s)
 	}
 	for _, s := range files {
+		if s.video {
+			if err := s.frames(dir, seconds); err != nil {
+				return "", fmt.Errorf("%s: %w", s.name, err)
+			}
+		}
+	}
+	for _, s := range files {
 		if s.image == "" {
 			continue
 		}
-		text, err := ask(prompt(s.image))
+		text, err := ask(prompt(s.image, s.video, seconds))
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", s.name, err)
 		}
@@ -102,7 +123,7 @@ func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
 // render is contexto.md: the index, then each file under its heading, behind an anchor of its position.
 func render(files []*section) string {
 	var b strings.Builder
-	b.WriteString("# Contexto\n\n| File | Type | Size | Dimensions | Section |\n| --- | --- | --- | --- | --- |\n")
+	b.WriteString("# Contexto\n\n| File | Type | Size | Dimensions or duration | Section |\n| --- | --- | --- | --- | --- |\n")
 	for i, s := range files {
 		fmt.Fprintf(&b, "| %s | %s | %d bytes | %s | [#f%d](#f%d) |\n", cell(s.name), s.kind, s.size, s.meta, i+1, i+1)
 	}
@@ -116,6 +137,16 @@ func render(files []*section) string {
 }
 
 func cell(s string) string { return strings.ReplaceAll(s, "|", `\|`) }
+
+// missing is the note for a video section whose tool is not installed, or "" when every tool is.
+func missing(tools ...string) string {
+	for _, t := range tools {
+		if _, err := exec.LookPath(t); err != nil {
+			return "Not read: " + t + " is not installed; dulidu doctor says how to install it."
+		}
+	}
+	return ""
+}
 
 // tool runs name with args and is its stdout; its error ends with its stderr.
 func tool(name string, args ...string) (string, error) {

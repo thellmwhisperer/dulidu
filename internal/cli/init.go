@@ -36,7 +36,7 @@ max_stories_per_epic:
 ticket_size: ""
 # What stays out of the epics and stories, one item each
 exclusions: []
-# Seconds between the frames read from a video in the input; empty reads none
+# Seconds between the frames read from a video in the input; empty is 10
 video_frame_seconds:
 
 # Each step's agent: harness and model as above, effort as its CLI takes it

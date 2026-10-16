@@ -47,6 +47,9 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if c.VideoFrameSeconds < 0 {
+				return errors.New("video_frame_seconds: want a positive number of seconds")
+			}
 			runs := filepath.Join(root, ".dulidu", "runs")
 			if err := os.MkdirAll(runs, 0o755); err != nil {
 				return err
@@ -64,7 +67,8 @@ func runCmd() *cobra.Command {
 			}
 			a := agent.Agent{Harness: step.Harness, Model: c.Steps.Input.Model, Effort: c.Steps.Input.Effort, Timeout: limit}
 			var log strings.Builder
-			r.Context, err = input.Package(dir, in, func(prompt string) (string, error) {
+			seconds := cmp.Or(c.VideoFrameSeconds, input.FrameSeconds)
+			r.Context, err = input.PackageEvery(dir, in, seconds, func(prompt string) (string, error) {
 				final, err := a.Run(dir, prompt, func(final string) error {
 					if strings.TrimSpace(final) == "" {
 						return errors.New("no description in its final message")
@@ -88,6 +92,6 @@ func runCmd() *cobra.Command {
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), filepath.Join(dir, "contexto.md"))
 			return err
 		}}
-	c.Flags().StringArrayVar(&attach, "attach", nil, "a file that comes with the brief: pdf, docx, md, txt, json, png, jpg, webp or heic")
+	c.Flags().StringArrayVar(&attach, "attach", nil, "a file that comes with the brief: pdf, docx, md, txt, json, png, jpg, webp, heic, mp4, mov or webm")
 	return c
 }
