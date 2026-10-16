@@ -11,8 +11,8 @@ import (
 // helloPrompt is all dulidu doctor --agent asks the agent.
 const helloPrompt = "Reply with the single word OK and nothing else."
 
-// Hello says hello to a the way a step does, in a temporary git repository it removes, codex runs only in one,
-// and returns how long it took to answer OK. Its error is the cause, then the agent's last 5 lines.
+// Hello asks the agent for OK through Agent.Run and returns the elapsed time. It uses a temporary Git repository
+// for agents such as Codex that require one, then removes it. Its error is the cause, then the agent's last 5 lines.
 func Hello(a Agent) (time.Duration, error) {
 	dir, err := os.MkdirTemp("", "dulidu-hello-")
 	if err != nil {

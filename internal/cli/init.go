@@ -22,7 +22,7 @@ harness: ""
 # Its model and effort, as its CLI takes them
 model: ""
 effort: ""
-# How long it may take, as 90s or 20m; "" is 30m
+# How long a run may take, as 90s or 20m; "" is 30m for runs, 2m for doctor --agent
 agent_timeout: ""
 `
 
