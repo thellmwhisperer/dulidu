@@ -1,5 +1,4 @@
 // Package cli is dulidu's command line: one cobra command per file, run from inside the repository it works on.
-// Copied from ATM's internal/cli.
 package cli
 
 import (

@@ -1,6 +1,5 @@
 // Package config is dulidu's configuration in layers, each overriding the one before: the built-in defaults,
-// ~/.config/dulidu/config.yaml, then the repository's dulidu.yaml. Copied from ATM's internal/config, with
-// only dulidu's keys.
+// ~/.config/dulidu/config.yaml, then the repository's dulidu.yaml.
 package config
 
 import (
