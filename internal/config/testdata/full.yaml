@@ -1,0 +1,15 @@
+platform: web
+project_type: marketplace
+max_epics: 5
+max_stories_per_epic: 8
+ticket_size: one day
+exclusions: [payments]
+agent_timeout: 20m
+video_frame_seconds: 2
+steps:
+  input: {harness: claude, model: cheap, effort: low}
+  triage: {harness: claude, model: strong, effort: high}
+  research: {harness: pi, model: medium, effort: medium}
+  analysis: {harness: claude, model: medium, effort: medium}
+  epics: {harness: claude, model: medium, effort: medium}
+  stories: {harness: claude, model: strong, effort: high}

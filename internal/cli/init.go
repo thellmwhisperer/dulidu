@@ -13,17 +13,64 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// template is dulidu.yaml with every key config knows, empty for the project to fill.
+// template is dulidu.yaml with every key config knows: the project's empty for it to fill, each step's agent
+// a default.
 const template = `# dulidu's configuration for this repository, over ~/.config/dulidu/config.yaml.
-# Every key dulidu knows is listed here with an empty value; any other key is an error.
+# Every key dulidu knows is listed here; a run needs each one, empty means none, any other key is an error.
 
-# The agent CLI: claude, codex, opencode, pi, cursor or hermes; "" is claude
+# The agent CLI doctor --agent greets: claude, codex, opencode, pi, cursor or hermes; "" is claude
 harness: ""
 # Its model and effort, as its CLI takes them
 model: ""
 effort: ""
 # How long a run may take, as 90s or 20m; "" is 30m for runs, 2m for doctor --agent
 agent_timeout: ""
+
+# The product: the platform it runs on and the kind of project it is
+platform: ""
+project_type: ""
+# At most this many epics, and stories in each; empty is no limit
+max_epics:
+max_stories_per_epic:
+# How big one ticket is, in words
+ticket_size: ""
+# What stays out of the epics and stories, one item each
+exclusions: []
+# Seconds between the frames read from a video in the input; empty reads none
+video_frame_seconds:
+
+# Each step's agent: harness and model as above, effort as its CLI takes it
+steps:
+  # input reads what came with the brief: a cheap model, sight is enough
+  input:
+    harness: claude
+    model: haiku
+    effort: low
+  # triage decides what the brief is about and what to research: a strong model
+  triage:
+    harness: claude
+    model: opus
+    effort: high
+  # research finds what each dimension needs: a medium model
+  research:
+    harness: claude
+    model: sonnet
+    effort: medium
+  # analysis takes the brief apart: a medium model
+  analysis:
+    harness: claude
+    model: sonnet
+    effort: medium
+  # epics outlines the work: a medium model
+  epics:
+    harness: claude
+    model: sonnet
+    effort: medium
+  # stories writes the tickets: a strong model
+  stories:
+    harness: claude
+    model: opus
+    effort: high
 `
 
 // initCmd is dulidu init: dulidu.yaml from template unless there is one, and .dulidu/ in .gitignore unless it is.
