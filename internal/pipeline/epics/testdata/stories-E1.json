@@ -1,0 +1,3 @@
+[{"id": "US1", "title": "Reject a bike without a red-74 tag", "description": "As Rosa I want untagged bikes refused so that the listing stays valid",
+  "acceptance": ["Given a bike tagged blue-12, when Rosa lists it, then it is refused"],
+  "first_test": "Write a test that lists a blue-12 bike and expects a refusal.", "functionalities": ["F1"]}]

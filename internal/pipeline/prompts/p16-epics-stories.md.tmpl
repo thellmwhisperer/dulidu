@@ -18,10 +18,11 @@ Respond ONLY with a JSON array (no markdown, no explanation). Each:
   "id": "US1",
   "title": "Imperative action title (e.g. 'Reject a signup with an invalid email')",
   "description": "As a [persona] I want [action] so that [benefit]",
-  "acceptanceCriteria": ["Given X, when Y, then Z", "..."],
-  "testFirst": "Write a test that [specific test description]. It should fail because [reason]. Then implement [what] to make it pass.",
-  "useCases": ["Concrete scenario with specific values, not generic descriptions"]
+  "acceptance": ["Given X, when Y, then Z", "..."],
+  "first_test": "Write a test that [specific test description]. It should fail because [reason]. Then implement [what] to make it pass.",
+  "functionalities": ["F1"]
 }
+"functionalities" are the ids of the must-have functionalities below that the story delivers.
 
 Generate implementation-ready user stories for this EPIC.
 
@@ -40,7 +41,7 @@ Generate implementation-ready user stories for this EPIC.
 ## Key Constraints
 {{.Constraints}}
 {{if .Stories}}
-Target {{seventy .Stories}}-{{.Stories}} stories. Fewer is better if they cover everything. Do not pad with trivial stories.
+Target {{seventy .Stories}}-{{.Stories}} stories. Fewer is better if they cover everything. Do not pad with trivial stories. At most {{.Stories}}, but never drop a must functionality this epic owns to stay within that number: return the stories it needs.
 {{end}}
 Remember: each story will be picked up by a fresh AI agent with no prior context. Include everything the agent needs to succeed in the story itself.
 

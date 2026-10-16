@@ -13,7 +13,7 @@ Respond ONLY with a JSON array (no markdown, no explanation). Each:
   "id": "E1",
   "title": "Epic title",
   "description": "What this epic covers and WHY it exists as a unit",
-  "dependencies": ["E0"]
+  "depends_on": ["E0"]
 }
 
 Generate EPIC outlines (no stories yet) for this product. Think about the natural phases to go from zero to a shippable product.
@@ -33,6 +33,6 @@ Generate EPIC outlines (no stories yet) for this product. Think about the natura
 ## Key Constraints
 {{.Constraints}}
 {{if .Epics}}
-Generate EXACTLY {{.Epics}} epics. No more, no fewer.
+Generate at most {{.Epics}} epics. Never drop a must functionality to stay within that number: if covering every one takes more epics, return them all.
 {{end}}
 Respond with a JSON array only.
