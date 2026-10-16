@@ -6,7 +6,7 @@ title: "Cut the os.RemoveAll of input/frames/<video> before MkdirAll (3 lines). 
 created_at: 2026-10-16
 incident:
   pattern: "Cut the os.RemoveAll of input/frames/<video> before MkdirAll (3 lines). Every run gets a new run folder, so there are never stale frames to clear."
-  what_went_wrong: "An ATM run wrote it and ATM's ponytail pass cut it before delivery."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
   root_cause: "The coding agent wrote more than the issue needed."
   rule_established: "Cut by the ponytail pass; it does not come back."
   evidence:
