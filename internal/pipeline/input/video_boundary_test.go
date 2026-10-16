@@ -69,9 +69,16 @@ func TestContactSheetHoldsLastOf1800Frames(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	s := section{name: name}
+	s := section{name: name, kind: "video"}
 	if err := s.frames(dir, 1); err != nil {
 		t.Fatal(err)
+	}
+	want := make([]string, 1800)
+	for i := 1; i <= 1800; i++ {
+		want[i-1] = fmt.Sprintf("input/frames/%s/%03d.jpg", name, i)
+	}
+	if !strings.Contains(render([]*section{&s}), "Frames, one every 1 s: "+strings.Join(want, ", ")+". Contact sheet: input/frames/long.mp4/sheet.jpg.") {
+		t.Error("contexto.md does not list every frame in numeric reading order")
 	}
 	f, err := os.Open(filepath.Join(frames, "sheet.jpg"))
 	if err != nil {

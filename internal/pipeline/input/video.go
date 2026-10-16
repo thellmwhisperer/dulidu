@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -74,6 +75,9 @@ func (s *section) frames(dir string, seconds int) error {
 	if len(frames) == 0 {
 		return errors.New("ffmpeg extracted no frames")
 	}
+	slices.SortFunc(frames, func(a, b string) int {
+		return cmp.Or(cmp.Compare(len(a), len(b)), strings.Compare(a, b))
+	})
 	cols := min(len(frames), 64)
 	rows := (len(frames) + cols - 1) / cols
 	width, height := min(320, 8192/cols)&^1, min(180, 8192/rows)&^1
