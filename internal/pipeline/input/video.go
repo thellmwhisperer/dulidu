@@ -53,9 +53,6 @@ func (s *section) probeVideo(path string) error {
 func (s *section) frames(dir string, seconds int) error {
 	rel := filepath.Join("input", "frames", s.name)
 	out, video := filepath.Join(dir, rel), filepath.Join(dir, "input", s.name)
-	if err := os.RemoveAll(out); err != nil {
-		return err
-	}
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return err
 	}
@@ -109,9 +106,5 @@ func transcribe(video string) (string, error) {
 	}
 	model := cmp.Or(os.Getenv("WHISPER_MODEL"), "models/ggml-base.en.bin")
 	out, err := tool("whisper-cli", "-m", model, "-l", "auto", "-nt", "-np", "-f", wav)
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	for i, l := range lines {
-		lines[i] = strings.TrimSpace(l)
-	}
-	return strings.Join(lines, "\n"), err
+	return strings.TrimSpace(out), err
 }
