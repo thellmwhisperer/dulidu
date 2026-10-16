@@ -1,18 +1,18 @@
 schema: 1
 id: T-PONYTAIL-20261016-223629-1
 status: accepted
-category: alien_code
-title: "Removed the duplicate-epic-id check from Epics.Validate (the seen lookup plus its need). Nothing replaces it."
+category: required_validation
+title: "Keep duplicate epic IDs invalid before checking dependencies."
 created_at: 2026-10-16
 incident:
-  pattern: "Removed the duplicate-epic-id check from Epics.Validate (the seen lookup plus its need). Nothing replaces it."
-  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
-  root_cause: "The coding agent wrote more than the issue needed."
-  rule_established: "Cut by the ponytail pass; it does not come back."
+  pattern: "A ponytail pass removed the duplicate epic ID check from Epics.Validate."
+  what_went_wrong: "Duplicate IDs could overwrite dependencies and hide a cycle."
+  root_cause: "The removed check protected a required graph invariant."
+  rule_established: "Reject duplicate epic IDs before building the dependency map."
   evidence:
-    - family: speculative_hardening
-      example: "Removed the duplicate-epic-id check from Epics.Validate (the seen lookup plus its need). Nothing replaces it."
+    - family: required_validation
+      example: "Duplicate epic IDs must fail validation before epics.json is written."
       artifact: "internal/pipeline/validate.go"
 match:
-  family: speculative_hardening
+  family: required_validation
   artifact: "internal/pipeline/validate.go"

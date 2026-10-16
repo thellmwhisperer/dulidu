@@ -105,6 +105,9 @@ func (es Epics) Validate() error {
 	deps := map[string][]string{}
 	for _, e := range es {
 		errs = append(errs, e.Validate())
+		if _, exists := deps[e.ID]; exists {
+			return errors.New("duplicate epic: " + e.ID)
+		}
 		deps[e.ID] = e.DependsOn
 	}
 	for _, e := range es {

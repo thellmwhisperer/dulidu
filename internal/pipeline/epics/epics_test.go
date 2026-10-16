@@ -110,8 +110,8 @@ func TestARecordedSetYieldsEpicsJSON(t *testing.T) {
 }
 
 func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
-	two := `[{"id": "US1", "title": "A", "acceptance": ["a"], "first_test": "t", "functionalities": ["F1"]},
-		{"id": "US2", "title": "B", "acceptance": ["b"], "first_test": "t", "functionalities": ["F1"]}]`
+	two := `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "first_test": "t", "functionalities": ["F1"]},
+		{"id": "US2", "title": "B", "description": "Another story", "acceptance": ["b"], "first_test": "t", "functionalities": ["F1"]}]`
 	for name, c := range map[string]struct {
 		caps    pipeline.Caps
 		instead map[int]string
@@ -123,14 +123,22 @@ func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 			check: "unknown dependency", says: "unknown dependency: E1 on E9", calls: 1},
 		"cycle": {instead: map[int]string{0: `[{"id": "E1", "title": "A", "depends_on": ["E2"]}, {"id": "E2", "title": "B", "depends_on": ["E1"]}]`},
 			check: "cycle", says: "cycle: E1", calls: 1},
-		"uncovered must": {instead: map[int]string{2: `[{"id": "US2", "title": "B", "acceptance": ["b"], "first_test": "t", "functionalities": []}]`},
+		"duplicate epic": {instead: map[int]string{0: `[{"id": "E1", "title": "A", "depends_on": ["E1"]}, {"id": "E1", "title": "B", "depends_on": []}]`},
+			check: "duplicate epic", says: "duplicate epic: E1", calls: 1},
+		"uncovered must": {instead: map[int]string{2: `[{"id": "US2", "title": "B", "description": "No functionality", "acceptance": ["b"], "first_test": "t", "functionalities": []}]`},
 			check: "uncovered must", says: "uncovered must: F3", calls: 3},
 		"too many epics": {caps: pipeline.Caps{Epics: 1, StoriesPerEpic: 2},
 			check: "over cap", says: "over cap: 2 epics, cap 1", calls: 1},
 		"too many stories": {caps: pipeline.Caps{Epics: 2, StoriesPerEpic: 1}, instead: map[int]string{1: two},
 			check: "over cap", says: "over cap: 2 stories in E1, cap 1", calls: 2},
-		"no first test": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "acceptance": ["a"], "functionalities": ["F1"]}]`},
+		"no first test": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "functionalities": ["F1"]}]`},
 			check: "invalid output", says: "lacks id, title, acceptance or first test", calls: 2},
+		"no description": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "acceptance": ["a"], "first_test": "t", "functionalities": ["F1"]}]`},
+			check: "invalid output", says: "lacks description", calls: 2},
+		"unknown functionality": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "first_test": "t", "functionalities": ["F1", "F999"]}]`},
+			check: "invalid output", says: "invalid functionalities", calls: 2},
+		"missing functionalities": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "first_test": "t"}]`},
+			check: "invalid output", says: "invalid functionalities", calls: 2},
 		"agent error": {instead: map[int]string{}, check: "outlines", says: "outlines: down", calls: 1},
 	} {
 		t.Run(name, func(t *testing.T) {

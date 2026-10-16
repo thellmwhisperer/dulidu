@@ -19,7 +19,7 @@ type story struct {
 
 // askStories is e's stories, phase two's call for it on data, or why there are none: each story needs an id, a
 // title, acceptance criteria and its first test.
-func askStories(e pipeline.EpicOutline, data map[string]any, ask func(prompt string) (string, error)) ([]pipeline.Story, error) {
+func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, ask func(prompt string) (string, error)) ([]pipeline.Story, error) {
 	data["Epic"] = e
 	prompt, err := prompts.Render("p16-epics-stories", data)
 	var answer string
@@ -37,6 +37,12 @@ func askStories(e pipeline.EpicOutline, data map[string]any, ask func(prompt str
 	for i, s := range got {
 		if blank(s.ID) || blank(s.Title) || blank(s.FirstTest) || len(s.Acceptance) == 0 || slices.ContainsFunc(s.Acceptance, blank) {
 			return nil, errors.New("invalid output: a story of " + e.ID + " lacks id, title, acceptance or first test")
+		}
+		if blank(s.Description) {
+			return nil, errors.New("invalid output: a story of " + e.ID + " lacks description")
+		}
+		if s.Functionalities == nil || slices.ContainsFunc(s.Functionalities, func(id string) bool { return !slices.Contains(ids, id) }) {
+			return nil, errors.New("invalid output: a story of " + e.ID + " has invalid functionalities")
 		}
 		ss[i] = pipeline.Story{ID: s.ID, Epic: e.ID, Title: s.Title, Text: s.Description, Acceptance: s.Acceptance,
 			FirstTest: s.FirstTest, Functionalities: s.Functionalities}

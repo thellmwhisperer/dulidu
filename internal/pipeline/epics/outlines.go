@@ -71,10 +71,11 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 // plan is phase one, its checks, then phase two; each error starts with the check or call that failed.
 func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Epics, error) {
 	list := func(lines []string) string { return "- " + strings.Join(lines, "\n- ") }
-	var all, musts, mustLines []string
+	var all, ids, musts, mustLines []string
 	for i, f := range r.Analysis.Functionalities {
 		id := fmt.Sprintf("F%d", i+1)
 		all = append(all, id+" "+f)
+		ids = append(ids, id)
 		if rest, ok := strings.CutPrefix(f, "[must] "); ok {
 			musts, mustLines = append(musts, id), append(mustLines, id+" "+rest)
 		}
@@ -102,7 +103,7 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 		return nil, err
 	}
 	for i := range es {
-		if es[i].Stories, err = askStories(es[i], data, ask); err == nil {
+		if es[i].Stories, err = askStories(es[i], data, ids, ask); err == nil {
 			err = overCap(len(es[i].Stories), caps.StoriesPerEpic, "stories in "+es[i].ID)
 		}
 		if err != nil {
