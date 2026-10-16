@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -52,6 +54,9 @@ func (c *Config) declare(n *yaml.Node, prefix string) error {
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key, value := prefix+n.Content[i].Value, n.Content[i+1]
 		if value.Kind == yaml.MappingNode {
+			if len(value.Content) == 0 && !slices.ContainsFunc(known, func(k string) bool { return strings.HasPrefix(k, key+".") }) {
+				return fmt.Errorf("config incomplete: %s", key)
+			}
 			if err := c.declare(value, key+"."); err != nil {
 				return err
 			}
@@ -64,8 +69,27 @@ func (c *Config) declare(n *yaml.Node, prefix string) error {
 			c.set = map[string]bool{}
 		}
 		c.set[key] = true
+		if value.ShortTag() == "!!null" {
+			c.clear(key)
+		}
 	}
 	return nil
+}
+
+// clear empties the field at the dotted key: yaml leaves a string or int as it was on null, and a later layer's
+// empty must still win.
+func (c *Config) clear(key string) {
+	v := reflect.ValueOf(c).Elem()
+	for _, name := range strings.Split(key, ".") {
+		t := v.Type()
+		for i := range t.NumField() {
+			if t.Field(i).Tag.Get("yaml") == name {
+				v = v.Field(i)
+				break
+			}
+		}
+	}
+	v.SetZero()
 }
 
 // Complete is nil when the layers Load read declared every key a run needs, even empty, and else names the
