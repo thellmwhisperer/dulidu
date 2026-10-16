@@ -24,7 +24,7 @@ Sources are in the reference snapshot c10131b, `poc/src/pipeline/`. Removed sent
 | P07 | `steps/step0-research.ts:41, 56-62` | `p07-research-project` | Same. |
 | P08 | `steps/step1-analysis.ts:6-13, 46-60` | `p08-analysis-full` | The five fixed research labels: `Research` comes formatted. |
 | P09 | `steps/step1-analysis.ts:19, 62-76` | `p09-analysis-personas` | Same. |
-| P10 | `steps/step1-analysis.ts:24, 62-76` | `p10-analysis-functionalities` | Same. |
+| P10 | `steps/step1-analysis.ts:24, 62-76` | `p10-analysis-functionalities` | Same; the analysis lists made before it follow the research. |
 | P11 | `steps/step1-analysis.ts:29, 62-76` | `p11-analysis-flows` | Same. |
 | P12 | `steps/step1-analysis.ts:34, 62-76` | `p12-analysis-constraints` | Same, and the mobile-platform example constraint. |
 | P13 | `steps/step1-analysis.ts:39, 62-76` | `p13-analysis-questions` | Same. |

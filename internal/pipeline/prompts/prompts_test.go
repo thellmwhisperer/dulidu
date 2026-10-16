@@ -78,6 +78,24 @@ func TestResearchPromptsAskForTextAndSources(t *testing.T) {
 	}
 }
 
+func TestAnalysisPromptsCarryTheListsSoFar(t *testing.T) {
+	for i, step := range []string{"p09-analysis-personas", "p10-analysis-functionalities", "p11-analysis-flows",
+		"p12-analysis-constraints", "p13-analysis-questions"} {
+		got, err := Render(step, sample)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, sample["Input"].(string)) || !strings.Contains(got, sample["Research"].(string)) {
+			t.Errorf("%s lacks contexto.md or research.json:\n%s", step, got)
+		}
+		for j, key := range []string{"Personas", "Functionalities", "Flows", "Constraints"} {
+			if has := strings.Contains(got, sample[key].(string)); has != (j < i) {
+				t.Errorf("%s carries %s: %v, want %v:\n%s", step, key, has, j < i, got)
+			}
+		}
+	}
+}
+
 func TestNoProductLeaks(t *testing.T) {
 	forbidden := regexp.MustCompile(`(?i)wall ?papi|react native|monorepo|\d+\s*(lines|loc)\b|lines of (production )?code|` +
 		`(?-i:iOS)`)
