@@ -57,18 +57,29 @@ func (s *section) frames(dir string, seconds int) error {
 		return err
 	}
 	every := fmt.Sprintf("select='isnan(prev_selected_t)+gte(t-prev_selected_t,%d)'", seconds)
-	pattern := filepath.Join(out, "%03d.jpg")
+	pattern := filepath.Join(strings.ReplaceAll(out, "%", "%%"), "%03d.jpg")
 	if _, err := tool("ffmpeg", "-v", "error", "-i", video, "-vf", every, "-fps_mode", "vfr", "-q:v", "2", pattern); err != nil {
 		return err
 	}
-	frames, _ := filepath.Glob(filepath.Join(out, "[0-9]*.jpg")) // the pattern is well formed
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		return err
+	}
+	var frames []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".jpg") {
+			frames = append(frames, filepath.Join(out, entry.Name()))
+		}
+	}
 	if len(frames) == 0 {
 		return errors.New("ffmpeg extracted no frames")
 	}
-	cols := min(len(frames), 4)
-	tile := fmt.Sprintf("scale=320:-2,tile=%dx%d", cols, (len(frames)+cols-1)/cols)
+	cols := min(len(frames), 64)
+	rows := (len(frames) + cols - 1) / cols
+	width, height := min(320, 8192/cols)&^1, min(180, 8192/rows)&^1
+	tile := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,tile=%dx%d", width, height, width, height, cols, rows)
 	sheet := filepath.Join(rel, "sheet.jpg")
-	if _, err := tool("ffmpeg", "-v", "error", "-i", pattern, "-vf", tile, "-frames:v", "1", "-q:v", "2",
+	if _, err := tool("ffmpeg", "-v", "error", "-i", pattern, "-vf", tile, "-frames:v", "1", "-q:v", "2", "-update", "1",
 		filepath.Join(dir, sheet)); err != nil {
 		return err
 	}

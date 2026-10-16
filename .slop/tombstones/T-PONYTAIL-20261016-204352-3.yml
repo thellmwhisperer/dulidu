@@ -6,7 +6,7 @@ title: "Replaced the split, per-line TrimSpace and join of whisper-cli output (5
 created_at: 2026-10-16
 incident:
   pattern: "Replaced the split, per-line TrimSpace and join of whisper-cli output (5 lines) with strings.TrimSpace(out) (1 line)."
-  what_went_wrong: "An ATM run wrote it and ATM's ponytail pass cut it before delivery."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
   root_cause: "The coding agent wrote more than the issue needed."
   rule_established: "Cut by the ponytail pass; it does not come back."
   evidence:
