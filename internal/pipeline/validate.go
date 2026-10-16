@@ -24,10 +24,21 @@ func filled(list []string) bool { return len(list) > 0 && !slices.ContainsFunc(l
 // plain is a name that stays one file inside its folder.
 func plain(name string) bool { return filepath.Base(name) == name && filepath.IsLocal(name) }
 
+func distinctNames[V any](items map[string]V, reserved ...string) bool {
+	seen := append([]string(nil), reserved...)
+	for name := range items {
+		if slices.ContainsFunc(seen, func(other string) bool { return strings.EqualFold(name, other) }) {
+			return false
+		}
+		seen = append(seen, name)
+	}
+	return true
+}
+
 func (b Brief) Validate() error { return need(!blank(b.Text), "brief: no text") }
 
 func (c InputContext) Validate() error {
-	errs := []error{c.Brief.Validate()}
+	errs := []error{c.Brief.Validate(), need(distinctNames(c.Files, briefFile), "input: colliding names")}
 	for name := range c.Files {
 		errs = append(errs, need(plain(name) && name != briefFile, "input: bad file name "+name))
 	}
@@ -105,9 +116,11 @@ func (r Run) Validate() error {
 	for id, s := range r.Tickets {
 		errs = append(errs, need(plain(id), "tickets: bad id "+id), s.Validate())
 	}
+	errs = append(errs, need(distinctNames(r.Tickets), "tickets: colliding ids"))
 	for step := range r.Logs {
 		errs = append(errs, need(plain(step), "agent: bad step "+step))
 	}
+	errs = append(errs, need(distinctNames(r.Logs), "agent: colliding steps"))
 	if r.Plan != nil {
 		errs = append(errs, need(json.Valid(r.Plan), "plan: not JSON"))
 	}

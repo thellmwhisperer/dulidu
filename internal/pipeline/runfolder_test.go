@@ -59,6 +59,70 @@ func TestRunFolderRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRunFolderReplacement(t *testing.T) {
+	dir := t.TempDir()
+	if err := Write(dir, complete()); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{"keep.txt": "root", "tickets/keep.md": "ticket note", "agent/keep.txt": "agent note"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	replacement := Run{
+		Report:  complete().Report,
+		Input:   &InputContext{Brief: Brief{Text: "A different brief.\n"}, Files: map[string]string{"new.md": "New input.\n"}},
+		Tickets: map[string]Story{"E2-1": {Epic: "E2", Title: "New story", Acceptance: []string{"done"}}},
+		Logs:    map[string]string{"analysis": "new log\n"},
+	}
+	for _, want := range []Run{replacement, {Report: replacement.Report}} {
+		if err := Write(dir, want); err != nil {
+			t.Fatal(err)
+		}
+		got, err := Read(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("replacement read back:\n%+v\nwant:\n%+v", got, want)
+		}
+	}
+	for name, content := range map[string]string{"keep.txt": "root", "tickets/keep.md": "ticket note", "agent/keep.txt": "agent note"} {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil || string(got) != content {
+			t.Fatalf("unrelated %s changed: %q, %v", name, got, err)
+		}
+	}
+}
+
+func TestRunFolderRejectsCollidingNamesBeforeCleanup(t *testing.T) {
+	for name, collide := range map[string]func(*Run){
+		"reserved brief": func(r *Run) { r.Input.Files["BRIEF.md"] = "collision" },
+		"attachments":    func(r *Run) { r.Input.Files["NOTES.md"] = "collision" },
+		"tickets":        func(r *Run) { r.Tickets["e1-1"] = r.Tickets["E1-1"] },
+		"logs":           func(r *Run) { r.Logs["TRIAGE"] = "collision" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			original := complete()
+			if err := Write(dir, original); err != nil {
+				t.Fatal(err)
+			}
+			bad := complete()
+			bad.Context = ""
+			bad.Triage = nil
+			collide(&bad)
+			if err := Write(dir, bad); err == nil {
+				t.Fatal("Write accepted colliding destination names")
+			}
+			got, err := Read(dir)
+			if err != nil || !reflect.DeepEqual(got, original) {
+				t.Fatalf("rejected write changed the run: %+v, %v", got, err)
+			}
+		})
+	}
+}
+
 func TestRunFolderRefusesWhatDoesNotValidate(t *testing.T) {
 	bad := complete()
 	bad.Analysis = &Analysis{}
