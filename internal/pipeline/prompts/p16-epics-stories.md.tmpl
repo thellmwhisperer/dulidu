@@ -10,7 +10,6 @@ STORY REQUIREMENTS:
 5. CONCRETE: No vague stories like "Implement error handling." Instead: "Handle a payment provider timeout by showing a retry prompt without charging twice."
 
 WHAT NOT TO GENERATE:
-- Stories for work the brief or its constraints put out of scope
 - Separate stories for each linter, formatter or type checker config (that's ONE setup story, not three)
 - Separate stories for each individual error type (ONE comprehensive error handling story per domain)
 
@@ -41,7 +40,7 @@ Generate implementation-ready user stories for this EPIC.
 ## Key Constraints
 {{.Constraints}}
 {{if .Stories}}
-Target at most {{.Stories}} stories. Fewer is better if they cover everything. Do not pad with trivial stories.
+Target {{seventy .Stories}}-{{.Stories}} stories. Fewer is better if they cover everything. Do not pad with trivial stories.
 {{end}}
 Remember: each story will be picked up by a fresh AI agent with no prior context. Include everything the agent needs to succeed in the story itself.
 
