@@ -5,9 +5,9 @@ One binary in the PATH. Run `init`, `doctor`, `run`, `runs`, and `release` insid
 ```sh
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh
 dulidu init     # writes dulidu.yaml and ignores .dulidu/
-dulidu doctor   # checks go, git and the config layers
+dulidu doctor   # checks go, git, the config layers and video tools
 dulidu doctor --agent # asks the configured agent to say OK and reports elapsed time
-dulidu run brief.md --attach notes.pdf --attach shot.png # packages them into one contexto.md
+dulidu run brief.md --attach notes.pdf --attach shot.png --attach clip.mp4 # packages them into one contexto.md
 dulidu runs     # lists .dulidu/runs/ newest first: label, status, last step, started
 dulidu update   # updates an installed release to the latest release
 dulidu release vX.Y.Z # builds and publishes a tagged release
@@ -16,7 +16,9 @@ dulidu release vX.Y.Z # builds and publishes a tagged release
 Configuration is layered: built-in defaults, `~/.config/dulidu/config.yaml`, then the repository's `dulidu.yaml`.
 `dulidu init` writes a template with every required project and step key. Each step has its own agent CLI, model and effort, with suggested defaults. Top-level harness, model and effort configure `doctor --agent`. Every required key must be present across the layers, even when empty; unknown keys are rejected. Errors name the key as `config incomplete: <key>`. The agent uses its installed CLI and existing authentication.
 
-`run` writes a new `.dulidu/runs/<label>/` with the brief and its attachments in `input/` and `contexto.md`: an index, then one section per file. It reads pdf, docx, md, txt and json as text; png, jpg, webp and heic as images, and the `steps.input` agent describes each image. Any other extension stops the run before any agent call. PDF extraction requires `pdftotext` (`brew install poppler`, `apt install poppler-utils`) and nonempty text; image dimensions require `ffprobe` (`brew install ffmpeg`, `apt install ffmpeg`) and positive width and height. An empty `steps.input.model` delegates model selection to the agent.
+`run` writes a new `.dulidu/runs/<label>/` with the brief and its attachments in `input/` and `contexto.md`: an index, then one section per file. It reads pdf, docx, md, txt and json as text; png, jpg, webp and heic as images. Videos in mp4, mov or webm format, up to 30 minutes long, produce an initial frame, further frames every `video_frame_seconds` seconds (10 when empty), and one contact sheet in `input/frames/<video>/`. The `steps.input` agent describes each image and each video contact sheet once. A video with audio also has a transcript from `whisper-cli`, using local weights from `WHISPER_MODEL` or `models/ggml-base.en.bin` by default. Any other extension stops the run before any agent call.
+
+PDF extraction requires `pdftotext` (`brew install poppler`, `apt install poppler-utils`) and nonempty text; image dimensions require `ffprobe` (`brew install ffmpeg`, `apt install ffmpeg`) and positive width and height. Missing `ffmpeg` or `ffprobe` leaves a note in the video section; missing `whisper-cli` leaves a transcript note when the video has audio. Ordinary `doctor` checks these video tools and gives install hints; `doctor --agent` checks the agent without requiring them. An empty `steps.input.model` delegates model selection to the agent.
 
 `update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit. Publication uses `origin` even if `GH_REPO` is set.
 
