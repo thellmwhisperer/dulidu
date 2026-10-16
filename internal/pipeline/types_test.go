@@ -37,6 +37,16 @@ func TestValidateRejects(t *testing.T) {
 	if research.Validate() == nil {
 		t.Error("a research dimension with empty sources validates")
 	}
+	triage := *r.Triage
+	triage.ResearchDimensions = []string{"market", "market"}
+	if err := triage.Validate(); err == nil || err.Error() != "triage: duplicate research dimension market" {
+		t.Errorf("duplicate triage dimensions: %v", err)
+	}
+	dimension := Dimension{Name: "market", Text: "Crowded.", Sources: []Source{{URL: "u", Title: "t", Supports: "s"}}}
+	if err := (Research{Dimensions: []Dimension{dimension, dimension}}).Validate(); err == nil ||
+		err.Error() != "research: duplicate dimension market" {
+		t.Errorf("duplicate research dimensions: %v", err)
+	}
 	input := *r.Input
 	input.Files = map[string]string{"../x": ""}
 	if input.Validate() == nil {

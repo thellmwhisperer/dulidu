@@ -55,9 +55,11 @@ func (t Triage) Validate() error {
 			"triage: missing list"),
 		need(!slices.ContainsFunc(t.ContextPresent, blank) && !slices.ContainsFunc(t.MissingQuestions, blank),
 			"triage: a blank item")}
+	seen := map[string]bool{}
 	for _, d := range t.ResearchDimensions {
 		errs = append(errs, need(slices.Contains([]string{"business", "users", "market", "technical", "project"}, d),
-			"triage: bad research dimension "+d))
+			"triage: bad research dimension "+d), need(!seen[d], "triage: duplicate research dimension "+d))
+		seen[d] = true
 	}
 	return errors.Join(errs...)
 }
@@ -74,8 +76,11 @@ func (d Dimension) Validate() error {
 // Validate allows an empty list, triage switching no dimension on, but not a missing one.
 func (r Research) Validate() error {
 	errs := []error{need(r.Dimensions != nil, "research: no dimensions")}
+	seen := map[string]bool{}
 	for _, d := range r.Dimensions {
-		errs = append(errs, need(!blank(d.Name), "research: a dimension has no name"))
+		errs = append(errs, need(!blank(d.Name), "research: a dimension has no name"),
+			need(!seen[d.Name], "research: duplicate dimension "+d.Name))
+		seen[d.Name] = true
 		if err := d.Validate(); err != nil {
 			errs = append(errs, fmt.Errorf("research %s: %w", d.Name, err))
 		}

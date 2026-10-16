@@ -94,6 +94,7 @@ type Step struct {
 	Status   string    `json:"status"`
 	Model    string    `json:"model"`
 	Harness  string    `json:"harness"`
+	Effort   string    `json:"effort,omitempty"`
 	Started  time.Time `json:"started"`
 	Finished time.Time `json:"finished,omitzero"`
 	Note     string    `json:"note,omitempty"`

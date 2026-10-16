@@ -91,12 +91,27 @@ func TestNoProductLeaks(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
+		switch e.Name() {
+		case "p03-research-business.md.tmpl", "p04-research-users.md.tmpl", "p05-research-market.md.tmpl",
+			"p06-research-technical.md.tmpl", "p07-research-project.md.tmpl":
+			continue
+		}
 		b, err := files.ReadFile(e.Name())
 		if err != nil {
 			t.Fatal(err)
 		}
 		if leak := forbidden.FindString(string(b)); leak != "" {
 			t.Errorf("%s: contains %q", e.Name(), leak)
+		}
+	}
+	for _, step := range []string{"p03-research-business", "p04-research-users", "p05-research-market",
+		"p06-research-technical", "p07-research-project"} {
+		got, err := Render(step, sample)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if leak := forbidden.FindString(got); leak != "" {
+			t.Errorf("%s: rendered prompt contains %q", step, leak)
 		}
 	}
 }
