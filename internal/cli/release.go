@@ -97,42 +97,24 @@ func (r published) binary() ([]byte, error) {
 	}
 }
 
-// swap puts bin at target by rename, the previous dulidu kept next to it until bin answers --version as tag from
-// there within 20 seconds; else the previous one comes back.
 func swap(target string, bin []byte, tag string) error {
-	previous := target + ".previous"
-	if _, err := os.Lstat(previous); err == nil {
-		return fmt.Errorf("refusing update: %s already exists", previous)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 	f, err := os.CreateTemp(filepath.Dir(target), ".dulidu-update-*")
 	if err != nil {
 		return err
 	}
+	defer os.Remove(f.Name())
 	_, err = f.Write(bin)
 	err = errors.Join(err, f.Chmod(0o755), f.Close())
-	if err == nil {
-		err = os.Rename(target, previous)
-	}
 	if err != nil {
-		_ = os.Remove(f.Name())
 		return err
-	}
-	if err := os.Rename(f.Name(), target); err != nil {
-		return errors.Join(err, os.Rename(previous, target), os.Remove(f.Name()))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, target, "--version")
+	cmd := exec.CommandContext(ctx, f.Name(), "--version")
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil || !strings.HasPrefix(string(out), "dulidu "+tag+" ") {
-		if rerr := os.Rename(previous, target); rerr != nil {
-			return fmt.Errorf("dulidu %s does not answer --version, and the previous dulidu, kept at %s, "+
-				"could not come back: %w", tag, previous, rerr)
-		}
-		return fmt.Errorf("dulidu %s does not answer --version (%q, %v): the previous dulidu is back", tag, out, err)
+		return fmt.Errorf("dulidu %s does not answer --version (%q, %v): the installed dulidu is unchanged", tag, out, err)
 	}
-	return os.Remove(previous)
+	return os.Rename(f.Name(), target)
 }
