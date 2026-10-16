@@ -6,7 +6,7 @@ title: "Dropped claude's `--thinking-display summarized` flag. It only fills thi
 created_at: 2026-10-16
 incident:
   pattern: "Dropped claude's `--thinking-display summarized` flag. It only fills thinking blocks for a transcript log that nothing reads now."
-  what_went_wrong: "An ATM run wrote it and ATM's ponytail pass cut it before delivery."
+  what_went_wrong: "The copied implementation included code beyond this ticket; the simplification removed it."
   root_cause: "The coding agent wrote more than the issue needed."
   rule_established: "Cut by the ponytail pass; it does not come back."
   evidence:

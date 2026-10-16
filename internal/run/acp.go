@@ -3,9 +3,8 @@ package run
 import (
 	"cmp"
 	"encoding/json"
-	"errors"
-	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -139,7 +138,11 @@ func (s *stream) permit(params json.RawMessage) map[string]any {
 // commands reaches outside it.
 func (u acpUpdate) inside(dir string) bool {
 	for _, p := range u.paths() {
-		if !insidePath(dir, p) {
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(dir, p)
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return false
 		}
 	}
@@ -149,36 +152,6 @@ func (u acpUpdate) inside(dir string) bool {
 		}
 	}
 	return true
-}
-
-func insidePath(dir, p string) bool {
-	for _, part := range strings.Split(filepath.ToSlash(p), "/") {
-		if part == ".." {
-			return false
-		}
-	}
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(dir, p)
-	}
-	root, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return false
-	}
-	for {
-		resolved, err := filepath.EvalSymlinks(p)
-		if err == nil {
-			rel, err := filepath.Rel(root, resolved)
-			return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			return false
-		}
-		parent := filepath.Dir(p)
-		if parent == p {
-			return false
-		}
-		p = parent
-	}
 }
 
 // paths is u's locations and every value of a rawInput key naming a path, as path, file_path or cwd.
@@ -226,23 +199,19 @@ var (
 )
 
 // reaches says whether command names an absolute path not under dir, runs curl or wget, or names a URL off this
-// machine. ponytail: curl or wget only as its first word; ATM's shell parser is the upgrade.
+// machine.
 func reaches(command, dir string) bool {
 	if fields := strings.Fields(command); badURL(command) ||
 		len(fields) > 0 && slices.Contains([]string{"curl", "wget"}, strings.Trim(fields[0], "\"'`;|&()")) {
 		return true
 	}
+	dir = filepath.ToSlash(dir)
 	for _, m := range absPath.FindAllStringIndex(command, -1) {
 		if m[0] > 0 && !strings.ContainsRune(sep, rune(command[m[0]-1])) ||
 			m[1] < len(command) && !strings.ContainsRune(sep+"/", rune(command[m[1]])) {
 			continue
 		}
-		if !insidePath(dir, strings.Trim(command[m[0]:m[1]], `"'`)) {
-			return true
-		}
-	}
-	for _, p := range strings.FieldsFunc(command, func(r rune) bool { return strings.ContainsRune(sep, r) }) {
-		if strings.ContainsAny(p, "$~\\") || !insidePath(dir, p) {
+		if p := path.Clean(strings.Trim(command[m[0]:m[1]], `"'`)); p != dir && !strings.HasPrefix(p, dir+"/") {
 			return true
 		}
 	}

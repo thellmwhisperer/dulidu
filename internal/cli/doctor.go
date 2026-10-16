@@ -53,7 +53,7 @@ func doctorCmd() *cobra.Command {
 				if err == nil {
 					took, err = agent.Hello(agent.Agent{Harness: harness, Model: c.Model, Effort: c.Effort, Timeout: limit})
 				}
-				line := "ok agent: " + harness + " " + c.Model + " answered in " + agent.Human(took)
+				line := "ok agent: " + harness + " " + c.Model + " answered OK in " + agent.Human(took)
 				if err != nil {
 					failed++
 					line = "FAIL agent: " + harness + ": " + err.Error()

@@ -19,7 +19,7 @@ printf '%s\n' "$*" > "$FAKE_CALL"
 [ -z "$CLAUDE_CODE_CHILD_SESSION" ] || { echo 'inherited CLAUDE_CODE_CHILD_SESSION' >&2; exit 5; }
 case "$FAKE_MODE" in
 no-auth) echo 'no auth' >&2; exit 2 ;;
-hang) tail -f /dev/null & echo $$ > "$FAKE_GROUP"; wait; exit 0 ;;
+hang) sleep 60 & echo $$ > "$FAKE_GROUP"; wait; exit 0 ;;
 esac
 case "${0##*/}" in
 claude) grep -q OK && echo '{"type":"result","result":"OK"}' ;;
@@ -66,7 +66,7 @@ func TestDoctorAgentSaysHelloToEachHarness(t *testing.T) {
 		t.Run(c.harness, func(t *testing.T) {
 			call := agentRepo(t, c.harness, "ok", "")
 			code, out, errOut := dulidu(t, "doctor", "--agent")
-			if code != 0 || !strings.HasPrefix(lastLine(out), "ok agent: "+c.harness+" m1 answered in ") ||
+			if code != 0 || !strings.HasPrefix(lastLine(out), "ok agent: "+c.harness+" m1 answered OK in ") ||
 				!strings.HasSuffix(lastLine(out), " s") {
 				t.Fatalf("dulidu doctor --agent: exit %d\n%s%s", code, out, errOut)
 			}
@@ -87,11 +87,11 @@ func TestDoctorAgentFailsWithTheCauseAndTheAgentsLastLines(t *testing.T) {
 }
 
 func TestDoctorAgentTimeoutKillsTheWholeGroup(t *testing.T) {
-	agentRepo(t, "claude", "hang", "agent_timeout: 1s\n")
+	agentRepo(t, "claude", "hang", "agent_timeout: 5s\n")
 	group := filepath.Join(t.TempDir(), "group")
 	t.Setenv("FAKE_GROUP", group)
 	code, out, _ := dulidu(t, "doctor", "--agent")
-	if got := lastLine(out); code != 1 || !strings.HasPrefix(got, "FAIL agent: claude: timed out after 0 min 01 s") {
+	if got := lastLine(out); code != 1 || !strings.HasPrefix(got, "FAIL agent: claude: timed out after 0 min 05 s") {
 		t.Fatalf("exit %d, got %q\n%s", code, got, out)
 	}
 	pgid := strings.TrimSpace(read(t, group))

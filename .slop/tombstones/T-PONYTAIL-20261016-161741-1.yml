@@ -6,7 +6,7 @@ title: "Removed the `log io.Writer` parameter from Run and read. Also removed th
 created_at: 2026-10-16
 incident:
   pattern: "Removed the `log io.Writer` parameter from Run and read. Also removed the per-line JSON re-encoding into it and the werr/errors.Join plumbing. Lines are still parsed with json.Valid and see, and the 5-line tail is kept."
-  what_went_wrong: "An ATM run wrote it and ATM's ponytail pass cut it before delivery."
+  what_went_wrong: "The copied implementation included code beyond this ticket; the simplification removed it."
   root_cause: "The coding agent wrote more than the issue needed."
   rule_established: "Cut by the ponytail pass; it does not come back."
   evidence:

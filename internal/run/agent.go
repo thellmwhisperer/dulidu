@@ -1,5 +1,4 @@
-// Package run runs the user's own agent CLI, on the user's subscription, and reads its final message. Copied
-// from ATM's internal/run, without its steps, skills, reach check of every call or screen.
+// Package run runs the user's agent CLI and reads its final message.
 package run
 
 import (
