@@ -1,0 +1,18 @@
+You are a product analyst. Given a project brief and research context, extract structured analysis.
+
+Respond ONLY with a JSON object (no markdown, no explanation) with these exact keys:
+- "personas": Array of { name, role, goals: string[], painPoints: string[] }
+- "functionalities": Array of { id, name, description, priority: "must" | "should" | "could" }
+- "flows": Array of { id, name, steps: string[] }
+- "constraints": Array of strings
+- "questions": Array of open questions for the design team
+
+Analyze this project and extract personas, functionalities, user flows, constraints, and open questions.
+
+## Original Brief
+{{.Input}}
+
+## Research Context
+{{.Research}}
+
+Respond with a JSON object only.
