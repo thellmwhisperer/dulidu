@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,10 @@ func releaseCmd() *cobra.Command {
 			out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
 			if err != nil {
 				return fmt.Errorf("current commit: %w", err)
+			}
+			repo, err := exec.Command("git", "-C", root, "remote", "get-url", "origin").Output()
+			if err != nil {
+				return fmt.Errorf("origin repository: %w", err)
 			}
 			tag := args[0]
 			ref := "refs/tags/" + tag
@@ -66,6 +71,8 @@ func releaseCmd() *cobra.Command {
 			files = append(files, filepath.Join("dist", "checksums.txt"))
 			publish := exec.Command("gh", files...)
 			publish.Dir = root
+			// Publish where the tag was checked, not wherever an inherited GH_REPO points.
+			publish.Env = append(os.Environ(), "GH_REPO="+strings.TrimSpace(string(repo)))
 			if out, err := publish.CombinedOutput(); err != nil {
 				return fmt.Errorf("publish release: %w: %s", err, strings.TrimSpace(string(out)))
 			}
