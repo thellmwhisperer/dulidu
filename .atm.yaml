@@ -1,0 +1,19 @@
+# ATM's configuration for this repository.
+# Every key is required; an empty value is a deliberate "none".
+
+# Installs the dependencies in a fresh clone
+install: "go mod download"
+# Runs the whole test suite
+test: "go test ./... -count=1"
+# Typechecks
+typecheck: "go vet ./..."
+# Lints
+lint: 'test -z "$(gofmt -l cmd internal)"'
+# Runs one test: {file} is its path, {dir} its directory, {tests} selects Go tests in that file
+test_file: "go test -count=1 -run {tests} {dir}"
+# Globs of the test files
+test_patterns: ["**/*_test.go"]
+# Globs of the documentation files
+docs_patterns: ["**/*.md", "docs/**"]
+# Shell line that delivers the run's branch from its clone
+delivery: ""

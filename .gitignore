@@ -1,3 +1,5 @@
 .atm/
 .tmp/
 .worktrees/
+.dulidu/
+dist/
