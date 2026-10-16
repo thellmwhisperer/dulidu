@@ -1,13 +1,13 @@
 # dulidu
 
-One binary in the PATH. Run `init`, `doctor`, and `release` inside a Git repository.
+One binary in the PATH. Run `init`, `doctor`, `runs`, and `release` inside a Git repository.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh
 dulidu init     # writes dulidu.yaml and ignores .dulidu/
 dulidu doctor   # checks go, git and the config layers
 dulidu doctor --agent # asks the configured agent to say OK and reports elapsed time
-dulidu runs     # lists the run folders in .dulidu/runs/, newest first
+dulidu runs     # lists .dulidu/runs/ newest first: label, status, last step, started
 dulidu update   # updates an installed release to the latest release
 dulidu release vX.Y.Z # builds and publishes a tagged release
 ```
