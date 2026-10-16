@@ -27,6 +27,34 @@ func releaseCmd() *cobra.Command {
 				return fmt.Errorf("current commit: %w", err)
 			}
 			tag := args[0]
+			ref := "refs/tags/" + tag
+			remote, err := exec.Command("git", "-C", root, "ls-remote", "--tags", "origin", ref, ref+"^{}").Output()
+			if err != nil {
+				return fmt.Errorf("remote tag lookup: %w", err)
+			}
+			var tagCommit string
+			for _, line := range strings.Split(strings.TrimSpace(string(remote)), "\n") {
+				if line == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) != 2 {
+					return fmt.Errorf("invalid remote tag response")
+				}
+				switch fields[1] {
+				case ref:
+					if tagCommit == "" {
+						tagCommit = fields[0]
+					}
+				case ref + "^{}":
+					tagCommit = fields[0]
+				default:
+					return fmt.Errorf("invalid remote tag response")
+				}
+			}
+			if tagCommit != "" && tagCommit != strings.TrimSpace(string(out)) {
+				return fmt.Errorf("remote tag %s points to %s, not current commit", tag, tagCommit)
+			}
 			build := exec.Command("make", "-C", root, "dist", "TAG="+tag)
 			if out, err := build.CombinedOutput(); err != nil {
 				return fmt.Errorf("build release: %w: %s", err, strings.TrimSpace(string(out)))
