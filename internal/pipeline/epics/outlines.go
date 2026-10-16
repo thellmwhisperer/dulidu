@@ -97,7 +97,7 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 		err = overCap(len(es), caps.Epics, "epics")
 	}
 	if err == nil {
-		err = es.Validate() // unknown dependency or cycle: the outlines are well formed
+		err = es.Validate() // duplicate id, unknown dependency or cycle
 	}
 	if err != nil {
 		return nil, err
