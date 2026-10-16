@@ -7,6 +7,8 @@ Keys: `Input` (brief and attachments), `Research`, `Personas`, `Functionalities`
 `Flows`, `Constraints` (text the caller formats), `Epic` (a `pipeline.EpicOutline`), `Epics` and `Stories`
 (counts, 0 for no target).
 
+`triage` is new, not from the poc: the triage step's prompt, with `Context` (contexto.md) as its only key.
+
 ## Source and removals
 
 Sources are in the reference snapshot c10131b, `poc/src/pipeline/`. Removed sentences are described, not quoted.

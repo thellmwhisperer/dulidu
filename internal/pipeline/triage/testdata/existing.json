@@ -1,0 +1,1 @@
+{"complexity": "complex", "caps": {"epics": 12, "stories_per_epic": 7}, "research_dimensions": ["technical", "project"], "context_present": ["brief", "architecture.md", "existing code"], "missing_questions": [], "project_type": "existing_codebase"}

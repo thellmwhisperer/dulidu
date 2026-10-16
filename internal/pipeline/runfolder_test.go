@@ -18,7 +18,7 @@ func complete() Run {
 		}},
 		Input:       &InputContext{Brief: Brief{Text: "A shop for second-hand bikes.\n"}, Files: map[string]string{"notes.md": "Spain first.\n"}},
 		Context:     "# Contexto\n\nSecond-hand bikes.\n",
-		Triage:      &Triage{Summary: "A marketplace", Dimensions: []string{"market", "legal"}},
+		Triage:      &Triage{Complexity: "moderate", Caps: Caps{Epics: 4, StoriesPerEpic: 6}, ResearchDimensions: []string{"market"}, ContextPresent: []string{"brief"}, MissingQuestions: []string{}, ProjectType: "new_product"},
 		Research:    &Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []string{"https://example.com/market"}}}},
 		Analysis:    &Analysis{Personas: []string{"seller"}, Functionalities: []string{"list a bike"}, Flows: []string{"sell"}, Questions: []string{"fees?"}},
 		Epics:       Epics{{ID: "E1", Title: "Selling", Text: "Sellers list bikes."}},

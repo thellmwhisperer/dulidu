@@ -17,10 +17,21 @@ type InputContext struct {
 	Files map[string]string
 }
 
-// Triage is the first read of the brief: what it is about and the dimensions to research.
+// Triage is triage.json, the first read of contexto.md: how complex the project is, how much work to plan, the
+// dimensions to research, what context came and the questions to ask before going on.
 type Triage struct {
-	Summary    string   `json:"summary"`
-	Dimensions []string `json:"dimensions"`
+	Complexity         string   `json:"complexity"` // simple, moderate or complex
+	Caps               Caps     `json:"caps"`
+	ResearchDimensions []string `json:"research_dimensions"` // of business, users, market, technical, project
+	ContextPresent     []string `json:"context_present"`
+	MissingQuestions   []string `json:"missing_questions"`
+	ProjectType        string   `json:"project_type"` // new_product, existing_codebase, migration or other
+}
+
+// Caps is how many epics, and stories in each, triage plans.
+type Caps struct {
+	Epics          int `json:"epics"`
+	StoriesPerEpic int `json:"stories_per_epic"`
 }
 
 // Research is what was found, one entry per dimension.
@@ -69,7 +80,7 @@ type Report struct {
 	Steps   []Step    `json:"steps"`
 }
 
-// Step is one step of a run; Finished is zero while it runs.
+// Step is one step of a run; Finished is zero while it runs. Note says what code changed in its output, as a clamp.
 type Step struct {
 	Name     string    `json:"name"`
 	Status   string    `json:"status"`
@@ -77,6 +88,7 @@ type Step struct {
 	Harness  string    `json:"harness"`
 	Started  time.Time `json:"started"`
 	Finished time.Time `json:"finished,omitzero"`
+	Note     string    `json:"note,omitempty"`
 }
 
 // Run is a run folder in memory. Every artefact but the report is nil or empty until its step makes it,

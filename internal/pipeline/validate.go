@@ -46,8 +46,17 @@ func (c InputContext) Validate() error {
 }
 
 func (t Triage) Validate() error {
-	return errors.Join(need(!blank(t.Summary), "triage: no summary"),
-		need(filled(t.Dimensions), "triage: no dimensions"))
+	errs := []error{need(slices.Contains([]string{"simple", "moderate", "complex"}, t.Complexity), "triage: bad complexity"),
+		need(t.Caps.Epics > 0 && t.Caps.StoriesPerEpic > 0, "triage: caps not positive"),
+		need(slices.Contains([]string{"new_product", "existing_codebase", "migration", "other"}, t.ProjectType),
+			"triage: bad project type"),
+		need(!slices.ContainsFunc(t.ContextPresent, blank) && !slices.ContainsFunc(t.MissingQuestions, blank),
+			"triage: a blank item")}
+	for _, d := range t.ResearchDimensions {
+		errs = append(errs, need(slices.Contains([]string{"business", "users", "market", "technical", "project"}, d),
+			"triage: bad research dimension "+d))
+	}
+	return errors.Join(errs...)
 }
 
 func (r Research) Validate() error {
