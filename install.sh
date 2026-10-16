@@ -6,7 +6,6 @@
 # The sha256 is verified before anything is written; dulidu is replaced only by mv of a whole file, so a killed
 # run leaves the previous one answering; a dulidu in the prefix that is not this product is left alone.
 # DULIDU_GITHUB_API stands in for GitHub's API. POSIX sh: it runs under whatever /bin/sh a `curl | sh` gets.
-# Shaped like ATM's install.sh.
 set -eu
 
 API="${DULIDU_GITHUB_API:-https://api.github.com}"

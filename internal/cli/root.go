@@ -1,5 +1,4 @@
-// Package cli is dulidu's command line: one cobra command per file, run from inside the repository it works on.
-// Copied from ATM's internal/cli.
+// Package cli is dulidu's command line: one cobra command per file.
 package cli
 
 import (
@@ -47,7 +46,7 @@ func root() *cobra.Command {
 		Version: buildinfo.String(), SilenceErrors: true, SilenceUsage: true}
 	c.SetVersionTemplate("dulidu {{.Version}}\n")
 	c.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError{err} })
-	c.AddCommand(initCmd(), doctorCmd(), updateCmd())
+	c.AddCommand(initCmd(), doctorCmd(), updateCmd(), releaseCmd())
 	return c
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -43,22 +44,27 @@ func initCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return ignore(filepath.Join(root, ".gitignore"), ".dulidu/")
+			return ignore(root)
 		}}
 }
 
-// ignore appends line to the .gitignore at path unless it has it.
-func ignore(path, line string) error {
+func ignore(root string) error {
+	path := filepath.Join(root, ".gitignore")
 	b, err := os.ReadFile(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	text := string(b)
-	if slices.Contains(strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n"), line) {
-		return nil
+	if slices.Contains(strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n"), ".dulidu/") {
+		check := exec.Command("git", "-C", root, "check-ignore", "-q", "--no-index", "--", ".dulidu/")
+		if err := check.Run(); err == nil {
+			return nil
+		} else if e, ok := err.(*exec.ExitError); !ok || e.ExitCode() != 1 {
+			return err
+		}
 	}
 	if text != "" && !strings.HasSuffix(text, "\n") {
 		text += "\n"
 	}
-	return os.WriteFile(path, []byte(text+line+"\n"), 0o644)
+	return os.WriteFile(path, []byte(text+".dulidu/\n"), 0o644)
 }

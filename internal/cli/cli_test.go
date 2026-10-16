@@ -46,6 +46,7 @@ func TestInitWritesConfigAndIgnoresDuliduOnce(t *testing.T) {
 		{"no .gitignore", "", ".dulidu/\n"},
 		{"no trailing newline", "node_modules", "node_modules\n.dulidu/\n"},
 		{"already ignored", ".dulidu/\ndist/\n", ".dulidu/\ndist/\n"},
+		{"later negation", ".dulidu/\n!*/\n", ".dulidu/\n!*/\n.dulidu/\n"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir := repo(t)
@@ -68,6 +69,21 @@ func TestInitWritesConfigAndIgnoresDuliduOnce(t *testing.T) {
 			if _, _, err := config.Load(dir, os.Getenv("HOME")); err != nil {
 				t.Fatalf("dulidu.yaml from init does not load: %v", err)
 			}
+			var keys map[string]any
+			if err := yaml.Unmarshal([]byte(first), &keys); err != nil {
+				t.Fatal(err)
+			}
+			if len(keys) != 4 {
+				t.Fatalf("dulidu.yaml has %d keys, want 4: %v", len(keys), keys)
+			}
+			for _, key := range []string{"harness", "model", "effort", "agent_timeout"} {
+				if value, ok := keys[key]; !ok || value != "" {
+					t.Errorf("dulidu.yaml %s = %v, want empty string", key, value)
+				}
+			}
+			if out, err := exec.Command("git", "check-ignore", "-q", "--no-index", "--", ".dulidu/").CombinedOutput(); err != nil {
+				t.Fatalf(".dulidu/ is not ignored by Git: %v\n%s", err, out)
+			}
 			code, out, _ := dulidu(t, "init")
 			if code != 0 || strings.TrimSpace(out) != "dulidu.yaml exists" {
 				t.Fatalf("second dulidu init: exit %d, %q", code, out)
@@ -89,6 +105,29 @@ func TestInitKeepsAnExistingConfig(t *testing.T) {
 	}
 	if got := read(t, yml); got != "# mine\n" {
 		t.Fatalf("dulidu init overwrote dulidu.yaml: %q", got)
+	}
+}
+
+func TestInitAddsRepositoryIgnoreDespiteLocalExclude(t *testing.T) {
+	dir := repo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".git", "info", "exclude"), []byte(".dulidu/\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "check-ignore", "-q", "--no-index", "--", ".dulidu/").CombinedOutput(); err != nil {
+		t.Fatalf("local exclusion is not active: %v\n%s", err, out)
+	}
+	if code, out, errOut := dulidu(t, "init"); code != 0 {
+		t.Fatalf("dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	ignore := filepath.Join(dir, ".gitignore")
+	if got := read(t, ignore); got != ".dulidu/\n" {
+		t.Fatalf("repository .gitignore: %q", got)
+	}
+	if code, out, errOut := dulidu(t, "init"); code != 0 || strings.TrimSpace(out) != "dulidu.yaml exists" {
+		t.Fatalf("second dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	if got := read(t, ignore); got != ".dulidu/\n" {
+		t.Fatalf("second init changed .gitignore: %q", got)
 	}
 }
 
