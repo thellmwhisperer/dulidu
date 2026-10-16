@@ -100,6 +100,29 @@ func TestInitKeepsAnExistingConfig(t *testing.T) {
 	}
 }
 
+func TestInitAddsRepositoryIgnoreDespiteLocalExclude(t *testing.T) {
+	dir := repo(t)
+	if err := os.WriteFile(filepath.Join(dir, ".git", "info", "exclude"), []byte(".dulidu/\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "check-ignore", "-q", "--no-index", "--", ".dulidu/").CombinedOutput(); err != nil {
+		t.Fatalf("local exclusion is not active: %v\n%s", err, out)
+	}
+	if code, out, errOut := dulidu(t, "init"); code != 0 {
+		t.Fatalf("dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	ignore := filepath.Join(dir, ".gitignore")
+	if got := read(t, ignore); got != ".dulidu/\n" {
+		t.Fatalf("repository .gitignore: %q", got)
+	}
+	if code, out, errOut := dulidu(t, "init"); code != 0 || strings.TrimSpace(out) != "dulidu.yaml exists" {
+		t.Fatalf("second dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	if got := read(t, ignore); got != ".dulidu/\n" {
+		t.Fatalf("second init changed .gitignore: %q", got)
+	}
+}
+
 func TestDoctorPrintsOneLinePerCheck(t *testing.T) {
 	repo(t)
 	if code, _, _ := dulidu(t, "init"); code != 0 {

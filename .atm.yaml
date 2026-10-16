@@ -1,8 +1,11 @@
 # ATM's configuration for this repository.
 # Every key is required; an empty value is a deliberate "none".
 
+harness: claude
+model: opus
+effort: high
 # Installs the dependencies in a fresh clone
-install: "go mod download"
+install: sh scripts/reference.sh && go mod download
 # Runs the whole test suite
 test: "go test ./... -count=1"
 # Typechecks
@@ -15,5 +18,22 @@ test_file: "go test -count=1 -run {tests} {dir}"
 test_patterns: ["**/*_test.go"]
 # Globs of the documentation files
 docs_patterns: ["**/*.md", "docs/**"]
+agent_timeout: 60m
 # Shell line that delivers the run's branch from its clone
-delivery: ""
+delivery: >-
+  no-mistakes init >/dev/null &&
+  log="$(dirname "$ATM_REPORT")/no-mistakes-run.txt" &&
+  { nohup no-mistakes axi run --intent "$ATM_ISSUE_TEXT" --closes "$ATM_ISSUE" --wait 2h
+  </dev/null >"$log" 2>&1 & } && gate=$! &&
+  until no-mistakes axi status 2>/dev/null | grep -q '^ status: running'; do
+  if ! kill -0 "$gate" 2>/dev/null; then echo "no-mistakes exited before its run started:"; tail -n 20 "$log";
+  exit 1; fi; sleep 1; done &&
+  { pane=$(herdr pane list 2>/dev/null | jq -r --arg n "$ATM_ISSUE"
+  --arg root "/Volumes/CrucialX9/workspace/dulidu" --argjson tabs "$(herdr tab list 2>/dev/null)"
+  '[.result.panes[] | select(.cwd == $root) | select(.tab_id as $t |
+  any($tabs.result.tabs[]; .tab_id == $t and .label == ("atm-" + $n)))] |
+  if length == 1 then .[0].pane_id else empty end');
+  if [ -n "$pane" ] && side=$(herdr pane split "$pane" --direction right --cwd "$PWD" --no-focus |
+  jq -r '.result.pane.pane_id // empty') && [ -n "$side" ]; then
+  herdr pane run "$side" "no-mistakes attach; exit"; true;
+  else no-mistakes attach || true; fi; }

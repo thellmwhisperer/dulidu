@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -41,18 +42,20 @@ func initCmd() *cobra.Command {
 }
 
 func ignore(root string) error {
-	check := exec.Command("git", "-C", root, "check-ignore", "-q", "--no-index", "--", ".dulidu/")
-	if err := check.Run(); err == nil {
-		return nil
-	} else if e, ok := err.(*exec.ExitError); !ok || e.ExitCode() != 1 {
-		return err
-	}
 	path := filepath.Join(root, ".gitignore")
 	b, err := os.ReadFile(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	text := string(b)
+	if slices.Contains(strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n"), ".dulidu/") {
+		check := exec.Command("git", "-C", root, "check-ignore", "-q", "--no-index", "--", ".dulidu/")
+		if err := check.Run(); err == nil {
+			return nil
+		} else if e, ok := err.(*exec.ExitError); !ok || e.ExitCode() != 1 {
+			return err
+		}
+	}
 	if text != "" && !strings.HasSuffix(text, "\n") {
 		text += "\n"
 	}
