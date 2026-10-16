@@ -41,7 +41,10 @@ var lists = []struct {
 			if len(p.PainPoints) > 0 {
 				s += ". Pain points: " + strings.Join(p.PainPoints, "; ")
 			}
-			return s, need(!blank(p.Name) && !blank(p.Role), "a persona lacks name or role")
+			return s, errors.Join(
+				need(!blank(p.Name) && !blank(p.Role), "a persona lacks name or role"),
+				need(!slices.ContainsFunc(p.Goals, blank), "a persona has a blank goal"),
+				need(!slices.ContainsFunc(p.PainPoints, blank), "a persona has a blank pain point"))
 		})
 	}},
 	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(a string) ([]string, error) {

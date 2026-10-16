@@ -111,7 +111,9 @@ func TestNoProductLeaks(t *testing.T) {
 	for _, e := range entries {
 		switch e.Name() {
 		case "p03-research-business.md.tmpl", "p04-research-users.md.tmpl", "p05-research-market.md.tmpl",
-			"p06-research-technical.md.tmpl", "p07-research-project.md.tmpl":
+			"p06-research-technical.md.tmpl", "p07-research-project.md.tmpl",
+			"p10-analysis-functionalities.md.tmpl", "p11-analysis-flows.md.tmpl",
+			"p12-analysis-constraints.md.tmpl", "p13-analysis-questions.md.tmpl":
 			continue
 		}
 		b, err := files.ReadFile(e.Name())
@@ -123,7 +125,8 @@ func TestNoProductLeaks(t *testing.T) {
 		}
 	}
 	for _, step := range []string{"p03-research-business", "p04-research-users", "p05-research-market",
-		"p06-research-technical", "p07-research-project"} {
+		"p06-research-technical", "p07-research-project", "p10-analysis-functionalities",
+		"p11-analysis-flows", "p12-analysis-constraints", "p13-analysis-questions"} {
 		got, err := Render(step, sample)
 		if err != nil {
 			t.Fatal(err)
