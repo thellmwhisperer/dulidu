@@ -72,7 +72,7 @@ func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
 
 // PackageEvery is contexto.md for in, whose files are already in dir/input: first everything code can do, the same
 // bytes every time, a video's frame every seconds under dir/input/frames/<video>/, then one ask per image and per
-// video's contact sheet. A video without ffmpeg or whisper-cli gets a note in its section instead.
+// video's contact sheet. A video without a required multimedia tool gets a note in its section instead.
 func PackageEvery(dir string, in pipeline.InputContext, seconds int, ask Ask) (string, error) {
 	files := []*section{{name: "brief.md", kind: "brief", size: len(in.Brief.Text), body: []string{in.Brief.Text}}}
 	for _, name := range slices.Sorted(maps.Keys(in.Files)) {

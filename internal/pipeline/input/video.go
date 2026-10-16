@@ -108,7 +108,7 @@ func (s *section) frames(dir string, seconds int) error {
 }
 
 // transcribe is the speech in video, by whisper-cli on its audio as 16 kHz mono WAV. The model is $WHISPER_MODEL,
-// else whisper-cli's own default, models/ggml-base.en.bin; neither is downloaded.
+// otherwise models/ggml-base.en.bin; neither is downloaded.
 func transcribe(video string) (string, error) {
 	tmp, err := os.MkdirTemp("", "dulidu-audio-")
 	if err != nil {
