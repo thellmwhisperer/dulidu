@@ -1,0 +1,3 @@
+[{"id": "US3", "title": "Drop a piece off before the firing", "description": "As Ana I want pieces dropped before Friday 6 pm fired that week so that I collect them on time",
+  "acceptance": ["Given a piece dropped off on Friday at 17:59, when the kiln fires, then the piece is in that firing"],
+  "first_test": "Write a test that drops a piece off at 17:59 on Friday and expects it in that week's firing.", "functionalities": ["F2"]}]

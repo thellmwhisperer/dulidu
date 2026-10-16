@@ -1,0 +1,2 @@
+[{"id": "E1", "title": "Book a wheel", "description": "A member books a wheel for an hour.", "depends_on": []},
+ {"id": "E2", "title": "Make the weekly firing", "description": "A member's pieces make Friday's kiln.", "depends_on": ["E1"]}]
