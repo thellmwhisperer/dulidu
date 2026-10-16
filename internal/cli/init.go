@@ -16,7 +16,7 @@ import (
 // template is dulidu.yaml with every key config knows: the project's empty for it to fill, each step's agent
 // a default.
 const template = `# dulidu's configuration for this repository, over ~/.config/dulidu/config.yaml.
-# Every key dulidu knows is listed here; a run needs each one, empty means none, any other key is an error.
+# Every required project and step key is listed here; empty means none, any other key is an error.
 
 # The agent CLI doctor --agent greets: claude, codex, opencode, pi, cursor or hermes; "" is claude
 harness: ""
@@ -32,7 +32,7 @@ project_type: ""
 # At most this many epics, and stories in each; empty is no limit
 max_epics:
 max_stories_per_epic:
-# How big one ticket is, in words
+# How big one ticket should be
 ticket_size: ""
 # What stays out of the epics and stories, one item each
 exclusions: []
