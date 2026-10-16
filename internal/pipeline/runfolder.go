@@ -14,7 +14,7 @@ import (
 const briefFile = "brief.md"
 
 // Write puts r in dir, the run folder .dulidu/runs/<label>/, after checking it: report.json and every
-// artefact r has, each in its file. It leaves alone the files r has no artefact for.
+// artefact r has, each in its file.
 func Write(dir string, r Run) error {
 	if err := r.Validate(); err != nil {
 		return err
@@ -57,6 +57,31 @@ func Write(dir string, r Run) error {
 	text("brief-diseno.md", r.DesignBrief)
 	for step, s := range r.Logs {
 		files[filepath.Join("agent", step+".log")] = []byte(s)
+	}
+	for _, name := range []string{"contexto.md", "triage.json", "research.json", "analysis.json", "epics.json", "spec.md", "plan.json", "brief-diseno.md"} {
+		if _, ok := files[name]; !ok {
+			if err := os.Remove(filepath.Join(dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+		}
+	}
+	for _, group := range []struct{ sub, ext string }{{"input", ""}, {"tickets", ".json"}, {"agent", ".log"}} {
+		entries, err := os.ReadDir(filepath.Join(dir, group.sub))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			name := filepath.Join(group.sub, entry.Name())
+			if _, ok := files[name]; ok || entry.IsDir() || !strings.HasSuffix(entry.Name(), group.ext) {
+				continue
+			}
+			if err := os.Remove(filepath.Join(dir, name)); err != nil {
+				return err
+			}
+		}
 	}
 	for name, b := range files {
 		path := filepath.Join(dir, name)
