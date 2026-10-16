@@ -1,6 +1,6 @@
 # dulidu
 
-One binary in the PATH, run from inside the repository it works on. Shaped like ATM.
+One binary in the PATH, run from inside the repository it works on.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh

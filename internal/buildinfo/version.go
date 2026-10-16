@@ -1,4 +1,4 @@
-// Package buildinfo is dulidu's version, stamped at release build time. Copied from ATM's internal/buildinfo.
+// Package buildinfo is dulidu's version, stamped at release build time.
 package buildinfo
 
 import "runtime/debug"

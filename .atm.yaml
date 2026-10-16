@@ -1,6 +1,3 @@
-# ATM's configuration for this repository.
-# Every key is required; an empty value is a deliberate "none".
-
 harness: claude
 model: opus
 effort: high
@@ -19,21 +16,4 @@ test_patterns: ["**/*_test.go"]
 # Globs of the documentation files
 docs_patterns: ["**/*.md", "docs/**"]
 agent_timeout: 60m
-# Shell line that delivers the run's branch from its clone
-delivery: >-
-  no-mistakes init >/dev/null &&
-  log="$(dirname "$ATM_REPORT")/no-mistakes-run.txt" &&
-  { nohup no-mistakes axi run --intent "$ATM_ISSUE_TEXT" --closes "$ATM_ISSUE" --wait 2h
-  </dev/null >"$log" 2>&1 & } && gate=$! &&
-  until no-mistakes axi status 2>/dev/null | grep -q '^ status: running'; do
-  if ! kill -0 "$gate" 2>/dev/null; then echo "no-mistakes exited before its run started:"; tail -n 20 "$log";
-  exit 1; fi; sleep 1; done &&
-  { pane=$(herdr pane list 2>/dev/null | jq -r --arg n "$ATM_ISSUE"
-  --arg root "/Volumes/CrucialX9/workspace/dulidu" --argjson tabs "$(herdr tab list 2>/dev/null)"
-  '[.result.panes[] | select(.cwd == $root) | select(.tab_id as $t |
-  any($tabs.result.tabs[]; .tab_id == $t and .label == ("atm-" + $n)))] |
-  if length == 1 then .[0].pane_id else empty end');
-  if [ -n "$pane" ] && side=$(herdr pane split "$pane" --direction right --cwd "$PWD" --no-focus |
-  jq -r '.result.pane.pane_id // empty') && [ -n "$side" ]; then
-  herdr pane run "$side" "no-mistakes attach; exit"; true;
-  else no-mistakes attach || true; fi; }
+delivery: sh "$(git remote get-url origin)/.tmp/cos/deliver.sh"
