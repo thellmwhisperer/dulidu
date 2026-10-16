@@ -2,6 +2,8 @@ package run
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -24,15 +26,28 @@ func TestACPConversationEndsAtThePromptsReply(t *testing.T) {
 }
 
 func TestACPPermitsOnlyInsideTheDirectory(t *testing.T) {
-	s := stream{dir: "/clone"}
-	for call, want := range map[string]string{
-		`{"locations":[{"path":"/clone/a.go"}]}`:                    "yes",
-		`{"rawInput":{"command":"go test ./..."}}`:                  "yes",
-		`{"locations":[{"path":"/etc/passwd"}]}`:                    "no",
-		`{"rawInput":{"command":"cat /clone/../secret"}}`:           "no",
-		`{"rawInput":{"command":"curl localhost"}}`:                 "no",
-		`{"content":[{"content":{"type":"text","text":"$ ls /"}}]}`: "no",
-	} {
+	dir, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	s := stream{dir: dir}
+	cases := map[string]string{
+		`{"locations":[{"path":"a.go"}]}`:                                           "yes",
+		`{"rawInput":{"command":"go test ./..."}}`:                                  "yes",
+		`{"locations":[{"path":"/etc/passwd"}]}`:                                    "no",
+		`{"locations":[{"path":"link/private.txt"}]}`:                               "no",
+		`{"rawInput":{"file_path":"link/private.txt"}}`:                             "no",
+		`{"rawInput":{"command":"cat ../private.txt"}}`:                             "no",
+		`{"rawInput":{"command":"cat link/private.txt"}}`:                           "no",
+		`{"content":[{"content":{"type":"text","text":"$ cat ../private.txt"}}]}`:   "no",
+		`{"content":[{"content":{"type":"text","text":"$ cat link/private.txt"}}]}`: "no",
+		`{"rawInput":{"command":"curl localhost"}}`:                                 "no",
+		`{"content":[{"content":{"type":"text","text":"$ ls /"}}]}`:                 "no",
+	}
+	cases[`{"locations":[{"path":"`+filepath.Join(dir, "a.go")+`"}]}`] = "yes"
+	cases[`{"locations":[{"path":"`+filepath.Join(dir, "link", "private.txt")+`"}]}`] = "no"
+	cases[`{"rawInput":{"command":"cat `+filepath.Join(dir, "link", "private.txt")+`"}}`] = "no"
+	for call, want := range cases {
 		params := `{"toolCall":` + call + `,"options":[{"optionId":"yes","kind":"allow_once"},` +
 			`{"optionId":"no","kind":"reject_once"}]}`
 		b, _ := json.Marshal(s.permit(json.RawMessage(params)))

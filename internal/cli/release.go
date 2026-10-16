@@ -113,14 +113,14 @@ func swap(target string, bin []byte, tag string) error {
 	_, err = f.Write(bin)
 	err = errors.Join(err, f.Chmod(0o755), f.Close())
 	if err == nil {
-		err = os.Rename(target, previous)
+		err = os.Link(target, previous)
 	}
 	if err != nil {
 		_ = os.Remove(f.Name())
 		return err
 	}
 	if err := os.Rename(f.Name(), target); err != nil {
-		return errors.Join(err, os.Rename(previous, target), os.Remove(f.Name()))
+		return errors.Join(err, os.Remove(previous), os.Remove(f.Name()))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

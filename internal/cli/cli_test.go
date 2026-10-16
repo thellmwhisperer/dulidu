@@ -5,11 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/thellmwhisperer/dulidu/internal/config"
+	"gopkg.in/yaml.v3"
 )
 
 // dulidu runs dulidu with args and returns its exit code, stdout and stderr.
@@ -93,11 +93,21 @@ func TestInitKeepsAnExistingConfig(t *testing.T) {
 }
 
 func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
-	typ := reflect.TypeFor[config.Config]()
-	for i := range typ.NumField() {
-		key := strings.Split(typ.Field(i).Tag.Get("yaml"), ",")[0]
-		if !strings.Contains(template, "\n"+key+": \"\"\n") && !strings.Contains(template, "\n"+key+": []\n") {
-			t.Errorf("template lacks %s with an empty value", key)
+	dir := repo(t)
+	if code, out, errOut := dulidu(t, "init"); code != 0 {
+		t.Fatalf("dulidu init: exit %d\n%s%s", code, out, errOut)
+	}
+	var fields map[string]any
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(dir, "dulidu.yaml"))), &fields); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"harness", "model", "effort", "agent_timeout"}
+	if len(fields) != len(want) {
+		t.Fatalf("dulidu.yaml has %d keys, want %d: %v", len(fields), len(want), fields)
+	}
+	for _, key := range want {
+		if value, ok := fields[key]; !ok || value != "" {
+			t.Errorf("dulidu.yaml %s = %v, want empty string", key, value)
 		}
 	}
 }
