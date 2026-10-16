@@ -17,8 +17,8 @@ type story struct {
 	Functionalities        []string
 }
 
-// askStories is e's stories, phase two's call for it on data, or why there are none: each story needs an id, a
-// title, acceptance criteria and its first test.
+// askStories is e's stories, phase two's call for it on data, or why there are none: each story needs an id,
+// title, description, acceptance criteria, first test and a list of known functionality ids (which may be empty).
 func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, ask func(prompt string) (string, error)) ([]pipeline.Story, error) {
 	data["Epic"] = e
 	prompt, err := prompts.Render("p16-epics-stories", data)

@@ -98,8 +98,8 @@ func (e EpicOutline) Validate() error {
 	return errors.Join(need(!blank(e.ID), "epic: no id"), need(!blank(e.Title), "epic "+e.ID+": no title"))
 }
 
-// Validate checks each epic, and that every dependency names an epic of es with none looping back:
-// those two say "unknown dependency: <epic> on <id>" and "cycle: <epic>".
+// Validate checks each epic, rejects duplicate ids, and requires every dependency to name an epic of es without
+// looping back. Dependency errors say "unknown dependency: <epic> on <id>" or "cycle: <epic>".
 func (es Epics) Validate() error {
 	errs := []error{need(len(es) > 0, "epics: none")}
 	deps := map[string][]string{}
