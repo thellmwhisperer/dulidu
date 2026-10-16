@@ -39,7 +39,7 @@ func askStories(e pipeline.EpicOutline, data map[string]any, ask func(prompt str
 			return nil, errors.New("invalid output: a story of " + e.ID + " lacks id, title, acceptance or first test")
 		}
 		ss[i] = pipeline.Story{ID: s.ID, Epic: e.ID, Title: s.Title, Text: s.Description, Acceptance: s.Acceptance,
-			FirstTest: s.FirstTest, Functionalities: append([]string{}, s.Functionalities...)}
+			FirstTest: s.FirstTest, Functionalities: s.Functionalities}
 	}
 	return ss, nil
 }

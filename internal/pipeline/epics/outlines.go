@@ -32,7 +32,7 @@ func outlines(answer string) (pipeline.Epics, error) {
 		if blank(o.ID) || blank(o.Title) {
 			return nil, errors.New("invalid output: an epic lacks id or title")
 		}
-		es[i] = pipeline.EpicOutline{ID: o.ID, Title: o.Title, Text: o.Description, DependsOn: append([]string{}, o.DependsOn...)}
+		es[i] = pipeline.EpicOutline{ID: o.ID, Title: o.Title, Text: o.Description, DependsOn: o.DependsOn}
 	}
 	return es, nil
 }
