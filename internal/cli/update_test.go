@@ -82,7 +82,8 @@ func TestUpdate(t *testing.T) {
 	}{
 		{"replaces the binary with the latest release", fakeDulidu("v0.2.0"), false, fakeDulidu("v0.2.0"), ""},
 		{"with a wrong checksum touches nothing", fakeDulidu("v0.2.0"), true, fakeDulidu("v0.1.0"), "checksum"},
-		{"rolls back a binary that does not answer", fakeDulidu(""), false, fakeDulidu("v0.1.0"), "previous"},
+		{"keeps the installed binary when replacement does not answer", fakeDulidu(""), false, fakeDulidu("v0.1.0"), "unchanged"},
+		{"keeps the installed binary when replacement reports another version", fakeDulidu("v0.3.0"), false, fakeDulidu("v0.1.0"), "unchanged"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			target := installed(t, "v0.1.0")
@@ -99,5 +100,23 @@ func TestUpdate(t *testing.T) {
 				t.Fatalf("update left %v next to dulidu", entries)
 			}
 		})
+	}
+}
+
+func TestUpdateAfterInterruptedOlderAttempt(t *testing.T) {
+	target := installed(t, "v0.1.0")
+	previous := target + ".previous"
+	if err := os.WriteFile(previous, []byte(fakeDulidu("v0.0.9")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeRelease(t, "v0.2.0", fakeDulidu("v0.2.0"), false)
+	if err := update(&bytes.Buffer{}, "v0.1.0", target); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, target); got != fakeDulidu("v0.2.0") {
+		t.Fatalf("dulidu after update: %q", got)
+	}
+	if got := read(t, previous); got != fakeDulidu("v0.0.9") {
+		t.Fatalf("older backup changed: %q", got)
 	}
 }

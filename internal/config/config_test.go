@@ -23,7 +23,7 @@ func TestLoadReadsTheLayersThatExist(t *testing.T) {
 	if _, found, err := Load(root, home); err != nil || len(found) != 0 {
 		t.Fatalf("no layer: found %v, %v", found, err)
 	}
-	layers := Layers(root, home)
+	layers := []string{filepath.Join(home, ".config", "dulidu", "config.yaml"), filepath.Join(root, "dulidu.yaml")}
 	for _, l := range layers {
 		write(t, l, "# nothing set\n")
 	}
@@ -33,9 +33,12 @@ func TestLoadReadsTheLayersThatExist(t *testing.T) {
 }
 
 func TestLoadRejectsAKeyDuliduDoesNotKnow(t *testing.T) {
-	for _, layer := range []int{0, 1} {
+	for _, layer := range []string{"machine", "project"} {
 		root, home := t.TempDir(), t.TempDir()
-		path := Layers(root, home)[layer]
+		path := filepath.Join(root, "dulidu.yaml")
+		if layer == "machine" {
+			path = filepath.Join(home, ".config", "dulidu", "config.yaml")
+		}
 		write(t, path, "install: npm ci\n")
 		if _, _, err := Load(root, home); err == nil || !strings.Contains(err.Error(), path) {
 			t.Fatalf("an unknown key in %s: %v", path, err)
