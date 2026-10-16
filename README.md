@@ -14,6 +14,6 @@ dulidu release vX.Y.Z # builds and publishes a tagged release
 Configuration is layered: built-in defaults, `~/.config/dulidu/config.yaml`, then the repository's `dulidu.yaml`.
 Set the agent CLI, model, effort and timeout in the `dulidu.yaml` template written by `dulidu init`. The agent uses its installed CLI and existing authentication.
 
-`update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit.
+`update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit. Publication uses `origin` even if `GH_REPO` is set.
 
 Develop with `make test lint`; `make dist TAG=vX.Y.Z` builds assets without publishing, and `make release TAG=vX.Y.Z` publishes them. macOS and Linux only.
