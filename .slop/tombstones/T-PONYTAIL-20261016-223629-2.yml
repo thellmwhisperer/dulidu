@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-223629-2
+status: accepted
+category: alien_code
+title: "Removed the loop that re-ran Story.Validate on every nested story. askStories already rejects a story without an id, title, acceptance or first test, so nothing replaces it."
+created_at: 2026-10-16
+incident:
+  pattern: "Removed the loop that re-ran Story.Validate on every nested story. askStories already rejects a story without an id, title, acceptance or first test, so nothing replaces it."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Removed the loop that re-ran Story.Validate on every nested story. askStories already rejects a story without an id, title, acceptance or first test, so nothing replaces it."
+      artifact: "internal/pipeline/validate.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/validate.go"

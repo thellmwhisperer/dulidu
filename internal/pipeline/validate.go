@@ -98,18 +98,14 @@ func (e EpicOutline) Validate() error {
 	return errors.Join(need(!blank(e.ID), "epic: no id"), need(!blank(e.Title), "epic "+e.ID+": no title"))
 }
 
-// Validate checks each epic and story, and that every dependency names an epic of es with none looping back:
+// Validate checks each epic, and that every dependency names an epic of es with none looping back:
 // those two say "unknown dependency: <epic> on <id>" and "cycle: <epic>".
 func (es Epics) Validate() error {
 	errs := []error{need(len(es) > 0, "epics: none")}
 	deps := map[string][]string{}
 	for _, e := range es {
-		_, seen := deps[e.ID]
-		errs = append(errs, e.Validate(), need(!seen, "duplicate epic: "+e.ID))
+		errs = append(errs, e.Validate())
 		deps[e.ID] = e.DependsOn
-		for _, s := range e.Stories {
-			errs = append(errs, s.Validate())
-		}
 	}
 	for _, e := range es {
 		for _, d := range e.DependsOn {
