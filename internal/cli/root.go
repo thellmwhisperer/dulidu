@@ -46,7 +46,7 @@ func root() *cobra.Command {
 		Version: buildinfo.String(), SilenceErrors: true, SilenceUsage: true}
 	c.SetVersionTemplate("dulidu {{.Version}}\n")
 	c.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError{err} })
-	c.AddCommand(initCmd(), doctorCmd(), updateCmd(), releaseCmd())
+	c.AddCommand(initCmd(), doctorCmd(), updateCmd(), releaseCmd(), runsCmd())
 	return c
 }
 
