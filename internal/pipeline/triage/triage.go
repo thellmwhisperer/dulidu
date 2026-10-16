@@ -1,4 +1,4 @@
-// Package triage is the first model step: contexto.md, read once, as a typed triage.json that code checks and caps.
+// Package triage reads contexto.md once for the first planning step and writes a typed triage.json that code checks and caps.
 package triage
 
 import (
