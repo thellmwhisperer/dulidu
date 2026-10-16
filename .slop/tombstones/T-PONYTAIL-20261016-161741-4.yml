@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-161741-4
+status: accepted
+category: alien_code
+title: "Hello no longer passes io.Discard to Run. The io import is gone."
+created_at: 2026-10-16
+incident:
+  pattern: "Hello no longer passes io.Discard to Run. The io import is gone."
+  what_went_wrong: "An ATM run wrote it and ATM's ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_feature
+      example: "Hello no longer passes io.Discard to Run. The io import is gone."
+      artifact: "internal/run/hello.go"
+match:
+  family: speculative_feature
+  artifact: "internal/run/hello.go"

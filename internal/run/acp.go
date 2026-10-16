@@ -3,7 +3,6 @@ package run
 import (
 	"cmp"
 	"encoding/json"
-	"io"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -75,24 +74,22 @@ func (s *stream) answer(line []byte) []byte {
 
 // talk makes cmd's stdin dulidu's ACP conversation when harness is an ACP agent, prompt its prompt, and opens
 // it with initialize: protocol version 1, and neither fs nor terminal for the agent.
-func (s *stream) talk(cmd *exec.Cmd, log io.Writer, harness, prompt string) (err error) {
+func (s *stream) talk(cmd *exec.Cmd, harness, prompt string) (err error) {
 	if _, acp := acpArgv[harness]; !acp {
 		return nil
 	}
 	cmd.Stdin, s.prompt = nil, prompt
 	if s.rpc, err = cmd.StdinPipe(); err == nil { // the pipe holds it until the agent starts
-		s.say(cmd, log, jsonLine(map[string]any{"id": 1, "method": "initialize",
+		s.say(cmd, jsonLine(map[string]any{"id": 1, "method": "initialize",
 			"params": map[string]any{"protocolVersion": 1, "clientCapabilities": map[string]any{}}}))
 	}
 	return err
 }
 
-// say writes msg, if any, to the ACP agent cmd runs, and to log; once the conversation ends, dulidu stops the
-// agent.
-func (s *stream) say(cmd *exec.Cmd, log io.Writer, msg []byte) {
+// say writes msg, if any, to the ACP agent cmd runs; once the conversation ends, dulidu stops the agent.
+func (s *stream) say(cmd *exec.Cmd, msg []byte) {
 	if msg != nil {
 		_, _ = s.rpc.Write(msg) // a dead agent's failure is its own
-		_, _ = log.Write(msg)
 	}
 	if s.stop != "" {
 		_ = s.rpc.Close()

@@ -72,8 +72,7 @@ func (a Agent) argv(dir, final, prompt string) (argv []string, stdin string) {
 	switch a.Harness {
 	case "claude":
 		argv = []string{"claude", "-p", "--output-format", "stream-json", "--verbose", "--setting-sources", "project",
-			"--strict-mcp-config", "--permission-mode", "acceptEdits", "--tools", tools, "--allowedTools", tools,
-			"--thinking-display", "summarized"} // else claude's thinking blocks come empty
+			"--strict-mcp-config", "--permission-mode", "acceptEdits", "--tools", tools, "--allowedTools", tools}
 		return with(with(argv, a.Model, "--model", a.Model), a.Effort, "--effort", a.Effort), prompt
 	case "codex":
 		argv = []string{"codex", "exec", "--json", "-C", dir, "--sandbox", "workspace-write", "-o", final}
@@ -94,10 +93,9 @@ func (a Agent) argv(dir, final, prompt string) (argv []string, stdin string) {
 }
 
 // Run runs the agent on prompt in dir, with pipes and no terminal, in its own process group, and returns its
-// final message, which check accepts. Every line it writes goes to log, as it is when JSON, else as a JSON
-// string. The timeout, agentSilence without a line, SIGINT and SIGTERM kill the group. Its error is the cause,
-// then the agent's last 5 lines.
-func (a Agent) Run(dir, prompt string, log io.Writer, check func(final string) error) (string, error) {
+// final message, which check accepts. The timeout, agentSilence without a line, SIGINT and SIGTERM kill the
+// group. Its error is the cause, then the agent's last 5 lines.
+func (a Agent) Run(dir, prompt string, check func(final string) error) (string, error) {
 	if err := a.check(); err != nil {
 		return "", err
 	}
@@ -127,10 +125,10 @@ func (a Agent) Run(dir, prompt string, log io.Writer, check func(final string) e
 		cmd.Env = append(cmd.Env, "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1")
 	}
 	s := &stream{dir: dir, heard: func() { quiet.Reset(agentSilence) }}
-	if err := s.talk(cmd, log, a.Harness, stdin); err != nil {
+	if err := s.talk(cmd, a.Harness, stdin); err != nil {
 		return "", err
 	}
-	err = s.read(cmd, log, a.Harness)
+	err = s.read(cmd, a.Harness)
 	quiet.Stop()
 	if a.Harness == "codex" {
 		b, _ := os.ReadFile(final) // none is no final message
@@ -195,11 +193,10 @@ type stream struct {
 	rpc               io.WriteCloser
 }
 
-// read runs cmd and writes each line of its stdout and stderr to log, reading the stream of harness from it.
-func (s *stream) read(cmd *exec.Cmd, log io.Writer, harness string) error {
+// read runs cmd, reading the stream of harness from each line of its stdout and stderr.
+func (s *stream) read(cmd *exec.Cmd, harness string) error {
 	ownGroup(cmd)
 	var mu sync.Mutex
-	var werr error
 	emit := func(line string, stdout bool) {
 		line = strings.TrimSpace(line)
 		mu.Lock()
@@ -208,16 +205,11 @@ func (s *stream) read(cmd *exec.Cmd, log io.Writer, harness string) error {
 		s.tail = append(s.tail, line)
 		s.tail = s.tail[max(0, len(s.tail)-5):]
 		b := []byte(line)
-		if !json.Valid(b) {
-			b, _ = json.Marshal(line)
-		} else {
+		if json.Valid(b) {
 			s.see(harness, b)
 		}
-		if _, err := log.Write(append(b, '\n')); werr == nil {
-			werr = err
-		}
 		if stdout && s.rpc != nil {
-			s.say(cmd, log, s.answer(b))
+			s.say(cmd, s.answer(b))
 		}
 	}
 	out, errout := &lineWriter{fn: func(l string) { emit(l, true) }}, &lineWriter{fn: func(l string) { emit(l, false) }}
@@ -232,7 +224,7 @@ func (s *stream) read(cmd *exec.Cmd, log io.Writer, harness string) error {
 	}
 	out.flush()
 	errout.flush()
-	return errors.Join(err, werr)
+	return err
 }
 
 // event is the fields of every harness's events that say what its final message is.

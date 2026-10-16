@@ -2,7 +2,6 @@ package run
 
 import (
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -24,7 +23,7 @@ func Hello(a Agent) (time.Duration, error) {
 		return 0, err
 	}
 	start := time.Now()
-	_, err = a.Run(dir, helloPrompt, io.Discard, func(final string) error {
+	_, err = a.Run(dir, helloPrompt, func(final string) error {
 		if !strings.Contains(final, "OK") {
 			return errors.New("no OK in its final message")
 		}
