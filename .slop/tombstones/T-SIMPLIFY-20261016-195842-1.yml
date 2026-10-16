@@ -1,0 +1,18 @@
+schema: 1
+id: T-SIMPLIFY-20261016-195842-1
+status: accepted
+category: alien_code
+title: "Shrank tool(): it no longer sets up its own bytes.Buffer for stderr or uses cmp.Or for a 'no output' fallback. It now uses exec.Command(...).Output() and reads the stderr that exec.ExitError already captures. The bytes and cmp imports are gone."
+created_at: 2026-10-16
+incident:
+  pattern: "Shrank tool(): it no longer sets up its own bytes.Buffer for stderr or uses cmp.Or for a 'no output' fallback. It now uses exec.Command(...).Output() and reads the stderr that exec.ExitError already captures. The bytes and cmp imports are gone."
+  what_went_wrong: "The implementation included code beyond this ticket; the simplification removed it."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the simplification pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Shrank tool(): it no longer sets up its own bytes.Buffer for stderr or uses cmp.Or for a 'no output' fallback. It now uses exec.Command(...).Output() and reads the stderr that exec.ExitError already captures. The bytes and cmp imports are gone."
+      artifact: "internal/pipeline/input/package.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/input/package.go"
