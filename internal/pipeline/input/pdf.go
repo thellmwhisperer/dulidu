@@ -12,5 +12,12 @@ func pdf(path string) (string, error) {
 		return "", errors.New("pdftotext is not installed: brew install poppler, or apt install poppler-utils")
 	}
 	text, err := tool("pdftotext", "-enc", "UTF-8", path, "-")
-	return strings.ReplaceAll(text, "\f", "\n"), err
+	if err != nil {
+		return "", err
+	}
+	text = strings.ReplaceAll(text, "\f", "\n")
+	if strings.TrimSpace(text) == "" {
+		return "", errors.New("pdftotext extracted no text from PDF")
+	}
+	return text, nil
 }

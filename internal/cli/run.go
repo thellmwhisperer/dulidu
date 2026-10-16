@@ -22,9 +22,9 @@ import (
 func runCmd() *cobra.Command {
 	var attach []string
 	c := &cobra.Command{Use: "run <brief.md> [--attach <path>...]", Short: "Package a brief and its attachments into contexto.md",
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			in, err := input.Load(args[0], append(attach, args[1:]...))
+			in, err := input.Load(args[0], attach)
 			if err != nil {
 				return err
 			}
