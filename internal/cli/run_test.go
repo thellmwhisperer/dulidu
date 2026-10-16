@@ -10,10 +10,21 @@ import (
 	"testing"
 )
 
-// fakeDescriber is the input step's claude: it appends its arguments to $FAKE_LOG and describes any image the same.
+// fakeDescriber is the run's claude. The triage prompt's call it appends to $FAKE_LOG.triage, keeps its prompt in
+// $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid triage. Every other call is the input step's:
+// it appends its arguments to $FAKE_LOG and describes any image the same.
 const fakeDescriber = `#!/bin/sh
+prompt=$(mktemp)
+cat > "$prompt"
+if grep -q '^You triage a product brief' "$prompt"; then
+  printf '%s\n' "$*" >> "$FAKE_LOG.triage"
+  mv "$prompt" "$FAKE_LOG.prompt"
+  if [ -n "$FAKE_TRIAGE" ]; then cat "$FAKE_TRIAGE"; exit 0; fi
+  echo '{"type":"result","result":"{\"complexity\":\"simple\",\"caps\":{\"epics\":2,\"stories_per_epic\":3},\"research_dimensions\":[\"business\"],\"context_present\":[\"brief\"],\"missing_questions\":[],\"project_type\":\"new_product\"}"}'
+  exit 0
+fi
+rm -f "$prompt"
 printf '%s\n' "$*" >> "$FAKE_LOG"
-cat >/dev/null
 echo '{"type":"result","result":"A fake description."}'
 `
 

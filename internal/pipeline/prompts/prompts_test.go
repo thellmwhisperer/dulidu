@@ -24,15 +24,28 @@ var sample = map[string]any{
 
 func TestAllRender(t *testing.T) {
 	all := templates.Templates()
-	if len(all) != 16 {
-		t.Fatalf("%d templates, want 16", len(all))
+	if len(all) != 17 {
+		t.Fatalf("%d templates, want the 16 P01-P16 and triage", len(all))
+	}
+	for _, step := range []string{"p01-triage-classifier", "p02-research-full", "p03-research-business",
+		"p04-research-users", "p05-research-market", "p06-research-technical", "p07-research-project",
+		"p08-analysis-full", "p09-analysis-personas", "p10-analysis-functionalities", "p11-analysis-flows",
+		"p12-analysis-constraints", "p13-analysis-questions", "p14-epics-full", "p15-epics-outlines",
+		"p16-epics-stories", "triage"} {
+		if templates.Lookup(step+".md.tmpl") == nil {
+			t.Errorf("no template %s", step)
+		}
 	}
 	for _, tmpl := range all {
 		step, ok := strings.CutSuffix(tmpl.Name(), ".md.tmpl")
 		if !ok {
 			continue
 		}
-		got, err := Render(step, sample)
+		data := sample
+		if step == "triage" {
+			data = map[string]any{"Context": sample["Input"]}
+		}
+		got, err := Render(step, data)
 		if err != nil {
 			t.Errorf("%s: %v", step, err)
 		} else if strings.TrimSpace(got) == "" {
