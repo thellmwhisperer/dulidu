@@ -2,7 +2,7 @@ harness: claude
 model: opus
 effort: high
 # Installs the dependencies in a fresh clone
-install: sh scripts/reference.sh && go mod download
+install: sh scripts/reference.sh && go mod download && mkdir -p .tmp/cos && cp "$(git remote get-url origin)/.tmp/cos/deliver.sh" .tmp/cos/no-mistakes-deliver.sh
 # Runs the whole test suite
 test: "go test ./... -count=1"
 # Typechecks
@@ -16,4 +16,4 @@ test_patterns: ["**/*_test.go"]
 # Globs of the documentation files
 docs_patterns: ["**/*.md", "docs/**"]
 agent_timeout: 60m
-delivery: sh "$(git remote get-url origin)/.tmp/cos/deliver.sh"
+delivery: sh .tmp/cos/no-mistakes-deliver.sh
