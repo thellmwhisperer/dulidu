@@ -47,9 +47,6 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if c.VideoFrameSeconds < 0 {
-				return errors.New("video_frame_seconds: want a positive number of seconds")
-			}
 			runs := filepath.Join(root, ".dulidu", "runs")
 			if err := os.MkdirAll(runs, 0o755); err != nil {
 				return err
