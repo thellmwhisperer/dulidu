@@ -103,6 +103,27 @@ func TestARecordedSetMakesFiveListsInOrder(t *testing.T) {
 	}
 }
 
+func TestPersonaEmptyNestedListsAllowed(t *testing.T) {
+	dir, r := start(t)
+	calls := 0
+	if err := Run(dir, r, step, func(string) (string, error) {
+		calls++
+		if calls == 1 {
+			return `[{"name":"Rosa","role":"seller","goals":[],"painPoints":[]}]`, nil
+		}
+		return recorded(t, names[calls-1]), nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := pipeline.Read(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 5 || got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Personas, []string{"Rosa (seller)"}) {
+		t.Errorf("empty persona lists: %d calls, analysis %+v", calls, got.Analysis)
+	}
+}
+
 func TestFailures(t *testing.T) {
 	for name, c := range map[string]struct {
 		list, answer string
@@ -116,6 +137,10 @@ func TestFailures(t *testing.T) {
 		"null constraints":     {"constraints", `null`, nil, "constraints: empty"},
 		"blank constraint":     {"constraints", `["Budget", " "]`, nil, "constraints: a blank item"},
 		"persona without role": {"personas", `[{"name":"Rosa"}]`, nil, "personas: a persona lacks name or role"},
+		"null goal":            {"personas", `[{"name":"Rosa","role":"seller","goals":[null]}]`, nil, "personas: a persona has a blank goal"},
+		"blank goal":           {"personas", `[{"name":"Rosa","role":"seller","goals":[" "]}]`, nil, "personas: a persona has a blank goal"},
+		"null pain point":      {"personas", `[{"name":"Rosa","role":"seller","painPoints":[null]}]`, nil, "personas: a persona has a blank pain point"},
+		"blank pain point":     {"personas", `[{"name":"Rosa","role":"seller","painPoints":[" "]}]`, nil, "personas: a persona has a blank pain point"},
 		"flow without steps":   {"flows", `[{"id":"fl1","name":"Listing","steps":[]}]`, nil, "flows: a flow lacks name or steps"},
 		"prose":                {"personas", "Rosa sells bikes.", nil, "personas: invalid output"},
 		"agent":                {"flows", "", errors.New("timed out"), "flows: timed out"},
