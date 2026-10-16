@@ -62,22 +62,27 @@ type Analysis struct {
 	Questions       []string `json:"questions"`
 }
 
-// EpicOutline is one epic before its stories.
+// EpicOutline is one epic: its outline, the epics it depends on by id, and its stories once they are asked.
 type EpicOutline struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Text  string `json:"text"`
+	ID        string   `json:"id"`
+	Title     string   `json:"title"`
+	Text      string   `json:"text"`
+	DependsOn []string `json:"depends_on"`
+	Stories   []Story  `json:"stories"`
 }
 
 // Epics is epics.json: every epic, in order.
 type Epics []EpicOutline
 
-// Story is one ticket of an epic.
+// Story is one ticket of an epic. Functionalities are the ids of the analysis functionalities it delivers.
 type Story struct {
-	Epic       string   `json:"epic"`
-	Title      string   `json:"title"`
-	Text       string   `json:"text"`
-	Acceptance []string `json:"acceptance"`
+	ID              string   `json:"id"`
+	Epic            string   `json:"epic"`
+	Title           string   `json:"title"`
+	Text            string   `json:"text"`
+	Acceptance      []string `json:"acceptance"`
+	FirstTest       string   `json:"first_test"`
+	Functionalities []string `json:"functionalities"`
 }
 
 // Report is report.json: how the run and each of its steps went.
