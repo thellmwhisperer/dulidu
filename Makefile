@@ -9,6 +9,7 @@ lint:
 	test -z "$$(gofmt -l cmd internal)"
 
 PKG := github.com/thellmwhisperer/dulidu/internal/buildinfo
+override TAG := $(value TAG)
 export TAG
 release:
 	go run ./cmd/dulidu release "$$TAG"

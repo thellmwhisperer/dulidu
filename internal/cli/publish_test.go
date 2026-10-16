@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,7 +21,15 @@ func releaseFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	for name, body := range map[string]string{
-		"git":  "case \"$1\" in rev-parse) printf '%s\\n' \"$FAKE_ROOT\";; -C) printf '%s\\n' \"$FAKE_SHA\";; *) exit 9;; esac",
+		"git": `case "$1:$3" in
+  rev-parse:) printf '%s\n' "$FAKE_ROOT";;
+  -C:rev-parse) printf '%s\n' "$FAKE_SHA";;
+  -C:ls-remote)
+    [ "$4:$5:$6:$7" = '--tags:origin:refs/tags/v1.2.3:refs/tags/v1.2.3^{}' ] || exit 9
+    [ "${FAIL_LOOKUP:-}" != 1 ] || exit 9
+    printf '%s' "${REMOTE_TAG_OUTPUT:-}";;
+  *) exit 9;;
+esac`,
 		"make": "printf '%s\\n' \"$@\" > \"$FAKE_ROOT/make.args\"; [ \"${FAIL_MAKE:-}\" != 1 ]",
 		"gh":   "printf '%s\\n' \"$@\" > \"$FAKE_ROOT/gh.args\"; [ \"${FAIL_GH:-}\" != 1 ]",
 	} {
@@ -81,5 +91,71 @@ func TestReleaseStopsOnBuildOrPublicationFailure(t *testing.T) {
 				t.Fatalf("%s failure: exit %d, stdout %q", failed, code, out)
 			}
 		})
+	}
+}
+
+func TestReleaseChecksExistingRemoteTag(t *testing.T) {
+	ref := "refs/tags/v1.2.3"
+	other := strings.Repeat("f", 40)
+	object := strings.Repeat("a", 40)
+	for _, tc := range []struct {
+		name, refs            string
+		lookupFails, succeeds bool
+	}{
+		{"absent", "", false, true},
+		{"matching lightweight", fmt.Sprintf("%s\t%s\n", testCommit, ref), false, true},
+		{"mismatching lightweight", fmt.Sprintf("%s\t%s\n", other, ref), false, false},
+		{"matching annotated", fmt.Sprintf("%s\t%s\n%s\t%s^{}\n", object, ref, testCommit, ref), false, true},
+		{"mismatching annotated", fmt.Sprintf("%s\t%s\n%s\t%s^{}\n", object, ref, other, ref), false, false},
+		{"lookup failure", "", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := releaseFixture(t)
+			t.Setenv("REMOTE_TAG_OUTPUT", tc.refs)
+			if tc.lookupFails {
+				t.Setenv("FAIL_LOOKUP", "1")
+			}
+			code, out, _ := dulidu(t, "release", "v1.2.3")
+			if (code == 0) != tc.succeeds || strings.Contains(out, "published") != tc.succeeds ||
+				called(filepath.Join(root, "make.args")) != tc.succeeds ||
+				called(filepath.Join(root, "gh.args")) != tc.succeeds {
+				t.Fatalf("remote tag %s: exit %d, stdout %q", tc.name, code, out)
+			}
+			if tc.succeeds {
+				args := strings.Fields(read(t, filepath.Join(root, "gh.args")))
+				if len(args) != 10 || args[4] != testCommit {
+					t.Fatalf("publication args: %v", args)
+				}
+			}
+		})
+	}
+}
+
+func TestMakeReleasePassesLiteralTag(t *testing.T) {
+	makePath, err := exec.LookPath("make")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch := t.TempDir()
+	bin := filepath.Join(scratch, "bin")
+	if err := os.Mkdir(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"make", "gh"} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\ntouch \"$FAKE_CALLS\"\nexit 9\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	marker := filepath.Join(scratch, "marker")
+	calls := filepath.Join(scratch, "calls")
+	cmd := exec.Command(makePath, "-C", root, "release", "TAG=$(shell touch "+marker+")")
+	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "FAKE_CALLS="+calls)
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "Usage:") || called(marker) || called(calls) {
+		t.Fatalf("make release with invalid literal tag: error %v, output %q, marker %v, external calls %v", err, out, called(marker), called(calls))
 	}
 }
