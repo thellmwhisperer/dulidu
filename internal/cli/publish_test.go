@@ -28,10 +28,11 @@ func releaseFixture(t *testing.T) string {
     [ "$4:$5:$6:$7" = '--tags:origin:refs/tags/v1.2.3:refs/tags/v1.2.3^{}' ] || exit 9
     [ "${FAIL_LOOKUP:-}" != 1 ] || exit 9
     printf '%s' "${REMOTE_TAG_OUTPUT:-}";;
+  -C:remote) [ "$4:$5" = get-url:origin ] && printf '%s\n' "$FAKE_ORIGIN";;
   *) exit 9;;
 esac`,
 		"make": "printf '%s\\n' \"$@\" > \"$FAKE_ROOT/make.args\"; [ \"${FAIL_MAKE:-}\" != 1 ]",
-		"gh":   "printf '%s\\n' \"$@\" > \"$FAKE_ROOT/gh.args\"; [ \"${FAIL_GH:-}\" != 1 ]",
+		"gh":   "printf '%s\\n' \"$@\" > \"$FAKE_ROOT/gh.args\"; printf '%s' \"${GH_REPO:-}\" > \"$FAKE_ROOT/gh.repo\"; [ \"${FAIL_GH:-}\" != 1 ]",
 	} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\n"+body+"\n"), 0o755); err != nil {
 			t.Fatal(err)
@@ -40,6 +41,7 @@ esac`,
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("FAKE_ROOT", root)
 	t.Setenv("FAKE_SHA", testCommit)
+	t.Setenv("FAKE_ORIGIN", "git@github.com:fixture-owner/dulidu.git")
 	return root
 }
 
@@ -128,6 +130,23 @@ func TestReleaseChecksExistingRemoteTag(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestReleasePublishesToLookedUpRepository(t *testing.T) {
+	mismatch := fmt.Sprintf("%s\trefs/tags/v1.2.3\n", strings.Repeat("f", 40))
+	for _, refs := range []string{"", mismatch} {
+		root := releaseFixture(t)
+		t.Setenv("GH_REPO", "fixture-owner/different-repository")
+		t.Setenv("REMOTE_TAG_OUTPUT", refs)
+		code, _, _ := dulidu(t, "release", "v1.2.3")
+		if refs == mismatch {
+			if code == 0 || called(filepath.Join(root, "make.args")) || called(filepath.Join(root, "gh.args")) {
+				t.Fatalf("mismatching origin tag with GH_REPO: exit %d", code)
+			}
+		} else if code != 0 || read(t, filepath.Join(root, "gh.repo")) != os.Getenv("FAKE_ORIGIN") {
+			t.Fatalf("publication repository not bound to lookup remote: exit %d", code)
+		}
 	}
 }
 
