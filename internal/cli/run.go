@@ -102,6 +102,7 @@ func runCmd() *cobra.Command {
 				step = c.Step("research")
 				step.Harness = cmp.Or(step.Harness, "claude")
 				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Research.Model, Effort: c.Steps.Research.Effort, Timeout: limit}
+				step.Effort = a.Effort
 				if err := research.Run(dir, &r, step, ask); err != nil {
 					return err
 				}

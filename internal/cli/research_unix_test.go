@@ -125,7 +125,7 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
 	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[0].Name != "input" || report.Steps[1].Name != "triage" ||
 		report.Steps[1].Status != "passed" || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" ||
-		report.Steps[2].Model != "sonnet" || report.Steps[2].Harness != "claude" ||
+		report.Steps[2].Model != "sonnet" || report.Steps[2].Harness != "claude" || report.Steps[2].Effort != "medium" ||
 		report.Steps[2].Note != "dimensions: market, users, technical" {
 		t.Errorf("report.json: %+v", report)
 	}
@@ -155,6 +155,21 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	}
 }
 
+func TestRunRejectsDuplicateTriageDimensionBeforeResearch(t *testing.T) {
+	log := runRepo(t, map[string]string{"rules.md": unique})
+	triageOn(t, `["market","market"]`, `[]`)
+	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
+	if code != 1 || !strings.Contains(errOut, "failed at triage: invalid output") {
+		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	if n := calls(t, log+".research"); n != 0 {
+		t.Errorf("%d research calls after duplicate triage dimension", n)
+	}
+	if _, err := os.Stat(filepath.Join(runs(t)[0], "research.json")); err == nil {
+		t.Error("research.json was written after duplicate triage dimension")
+	}
+}
+
 func TestRunWithNoDimensionsPassesResearchWithoutACall(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `[]`, `[]`)
@@ -170,7 +185,8 @@ func TestRunWithNoDimensionsPassesResearchWithoutACall(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" {
+	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[2].Name != "research" ||
+		report.Steps[2].Status != "passed" || report.Steps[2].Effort != "medium" {
 		t.Errorf("report.json: %+v", report)
 	}
 }
@@ -210,7 +226,8 @@ func TestRunFailsAtResearchOnEmptySources(t *testing.T) {
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
 	if report.Status != "failed" || len(report.Steps) != 3 || report.Steps[1].Status != "passed" ||
-		report.Steps[2].Name != "research" || report.Steps[2].Status != "failed at research: market: no sources" {
+		report.Steps[2].Name != "research" || report.Steps[2].Status != "failed at research: market: no sources" ||
+		report.Steps[2].Effort != "medium" {
 		t.Errorf("report.json: %+v", report)
 	}
 	for _, name := range []string{"research.json", "analysis.json", "epics.json", "spec.md"} {

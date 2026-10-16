@@ -44,7 +44,7 @@ type triageFile struct {
 // reportFile is report.json with each step's note.
 type reportFile struct {
 	Status string
-	Steps  []struct{ Name, Status, Model, Harness, Note string }
+	Steps  []struct{ Name, Status, Model, Harness, Effort, Note string }
 }
 
 func decodeFile(t *testing.T, path string, v any) {
