@@ -17,8 +17,16 @@ import (
 // helloLimit bounds dulidu doctor --agent's hello when dulidu.yaml sets no agent_timeout.
 var helloLimit = 2 * time.Minute
 
-// doctorCmd is dulidu doctor: the go toolchain, git and the config layers found, one line each, then, with
-// --agent, the agent's answer to a hello. Every check runs; any failure fails the command.
+// media is the tools a run's videos need, with how to install each.
+var media = []struct{ name, hint string }{
+	{"ffmpeg", "brew install ffmpeg, or apt install ffmpeg"},
+	{"ffprobe", "brew install ffmpeg, or apt install ffmpeg"},
+	{"whisper-cli", "brew install whisper-cpp, or a whisper.cpp build"},
+}
+
+// doctorCmd is dulidu doctor: the go toolchain, git and the config layers found, one line each, a line for each
+// media tool missing, or, with --agent, the agent's answer to a hello instead. Every check runs; any failure fails
+// the command.
 func doctorCmd() *cobra.Command {
 	var hello bool
 	c := &cobra.Command{Use: "doctor", Short: "Check what dulidu needs", Args: cobra.NoArgs,
@@ -43,6 +51,11 @@ func doctorCmd() *cobra.Command {
 				c, found, cfgErr = config.Load(cmp.Or(root, "."), home)
 			}
 			check("config", cmp.Or(strings.Join(found, " "), "no layer, the defaults"), cfgErr)
+			for _, t := range media {
+				if _, err := exec.LookPath(t.name); err != nil && !hello {
+					check(t.name, "", fmt.Errorf("not found in PATH: install it with %s", t.hint))
+				}
+			}
 			if hello {
 				harness := cmp.Or(c.Harness, "claude")
 				limit, err := time.ParseDuration(cmp.Or(c.AgentTimeout, helloLimit.String()))
