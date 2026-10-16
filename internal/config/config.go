@@ -15,9 +15,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is dulidu's configuration. It has no key yet: the agent layer (#2) and the prompts (#4) bring theirs,
-// each with a line in dulidu init's template. Any other key in a layer is an error.
-type Config struct{}
+// Config is dulidu's configuration: the agent CLI, its model and effort, passed through untouched, and how long
+// it may take, a Go duration, "" for the default. The prompts (#4) bring theirs, each with a line in dulidu
+// init's template. Any other key in a layer is an error.
+type Config struct {
+	Harness      string `yaml:"harness"`
+	Model        string `yaml:"model"`
+	Effort       string `yaml:"effort"`
+	AgentTimeout string `yaml:"agent_timeout"`
+}
 
 // Layers is the files Load reads, in order: the machine's under home, then the repository's under root.
 func Layers(root, home string) []string {

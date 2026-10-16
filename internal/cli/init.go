@@ -15,7 +15,14 @@ import (
 // template is dulidu.yaml with every key config knows, empty for the project to fill.
 const template = `# dulidu's configuration for this repository, over ~/.config/dulidu/config.yaml.
 # Every key dulidu knows is listed here with an empty value; any other key is an error.
-# None yet: the agent layer and the prompts bring theirs.
+
+# The agent CLI: claude, codex, opencode, pi, cursor or hermes; "" is claude
+harness: ""
+# Its model and effort, as its CLI takes them
+model: ""
+effort: ""
+# How long it may take, as 90s or 20m; "" is 30m
+agent_timeout: ""
 `
 
 // initCmd is dulidu init: dulidu.yaml from template unless there is one, and .dulidu/ in .gitignore unless it is.
