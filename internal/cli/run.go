@@ -42,8 +42,6 @@ func runCmd() *cobra.Command {
 				if in, err = input.Load(args[0], attach); err != nil {
 					return err
 				}
-			} else if filepath.Base(resume) != resume || !filepath.IsLocal(resume) {
-				return fmt.Errorf("bad run label %q", resume)
 			}
 			root, err := toplevel()
 			if err != nil {

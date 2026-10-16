@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,9 +23,6 @@ func Resume(dir, answers string) (Run, error) {
 	}
 	if r.Report.Status != "waiting_answers" {
 		return r, fmt.Errorf("run %s is %s, nothing to resume", filepath.Base(dir), r.Report.Status)
-	}
-	if answers == "" {
-		return r, errors.New("no answers file to resume with")
 	}
 	b, err := os.ReadFile(answers)
 	r.Context, r.Report.Status = strings.TrimRight(r.Context, "\n")+"\n\n## Answers\n\n"+string(b), "running"

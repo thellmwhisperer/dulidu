@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-222937-1
+status: accepted
+category: alien_code
+title: "Cut the `bad run label %q` check on `--resume` (filepath.Base/IsLocal). Nothing replaces it: a label that names no run folder already fails in pipeline.Read."
+created_at: 2026-10-16
+incident:
+  pattern: "Cut the `bad run label %q` check on `--resume` (filepath.Base/IsLocal). Nothing replaces it: a label that names no run folder already fails in pipeline.Read."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Cut the `bad run label %q` check on `--resume` (filepath.Base/IsLocal). Nothing replaces it: a label that names no run folder already fails in pipeline.Read."
+      artifact: "internal/cli/run.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/cli/run.go"

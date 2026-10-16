@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261016-222937-2
+status: accepted
+category: alien_code
+title: "Cut the `answers == \"\"` guard with its `no answers file to resume with` error, and the `errors` import it needed. os.ReadFile(\"\") already returns an error that Resume passes back."
+created_at: 2026-10-16
+incident:
+  pattern: "Cut the `answers == \"\"` guard with its `no answers file to resume with` error, and the `errors` import it needed. os.ReadFile(\"\") already returns an error that Resume passes back."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Cut the `answers == \"\"` guard with its `no answers file to resume with` error, and the `errors` import it needed. os.ReadFile(\"\") already returns an error that Resume passes back."
+      artifact: "internal/pipeline/run.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/run.go"
