@@ -1,4 +1,4 @@
-// Package cli is dulidu's command line: one cobra command per file, run from inside the repository it works on.
+// Package cli is dulidu's command line: one cobra command per file.
 package cli
 
 import (
