@@ -74,3 +74,26 @@ func TestExportMatchesGolden(t *testing.T) {
 		t.Errorf("%d tickets, want %d", len(got), len(want))
 	}
 }
+
+func TestReexportRemovesObsoleteTickets(t *testing.T) {
+	dir := t.TempDir()
+	r := recorded()
+	if err := Write(dir, &r); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tickets", "notes.md"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r.Epics = r.Epics[:1]
+	if err := Write(dir, &r); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"1.md", "2.md", "notes.md"} {
+		if _, err := os.Stat(filepath.Join(dir, "tickets", name)); err != nil {
+			t.Errorf("%s should remain: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "tickets", "3.md")); !os.IsNotExist(err) {
+		t.Errorf("obsolete 3.md remains: %v", err)
+	}
+}

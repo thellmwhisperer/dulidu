@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
@@ -26,9 +27,22 @@ func Write(dir string, r *pipeline.Run) error {
 	if err := os.MkdirAll(filepath.Join(dir, "tickets"), 0o755); err != nil {
 		return err
 	}
-	for n, t := range tickets(*r, nums) {
+	ts := tickets(*r, nums)
+	for n, t := range ts {
 		if err := os.WriteFile(filepath.Join(dir, "tickets", fmt.Sprintf("%d.md", n+1)), []byte(t), 0o644); err != nil {
 			return err
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, "tickets"))
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		n, err := strconv.Atoi(strings.TrimSuffix(entry.Name(), ".md"))
+		if err == nil && !entry.IsDir() && n > 0 && fmt.Sprintf("%d.md", n) == entry.Name() && n > len(ts) {
+			if err := os.Remove(filepath.Join(dir, "tickets", entry.Name())); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
