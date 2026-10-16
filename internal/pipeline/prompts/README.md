@@ -1,6 +1,6 @@
 # Prompts
 
-Each template is one step's prompt: the poc role text, then the context its builder added.
+Each template is one prompt variant: the poc role text, then the context its builder added.
 `Render(step, data)` fills it; a key the data lacks fails with its name.
 
 Keys: `Input` (brief and attachments), `Research`, `Personas`, `Functionalities`, `MustFunctionalities`,
