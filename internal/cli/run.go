@@ -31,7 +31,8 @@ import (
 // tickets/, plan.json and brief-diseno.md. The first step to fail stops the run. Triage's questions instead go to
 // questions.json and are printed, and the run waits for answers: --resume <label> --answers <file> adds them to its
 // contexto.md and goes on to research and the rest in the same run. It prints contexto.md's path. On a terminal it
-// runs in the background instead, and attaches to it.
+// runs in the background instead, and attaches to it; the questions then appear in that attached view, one line each,
+// instead of on this stdout.
 func runCmd() *cobra.Command {
 	var attach []string
 	var resume, answers string

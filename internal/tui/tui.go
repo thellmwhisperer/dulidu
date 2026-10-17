@@ -25,6 +25,10 @@ const Output = "agent.out"
 // every is how often the view reads the run folder again.
 var every = 250 * time.Millisecond
 
+// grace is how long a view keeps reading a run folder that holds no live run and no report either, the window
+// between the folder's creation and its run's lock; past it no report will ever be written.
+const grace = 2 * time.Second
+
 // Report is dir's report.json.
 func Report(dir string) (pipeline.Report, error) {
 	var r pipeline.Report
@@ -33,6 +37,16 @@ func Report(dir string) (pipeline.Report, error) {
 		err = json.Unmarshal(b, &r)
 	}
 	return r, err
+}
+
+// Questions is dir's questions.json, the questions a run waiting for answers asks.
+func Questions(dir string) ([]string, error) {
+	var q []string
+	b, err := os.ReadFile(filepath.Join(dir, "questions.json"))
+	if err == nil {
+		err = json.Unmarshal(b, &q)
+	}
+	return q, err
 }
 
 // Line is s on one line: its name, its status and how long it took, or has taken by now while it runs.
@@ -54,28 +68,52 @@ func running(dir string) bool {
 	return syscall.Flock(int(f.Fd()), syscall.LOCK_SH|syscall.LOCK_NB) != nil
 }
 
-// Follow writes one line per step of the run in dir to w as each finishes, and returns once the run has ended,
-// every step written.
+// Follow writes one line per step of the run in dir to w as each finishes, then, when it stopped for answers,
+// one line per question, and returns once the run has ended, every step written; a run that died before writing
+// any report fails it, once grace has passed.
 func Follow(dir string, w io.Writer) error {
 	done := 0
+	stuck := time.Time{} // since a run not running last left its report unreadable
 	for ; ; time.Sleep(every) {
 		ended := !running(dir) // before the report, so the report read after it is the last one
 		r, err := Report(dir)
 		if err != nil {
-			continue // not written yet, or being written
+			if !ended {
+				stuck = time.Time{}
+				continue // not written yet, or being written
+			}
+			if stuck.IsZero() {
+				stuck = time.Now() // the run may still be about to start and lock its output
+				continue
+			}
+			if time.Since(stuck) < grace {
+				continue
+			}
+			return err // nothing holds the run's output, so nothing will ever write its report
 		}
+		stuck = time.Time{}
 		for ; done < len(r.Steps) && (ended || !r.Steps[done].Finished.IsZero()); done++ {
 			if _, err := fmt.Fprintln(w, Line(r.Steps[done], time.Now())); err != nil {
 				return err
 			}
 		}
 		if ended {
+			if r.Status == "waiting_answers" {
+				questions, _ := Questions(dir)
+				for _, q := range questions {
+				if _, err := fmt.Fprintln(w, q); err != nil {
+					return err
+				}
+				}
+			}
 			return nil
 		}
 	}
 }
 
-// Watch draws the run in dir on w, a terminal of size's columns and rows, until q comes from keys or ctx ends.
+// Watch draws the run in dir on w, a terminal of size's columns and rows, with the questions it waits for under
+// its steps, until q comes from keys or ctx ends; a run that died before writing any report ends it too, once
+// grace has passed.
 func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
 	quit := make(chan struct{})
 	go func() {
@@ -92,12 +130,27 @@ func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size fu
 	_, _ = fmt.Fprint(w, "\x1b[?1049h\x1b[?25l")
 	defer func() { _, _ = fmt.Fprint(w, "\x1b[?25h\x1b[?1049l") }()
 	var r pipeline.Report
+	var questions []string
+	stuck := time.Time{} // since a run not running last left its report unreadable
 	for {
 		if now, err := Report(dir); err == nil {
 			r = now
+			stuck = time.Time{}
+		} else if !running(dir) {
+			if stuck.IsZero() {
+				stuck = time.Now() // the run may still be about to start and lock its output
+			} else if time.Since(stuck) >= grace {
+				return err // nothing holds the run's output, so nothing will ever write its report
+			}
+		} else {
+			stuck = time.Time{}
+		}
+		questions = nil
+		if r.Status == "waiting_answers" {
+			questions, _ = Questions(dir)
 		}
 		cols, rows := size()
-		if _, err := fmt.Fprint(w, "\x1b[H"+Frame(filepath.Base(dir), r, tail(dir), cols, rows, time.Now())+"\x1b[J"); err != nil {
+		if _, err := fmt.Fprint(w, "\x1b[H"+Frame(filepath.Base(dir), r, questions, tail(dir), cols, rows, time.Now())+"\x1b[J"); err != nil {
 			return err
 		}
 		select {
@@ -110,9 +163,9 @@ func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size fu
 	}
 }
 
-// Frame is the screen of cols by rows: label and r's status on top, r's steps on the left, the last lines of
-// log, the agent's output, on the right.
-func Frame(label string, r pipeline.Report, log []string, cols, rows int, now time.Time) string {
+// Frame is the screen of cols by rows: label and r's status on top, r's steps on the left, the questions it waits
+// for under them, the last lines of log, the agent's output, on the right.
+func Frame(label string, r pipeline.Report, questions []string, log []string, cols, rows int, now time.Time) string {
 	cols, rows = max(cols, 20), max(rows, 2)
 	left := min(40, cols/3)
 	right := cols - left - 3
@@ -122,6 +175,8 @@ func Frame(label string, r pipeline.Report, log []string, cols, rows int, now ti
 		var step, out string
 		if i < len(r.Steps) {
 			step = Line(r.Steps[i], now)
+		} else if i-len(r.Steps) < len(questions) {
+			step = "? " + questions[i-len(r.Steps)]
 		}
 		if i < len(log) {
 			out = log[i]
