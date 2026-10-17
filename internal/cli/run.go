@@ -195,7 +195,7 @@ func runCmd() *cobra.Command {
 const runEnv = "DULIDU_RUN"
 
 // detach runs this same dulidu run in dir in the background, in its own session, its stdout and stderr its agent
-// output, locked before it starts, and attaches to it.
+// output, locked before it starts, and attaches to it; once the view ends, a failed run fails this command too.
 func detach(cmd *cobra.Command, dir string) error {
 	self, err := os.Executable()
 	if err != nil {
@@ -215,7 +215,13 @@ func detach(cmd *cobra.Command, dir string) error {
 		return err
 	}
 	_ = child.Process.Release()
-	return attach(cmd, dir)
+	if err := attach(cmd, dir); err != nil {
+		return err
+	}
+	if r, err := tui.Report(dir); err == nil && r.Status == "failed" {
+		return fmt.Errorf("run %s failed", filepath.Base(dir))
+	}
+	return nil
 }
 
 // lock opens dir's agent output to append to and locks it, for attach to see the run alive while it is open; a run

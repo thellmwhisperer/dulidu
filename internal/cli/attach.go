@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -46,7 +47,7 @@ func attach(cmd *cobra.Command, dir string) error {
 	if _, err := stty("-icanon", "-echo"); err != nil {
 		return err
 	}
-	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 	return tui.Watch(ctx, dir, out, os.Stdin, func() (int, int) {
 		cols, rows := 80, 24

@@ -101,9 +101,9 @@ func Follow(dir string, w io.Writer) error {
 			if r.Status == "waiting_answers" {
 				questions, _ := Questions(dir)
 				for _, q := range questions {
-				if _, err := fmt.Fprintln(w, q); err != nil {
-					return err
-				}
+					if _, err := fmt.Fprintln(w, q); err != nil {
+						return err
+					}
 				}
 			}
 			return nil
