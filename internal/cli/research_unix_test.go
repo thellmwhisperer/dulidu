@@ -123,7 +123,7 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[0].Name != "input" || report.Steps[1].Name != "triage" ||
+	if report.Status != "done" || len(report.Steps) != 5 || report.Steps[0].Name != "input" || report.Steps[1].Name != "triage" ||
 		report.Steps[1].Status != "passed" || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" ||
 		report.Steps[2].Model != "sonnet" || report.Steps[2].Harness != "claude" || report.Steps[2].Effort != "medium" ||
 		report.Steps[2].Note != "dimensions: market, users, technical" {
@@ -133,8 +133,8 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 		!strings.Contains(read(t, filepath.Join(dir, "agent", "triage.log")), "research_dimensions") {
 		t.Error("agent logs lack the research or triage answers")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "analysis.json")); err == nil {
-		t.Error("analysis.json was written after research")
+	if _, err := os.Stat(filepath.Join(dir, "analysis.json")); err != nil {
+		t.Error("analysis did not follow research")
 	}
 
 	before := map[string]string{}
@@ -185,7 +185,7 @@ func TestRunWithNoDimensionsPassesResearchWithoutACall(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 3 || report.Steps[2].Name != "research" ||
+	if report.Status != "done" || len(report.Steps) != 5 || report.Steps[2].Name != "research" ||
 		report.Steps[2].Status != "passed" || report.Steps[2].Effort != "medium" {
 		t.Errorf("report.json: %+v", report)
 	}

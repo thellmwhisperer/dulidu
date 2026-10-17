@@ -13,11 +13,13 @@ import (
 // fakeDescriber is the run's claude. The triage prompt's call it appends to $FAKE_LOG.triage, keeps its prompt in
 // $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid triage. The nth research prompt's call it
 // appends to $FAKE_LOG.research, keeps its prompt in $FAKE_LOG.research.<n> and answers with $FAKE_RESEARCH/<n>'s line,
-// else a valid dimension. Every other call is the input step's: it appends its arguments to $FAKE_LOG and describes
-// any image the same.
+// else a valid dimension. An analysis list's or epics phase's call it appends to $FAKE_LOG.graph, as the list or phase
+// and its arguments, and answers validly, with an empty list for the one named $FAKE_BAD. Every other call is the
+// input step's: it appends its arguments to $FAKE_LOG and describes any image the same.
 const fakeDescriber = `#!/bin/sh
 prompt=$(mktemp)
 cat > "$prompt"
+` + fakeGraph + `
 if grep -q '^You triage a product brief' "$prompt"; then
   printf '%s\n' "$*" >> "$FAKE_LOG.triage"
   mv "$prompt" "$FAKE_LOG.prompt"
@@ -37,6 +39,25 @@ rm -f "$prompt"
 printf '%s\n' "$*" >> "$FAKE_LOG"
 echo '{"type":"result","result":"A fake description."}'
 `
+
+// fakeGraph answers the analysis and epics prompts in $prompt, as fakeDescriber says.
+const fakeGraph = `case $(head -n 1 "$prompt") in
+*'Extract target user personas'*) list=personas a='[{"name":"Seller","role":"Bike owner","goals":["Sell fast"],"painPoints":["No buyers"]}]' ;;
+*'Extract key functionalities'*) list=functionalities a='[{"name":"List a bike","description":"A seller lists a bike.","priority":"must"}]' ;;
+*'Extract user flows'*) list=flows a='[{"name":"Sell","steps":["List","Sell"]}]' ;;
+*'Extract project constraints'*) list=constraints a='["Spain only"]' ;;
+*'Identify open questions'*) list=questions a='["Which payments?"]' ;;
+*'who thinks about HOW'*) list=outlines a='[{"id":"E1","title":"Listings","description":"Bikes get listed.","depends_on":[]}]' ;;
+*'implementation-ready tickets'*) list=stories a='[{"id":"S1","title":"List a bike","description":"A seller lists a bike.","acceptance":["The bike shows up."],"first_test":"TestListBike","functionalities":["F1"]}]' ;;
+*) list= ;;
+esac
+if [ -n "$list" ]; then
+  rm -f "$prompt"
+  printf '%s %s\n' "$list" "$*" >> "$FAKE_LOG.graph"
+  if [ "$list" = "$FAKE_BAD" ]; then a='[]'; fi
+  printf '{"type":"result","result":"%s"}\n' "$(printf '%s' "$a" | sed 's/"/\\"/g')"
+  exit 0
+fi`
 
 // runRepo is a repository from dulidu init with a brief and files by name, its claude fakeDescriber; it returns
 // where the fake logs its calls.
