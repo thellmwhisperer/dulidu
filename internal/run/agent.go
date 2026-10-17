@@ -21,10 +21,11 @@ import (
 )
 
 // Agent is the agent CLI dulidu runs: its harness, its model and effort, passed through untouched, and how long
-// it may take, 0 for agentTimeout.
+// it may take, 0 for agentTimeout. Log, when set, gets each line it writes as it writes it.
 type Agent struct {
 	Harness, Model, Effort string
 	Timeout                time.Duration
+	Log                    io.Writer
 }
 
 // acpArgv is the agents dulidu speaks ACP with, by harness: the command line it runs in the directory.
@@ -123,7 +124,7 @@ func (a Agent) Run(dir, prompt string, check func(final string) error) (string, 
 	if a.Harness == "claude" { // else a background command outlives its turn
 		cmd.Env = append(cmd.Env, "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1")
 	}
-	s := &stream{dir: dir, heard: func() { quiet.Reset(agentSilence) }}
+	s := &stream{dir: dir, log: a.Log, heard: func() { quiet.Reset(agentSilence) }}
 	if err := s.talk(cmd, a.Harness, stdin); err != nil {
 		return "", err
 	}
@@ -185,7 +186,8 @@ func Human(d time.Duration) string {
 type stream struct {
 	final, failure string
 	tail           []string
-	heard          func() // each line calls it
+	heard          func()    // each line calls it
+	log            io.Writer // each line goes to it, when set
 	// An ACP agent's: its directory, its prompt, its stdin until its prompt's reply, and the reply's stopReason
 	// or the failed call.
 	dir, prompt, stop string
@@ -201,6 +203,9 @@ func (s *stream) read(cmd *exec.Cmd, harness string) error {
 		mu.Lock()
 		defer mu.Unlock()
 		s.heard()
+		if s.log != nil {
+			_, _ = io.WriteString(s.log, line+"\n") // the live view's copy: losing it loses no output
+		}
 		s.tail = append(s.tail, line)
 		s.tail = s.tail[max(0, len(s.tail)-5):]
 		b := []byte(line)
