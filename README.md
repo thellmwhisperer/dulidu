@@ -1,9 +1,146 @@
 # dulidu
 
-One binary in the PATH. Run `init`, `doctor`, `run`, `attach`, `status`, `runs`, and `release` inside a Git repository.
+dulidu turns a product brief and what comes with it (pdfs, images, videos, notes) into a spec, tickets in the
+ten-point contract, a `plan.json` and a design brief, one agent call per step, in a run folder inside your Git
+repository. Each ticket is ready to hand to `atm run`.
+
+## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh
+```
+
+From a clone, `go build -o dulidu ./cmd/dulidu` and put the binary in your PATH. macOS and Linux only.
+A run with a pdf needs `pdftotext` and one with images or videos `ffprobe`; `dulidu doctor` says what is missing.
+
+## First run
+
+The example is Clay Corner, the recorded run in `internal/pipeline/testdata/run-example/`: a brief for a pottery
+studio's booking tool, `brief.md`, with a pdf, `one.pdf`, and an image, `one.png`. Copy those three into a new
+Git repository and run, in it:
+
+```console
+$ dulidu init
+$ dulidu doctor
+ok go: /opt/homebrew/bin/go
+ok git: /private/tmp/dulidu-readme.rIMby2/work
+ok config: /private/tmp/dulidu-readme.rIMby2/work/dulidu.yaml
+$ dulidu run brief.md --attach one.pdf --attach one.png
+/private/tmp/dulidu-readme.rIMby2/work/.dulidu/runs/20261017-071309-1746844562/contexto.md
+$ dulidu status
+20261017-071309-1746844562 done
+input done 0 min 00 s
+triage passed 0 min 00 s
+research passed 0 min 00 s
+analysis passed 0 min 00 s
+epics passed 0 min 00 s
+export passed 0 min 00 s
+$ ls .dulidu/runs/*/ .dulidu/runs/*/tickets/
+.dulidu/runs/20261017-071309-1746844562/:
+agent
+agent.out
+analysis.json
+brief-diseno.md
+contexto.md
+epics.json
+input
+plan.json
+report.json
+research.json
+spec.md
+tickets
+triage.json
+
+.dulidu/runs/20261017-071309-1746844562/tickets/:
+1.md
+2.md
+3.md
+$ cat .dulidu/runs/*/tickets/1.md
+# Book a free wheel for an hour
+
+Type: feature
+
+## Kind
+
+implement
+
+## Goal
+
+As Ana I want to book a free wheel so that one waits for me
+
+## Non-goals
+
+- Anything beyond this ticket's acceptance: the plan's other tickets deliver it.
+
+## Invariants
+
+- The kiln fires once a week, on Friday at 6 pm
+- Bookings are free: members pay a monthly fee
+
+## Behavioral contract / States
+
+- Given wheel 2 free at 19:00, when Ana books it, then it is hers from 19:00 to 20:00
+
+## Scope surface
+
+- F1 [must] Book a wheel: One hour, one member per wheel
+
+## Acceptance
+
+- [ ] Write a test that books a free wheel at 19:00 and expects it held until 20:00.
+
+## Split triggers
+
+- The acceptance needs more than one first test to go red: split the ticket.
+
+## Dependencies / Parent
+
+- Parent: E1 Book a wheel.
+- Story: US1.
+- Depends on: none.
+
+## Evidence (fix / ops)
+
+- Not applicable: a feature.
+
+## Validation and rollback
+
+Revert the PR.
+```
+
+With a real agent each step calls `claude`, so the label and timings differ. The output above is `sh scripts/readme-check.sh`'s: it runs this
+block's `$` lines in a new repository holding the example, against a fresh build, with a `claude` that replays
+the example's recorded answers in `answers/`, offline, and fails unless the run folder's export is
+`docs/example-run/`'s files.
+
+## What comes out
+
+The run folder `.dulidu/runs/<label>/` keeps the inputs in `input/`, `contexto.md`, each step's answer
+(`triage.json`, `research.json`, `analysis.json`, `epics.json`) and `report.json`, then the export, written by
+code alone. Clay Corner's export is in [docs/example-run/](docs/example-run/):
+
+- [`spec.md`](docs/example-run/spec.md): research with its sources, personas, functionalities, flows,
+  constraints, open questions and the epics with their tickets.
+- [`tickets/`](docs/example-run/tickets/): one ticket per story, `<n>.md`, in the ten-point contract.
+- [`plan.json`](docs/example-run/plan.json): each ticket's issue number and the tickets it depends on.
+- [`brief-diseno.md`](docs/example-run/brief-diseno.md): personas, flows, functionalities and constraints, for
+  design.
+
+## Handing a ticket to `atm run`
+
+`atm run` takes a ticket as a file or as an issue number: `atm run <issue.md | issue number>`. Ticket 1 above
+goes over as:
+
+```sh
+atm run .dulidu/runs/20261017-071309-1746844562/tickets/1.md
+```
+
+or, once filed as an issue, `atm run <issue number>`. `plan.json` gives the order: ticket 3 waits for 1 and 2. `readme-check.sh` does not run
+`atm`; a live PR from this ticket is its own ticket, #41.
+
+## Commands
+
+```sh
 dulidu init     # writes dulidu.yaml and ignores .dulidu/
 dulidu doctor   # checks go, git, the config layers and video tools
 dulidu doctor --agent # asks the configured agent to say OK and reports elapsed time
@@ -31,4 +168,4 @@ PDF extraction requires `pdftotext` (`brew install poppler`, `apt install popple
 
 `update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit. Publication uses `origin` even if `GH_REPO` is set.
 
-Develop with `make test lint`; `make dist TAG=vX.Y.Z` builds assets without publishing, and `make release TAG=vX.Y.Z` publishes them. macOS and Linux only.
+Develop with `make test lint`; `sh scripts/readme-check.sh` replays the first run and `sh scripts/leak-scan.sh README.md docs/` checks the docs for paths, addresses and tokens. `make dist TAG=vX.Y.Z` builds assets without publishing, and `make release TAG=vX.Y.Z` publishes them. macOS and Linux only.
