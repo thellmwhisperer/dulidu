@@ -26,10 +26,26 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// fakeClaude answers the triage prompt with $FAKE_TRIAGE's line and a research prompt with a valid dimension. Each
-// call adds a line to $FAKE_LOG.<step>; the last research prompt is kept in $FAKE_LOG.research.prompt.
+// fakeClaude answers the triage prompt with $FAKE_TRIAGE's line, a research prompt with a valid dimension and an
+// analysis list's or epics phase's prompt validly. Each call adds a line to $FAKE_LOG.<step>, the analysis and epics
+// ones to $FAKE_LOG.graph; the last research prompt is kept in $FAKE_LOG.research.prompt.
 const fakeClaude = `#!/bin/sh
 prompt=$(cat)
+a=
+case "$prompt" in
+*'Extract target user personas'*) a='[{"name":"Lead","role":"Team lead","goals":["Plan"],"painPoints":["Chaos"]}]' ;;
+*'Extract key functionalities'*) a='[{"name":"Plan a sprint","description":"A lead plans a sprint.","priority":"must"}]' ;;
+*'Extract user flows'*) a='[{"name":"Plan","steps":["Open","Plan"]}]' ;;
+*'Extract project constraints'*) a='["Teams of five"]' ;;
+*'Identify open questions'*) a='["Which calendar?"]' ;;
+*'who thinks about HOW'*) a='[{"id":"E1","title":"Sprints","description":"Teams plan sprints.","depends_on":[]}]' ;;
+*'implementation-ready tickets'*) a='[{"id":"S1","title":"Plan a sprint","description":"A lead plans a sprint.","acceptance":["The sprint shows up."],"first_test":"TestPlanSprint","functionalities":["F1"]}]' ;;
+esac
+if [ -n "$a" ]; then
+  echo >> "$FAKE_LOG.graph"
+  printf '{"type":"result","result":"%s"}\n' "$(printf '%s' "$a" | sed 's/"/\\"/g')"
+  exit 0
+fi
 case "$prompt" in
 *"You triage a product brief"*)
   echo >> "$FAKE_LOG.triage"
@@ -138,9 +154,21 @@ func TestStopAndResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	steps := resumed.Report.Steps
-	if resumed.Report.Status != "done" || len(steps) != 3 || !reflect.DeepEqual(steps[:2], stopped.Report.Steps) ||
-		steps[2].Name != "research" || steps[2].Status != "passed" {
+	if resumed.Report.Status != "done" || len(steps) != 5 || !reflect.DeepEqual(steps[:2], stopped.Report.Steps) ||
+		steps[2].Name != "research" || steps[3].Name != "analysis" || steps[4].Name != "epics" {
 		t.Errorf("report.json after resume: %+v", resumed.Report)
+	}
+	for _, s := range steps[1:] {
+		if s.Status != "passed" {
+			t.Errorf("step %s after resume: %s", s.Name, s.Status)
+		}
+	}
+	if lines(log+".graph") != 7 || resumed.Analysis == nil || len(resumed.Epics) != 1 || resumed.Spec == "" ||
+		len(resumed.Plan) == 0 || resumed.DesignBrief == "" {
+		t.Errorf("resume did not reach export: %+v", resumed)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "tickets", "1.md")); err != nil {
+		t.Errorf("resume wrote no ticket: %v", err)
 	}
 	if n := lines(log + ".triage"); n != 1 {
 		t.Errorf("triage ran %d times, want once", n)

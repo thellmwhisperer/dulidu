@@ -13,6 +13,9 @@ import (
 
 	"github.com/thellmwhisperer/dulidu/internal/config"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/analysis"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/epics"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/export"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/input"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/research"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/triage"
@@ -21,14 +24,15 @@ import (
 
 // runCmd is dulidu run: a new run folder in .dulidu/runs with the brief and its attachments in input/ and
 // contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md, and,
-// when triage asks no questions, research.json, the research step. Triage's questions instead go to questions.json and
-// are printed, and the run waits for answers: --resume <label> --answers <file> adds them to its contexto.md and goes
-// on to research in the same run. It prints contexto.md's path.
+// when triage asks no questions, research.json, analysis.json and epics.json, each its step, then the export: spec.md,
+// tickets/, plan.json and brief-diseno.md. The first step to fail stops the run. Triage's questions instead go to
+// questions.json and are printed, and the run waits for answers: --resume <label> --answers <file> adds them to its
+// contexto.md and goes on to research and the rest in the same run. It prints contexto.md's path.
 func runCmd() *cobra.Command {
 	var attach []string
 	var resume, answers string
 	c := &cobra.Command{Use: "run <brief.md> [--attach <path>...] | run --resume <label> --answers <answers.md>",
-		Short: "Package a brief and its attachments into contexto.md, triage and research it",
+		Short: "Package a brief and its attachments into contexto.md and take it to spec, tickets, plan and design brief",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if resume != "" {
 				return cobra.NoArgs(cmd, args)
@@ -68,6 +72,13 @@ func runCmd() *cobra.Command {
 			var a agent.Agent
 			// ask runs a, the current step's agent, in dir.
 			ask := func(prompt string) (string, error) { return a.Run(dir, prompt, func(string) error { return nil }) }
+			// next makes a the named step's agent, set by s, and is the step as report.json records it.
+			next := func(name string, s config.Step) pipeline.Step {
+				step := c.Step(name)
+				step.Harness, step.Effort = cmp.Or(step.Harness, "claude"), s.Effort
+				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit}
+				return step
+			}
 			if resume != "" {
 				dir = filepath.Join(runs, resume)
 				if r, err = pipeline.Resume(dir, answers); err != nil {
@@ -111,14 +122,11 @@ func runCmd() *cobra.Command {
 				if err := errors.Join(err, pipeline.Write(dir, r)); err != nil {
 					return err
 				}
-				step = c.Step("triage")
-				step.Harness = cmp.Or(step.Harness, "claude")
-				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Triage.Model, Effort: c.Steps.Triage.Effort, Timeout: limit}
-				if err := triage.Run(dir, &r, step, c.MaxEpics, c.MaxStoriesPerEpic, ask); err != nil {
+				if err := triage.Run(dir, &r, next("triage", c.Steps.Triage), c.MaxEpics, c.MaxStoriesPerEpic, ask); err != nil {
 					return err
 				}
 			}
-			// Research is the last step yet. Triage's missing_questions, if any, stop a new run until it is resumed.
+			// Triage's missing_questions, if any, stop a new run until it is resumed.
 			if resume == "" && len(r.Triage.MissingQuestions) > 0 {
 				err := pipeline.Ask(dir, &r)
 				var questions []byte
@@ -132,11 +140,18 @@ func runCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				step := c.Step("research")
-				step.Harness = cmp.Or(step.Harness, "claude")
-				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Research.Model, Effort: c.Steps.Research.Effort, Timeout: limit}
-				step.Effort = a.Effort
-				if err := research.Run(dir, &r, step, ask); err != nil {
+				// Stories are the epics step's second phase, on its agent.
+				err := research.Run(dir, &r, next("research", c.Steps.Research), ask)
+				if err == nil {
+					err = analysis.Run(dir, &r, next("analysis", c.Steps.Analysis), ask)
+				}
+				if err == nil {
+					err = epics.Run(dir, &r, next("epics", c.Steps.Epics), ask)
+				}
+				if err == nil {
+					err = export.Write(dir, &r)
+				}
+				if err != nil {
 					return err
 				}
 			}
