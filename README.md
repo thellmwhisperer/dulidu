@@ -6,8 +6,17 @@ repository. Each ticket is ready to hand to `atm run`.
 
 ## Install
 
+For a public repository:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh
+```
+
+While the repository is private, that curl line returns 404. If you already have a clone of the private repository,
+run the `install.sh` that is in the clone, with `DULIDU_PREFIX` set to the directory you choose for the binary:
+
+```sh
+DULIDU_PREFIX=$HOME/.local/bin sh ./install.sh
 ```
 
 From a clone, `go build -o dulidu ./cmd/dulidu` and put the binary in your PATH. macOS and Linux only.
