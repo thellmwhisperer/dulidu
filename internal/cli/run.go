@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,6 +22,7 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/research"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/triage"
 	agent "github.com/thellmwhisperer/dulidu/internal/run"
+	"github.com/thellmwhisperer/dulidu/internal/tui"
 )
 
 // runCmd is dulidu run: a new run folder in .dulidu/runs with the brief and its attachments in input/ and
@@ -27,7 +30,8 @@ import (
 // when triage asks no questions, research.json, analysis.json and epics.json, each its step, then the export: spec.md,
 // tickets/, plan.json and brief-diseno.md. The first step to fail stops the run. Triage's questions instead go to
 // questions.json and are printed, and the run waits for answers: --resume <label> --answers <file> adds them to its
-// contexto.md and goes on to research and the rest in the same run. It prints contexto.md's path.
+// contexto.md and goes on to research and the rest in the same run. It prints contexto.md's path. On a terminal it
+// runs in the background instead, and attaches to it.
 func runCmd() *cobra.Command {
 	var attach []string
 	var resume, answers string
@@ -72,11 +76,13 @@ func runCmd() *cobra.Command {
 			var a agent.Agent
 			// ask runs a, the current step's agent, in dir.
 			ask := func(prompt string) (string, error) { return a.Run(dir, prompt, func(string) error { return nil }) }
+			background := os.Getenv(runEnv)
+			live := os.Stderr // a background run's stdout and stderr are its agent output, locked already
 			// next makes a the named step's agent, set by s, and is the step as report.json records it.
 			next := func(name string, s config.Step) pipeline.Step {
 				step := c.Step(name)
 				step.Harness, step.Effort = cmp.Or(step.Harness, "claude"), s.Effort
-				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit}
+				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit, Log: live}
 				return step
 			}
 			if resume != "" {
@@ -84,22 +90,32 @@ func runCmd() *cobra.Command {
 				if r, err = pipeline.Resume(dir, answers); err != nil {
 					return err
 				}
-			} else {
+			} else if dir = background; dir == "" {
 				if err := os.MkdirAll(runs, 0o755); err != nil {
 					return err
 				}
-				now := time.Now()
-				dir, err = os.MkdirTemp(runs, now.Format("20060102-150405-"))
-				if err != nil {
+				if dir, err = os.MkdirTemp(runs, time.Now().Format("20060102-150405-")); err != nil {
 					return err
 				}
+			}
+			if background == "" && terminal(cmd.OutOrStdout()) {
+				return detach(cmd, dir)
+			}
+			if background == "" {
+				if live, err = lock(dir); err != nil {
+					return err
+				}
+				defer func() { _ = live.Close() }()
+			}
+			if resume == "" {
+				now := time.Now()
 				step := c.Step("input")
 				step.Harness, step.Effort, step.Status, step.Started = cmp.Or(step.Harness, "claude"), c.Steps.Input.Effort, "running", now
 				r = pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
 				if err := pipeline.Write(dir, r); err != nil {
 					return err
 				}
-				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Input.Model, Effort: c.Steps.Input.Effort, Timeout: limit}
+				a = agent.Agent{Harness: step.Harness, Model: c.Steps.Input.Model, Effort: c.Steps.Input.Effort, Timeout: limit, Log: live}
 				var log strings.Builder
 				seconds := cmp.Or(c.VideoFrameSeconds, input.FrameSeconds)
 				r.Context, err = input.PackageEvery(dir, in, seconds, func(prompt string) (string, error) {
@@ -172,4 +188,45 @@ func runCmd() *cobra.Command {
 	c.Flags().StringVar(&resume, "resume", "", "the label of a run waiting for answers, to go on with")
 	c.Flags().StringVar(&answers, "answers", "", "the file with the answers to a resumed run's questions")
 	return c
+}
+
+// runEnv is set, to its run folder, in the dulidu that runs a run in the background.
+const runEnv = "DULIDU_RUN"
+
+// detach runs this same dulidu run in dir in the background, in its own session, its stdout and stderr its agent
+// output, locked before it starts, and attaches to it.
+func detach(cmd *cobra.Command, dir string) error {
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	out, err := lock(dir)
+	if err != nil {
+		return err
+	}
+	child := exec.Command(self, os.Args[1:]...)
+	child.Env = append(os.Environ(), runEnv+"="+dir)
+	child.Stdout, child.Stderr = out, out
+	child.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	err = child.Start()
+	_ = out.Close() // the child holds the lock now
+	if err != nil {
+		return err
+	}
+	_ = child.Process.Release()
+	return attach(cmd, dir)
+}
+
+// lock opens dir's agent output to append to and locks it, for attach to see the run alive while it is open; a run
+// already running in dir fails it.
+func lock(dir string) (*os.File, error) {
+	f, err := os.OpenFile(filepath.Join(dir, tui.Output), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("run %s is running", filepath.Base(dir))
+	}
+	return f, nil
 }

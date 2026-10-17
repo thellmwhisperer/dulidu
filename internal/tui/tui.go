@@ -1,0 +1,203 @@
+// Package tui is the view of a run folder: its steps and their status on the left, its agent's output on the right,
+// live on a terminal, or one line per step on anything else. It reads report.json and the agent output; it never
+// drives the run.
+package tui
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/thellmwhisperer/dulidu/internal/pipeline"
+	"github.com/thellmwhisperer/dulidu/internal/run"
+)
+
+// Output is the run folder's agent output: every line its agents write, as they write it, then what dulidu itself
+// prints. A live run holds a lock on it.
+const Output = "agent.out"
+
+// every is how often the view reads the run folder again.
+var every = 250 * time.Millisecond
+
+// Report is dir's report.json.
+func Report(dir string) (pipeline.Report, error) {
+	var r pipeline.Report
+	b, err := os.ReadFile(filepath.Join(dir, "report.json"))
+	if err == nil {
+		err = json.Unmarshal(b, &r)
+	}
+	return r, err
+}
+
+// Line is s on one line: its name, its status and how long it took, or has taken by now while it runs.
+func Line(s pipeline.Step, now time.Time) string {
+	end := s.Finished
+	if end.IsZero() {
+		end = now
+	}
+	return s.Name + " " + s.Status + " " + run.Human(end.Sub(s.Started))
+}
+
+// running says whether a dulidu run still holds dir's agent output; a run that died holds nothing.
+func running(dir string) bool {
+	f, err := os.Open(filepath.Join(dir, Output))
+	if err != nil {
+		return false
+	}
+	defer func() { _ = f.Close() }()
+	return syscall.Flock(int(f.Fd()), syscall.LOCK_SH|syscall.LOCK_NB) != nil
+}
+
+// Follow writes one line per step of the run in dir to w as each finishes, and returns once the run has ended,
+// every step written.
+func Follow(dir string, w io.Writer) error {
+	done := 0
+	for ; ; time.Sleep(every) {
+		ended := !running(dir) // before the report, so the report read after it is the last one
+		r, err := Report(dir)
+		if err != nil {
+			continue // not written yet, or being written
+		}
+		for ; done < len(r.Steps) && (ended || !r.Steps[done].Finished.IsZero()); done++ {
+			if _, err := fmt.Fprintln(w, Line(r.Steps[done], time.Now())); err != nil {
+				return err
+			}
+		}
+		if ended {
+			return nil
+		}
+	}
+}
+
+// Watch draws the run in dir on w, a terminal of size's columns and rows, until q comes from keys or ctx ends.
+func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
+	quit := make(chan struct{})
+	go func() {
+		b := make([]byte, 1)
+		for {
+			if n, err := keys.Read(b); err != nil {
+				return
+			} else if n == 1 && b[0] == 'q' {
+				close(quit)
+				return
+			}
+		}
+	}()
+	_, _ = fmt.Fprint(w, "\x1b[?1049h\x1b[?25l")
+	defer func() { _, _ = fmt.Fprint(w, "\x1b[?25h\x1b[?1049l") }()
+	var r pipeline.Report
+	for {
+		if now, err := Report(dir); err == nil {
+			r = now
+		}
+		cols, rows := size()
+		if _, err := fmt.Fprint(w, "\x1b[H"+Frame(filepath.Base(dir), r, tail(dir), cols, rows, time.Now())+"\x1b[J"); err != nil {
+			return err
+		}
+		select {
+		case <-quit:
+			return nil
+		case <-ctx.Done():
+			return nil
+		case <-time.After(every):
+		}
+	}
+}
+
+// Frame is the screen of cols by rows: label and r's status on top, r's steps on the left, the last lines of
+// log, the agent's output, on the right.
+func Frame(label string, r pipeline.Report, log []string, cols, rows int, now time.Time) string {
+	cols, rows = max(cols, 20), max(rows, 2)
+	left := min(40, cols/3)
+	right := cols - left - 3
+	log = log[max(0, len(log)-(rows-1)):]
+	lines := []string{fit(label+" "+r.Status+"   q detaches", cols)}
+	for i := range rows - 1 {
+		var step, out string
+		if i < len(r.Steps) {
+			step = Line(r.Steps[i], now)
+		}
+		if i < len(log) {
+			out = log[i]
+		}
+		lines = append(lines, fit(step, left)+" │ "+fit(out, right))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// fit is s in exactly w columns: cut or padded, control characters as spaces.
+// ponytail: one column per rune, wide characters overflow; count widths if they show up.
+func fit(s string, w int) string {
+	runes := []rune(strings.Map(func(r rune) rune {
+		if r < ' ' || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, s))
+	if len(runes) > w {
+		runes = runes[:w]
+	}
+	return string(runes) + strings.Repeat(" ", w-len(runes))
+}
+
+// tail is the readable lines of the end of dir's agent output.
+func tail(dir string) []string {
+	f, err := os.Open(filepath.Join(dir, Output))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = f.Close() }()
+	if info, err := f.Stat(); err == nil && info.Size() > 64<<10 {
+		_, _ = f.Seek(-64<<10, io.SeekEnd) // ponytail: the last 64 KiB fill any screen
+	}
+	b, _ := io.ReadAll(f)
+	var lines []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if text := readable(line); text != "" {
+			lines = append(lines, strings.Split(text, "\n")...)
+		}
+	}
+	return lines
+}
+
+// readable is what a person reads in one line of agent output: an event's text or the tool it calls, the line
+// itself when it is no JSON, "" when it says nothing to read.
+func readable(line string) string {
+	line = strings.TrimSpace(line)
+	if !json.Valid([]byte(line)) {
+		return line
+	}
+	var e struct {
+		Type    string
+		Message struct {
+			Content []struct{ Type, Text, Name string }
+		}
+		Part struct{ Text string } // opencode's
+		Item struct{ Text string } // codex's
+	}
+	_ = json.Unmarshal([]byte(line), &e) // a field of another type is left empty, the rest is read
+	var texts []string
+	if e.Type == "assistant" || e.Type == "message_end" {
+		for _, c := range e.Message.Content {
+			switch c.Type {
+			case "text":
+				texts = append(texts, c.Text)
+			case "tool_use", "toolCall":
+				texts = append(texts, "→ "+c.Name)
+			}
+		}
+	}
+	if e.Type == "text" {
+		texts = append(texts, e.Part.Text)
+	}
+	if e.Type == "item.completed" {
+		texts = append(texts, e.Item.Text)
+	}
+	return strings.TrimSpace(strings.Join(texts, "\n"))
+}
