@@ -48,17 +48,13 @@ func attach(cmd *cobra.Command, dir string) error {
 	}
 	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
 	defer stop()
-	err = tui.Watch(ctx, dir, out, os.Stdin, func() (int, int) {
+	return tui.Watch(ctx, dir, out, os.Stdin, func() (int, int) {
 		cols, rows := 80, 24
 		if size, err := stty("size"); err == nil {
 			_, _ = fmt.Sscan(size, &rows, &cols)
 		}
 		return cols, rows
 	})
-	if err == nil {
-		_, err = fmt.Fprintln(out, "dulidu attach", filepath.Base(dir))
-	}
-	return err
 }
 
 // terminal says whether w is a terminal.
