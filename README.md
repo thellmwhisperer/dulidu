@@ -145,7 +145,16 @@ atm run .dulidu/runs/20261017-071309-1746844562/tickets/1.md
 ```
 
 or, once filed as an issue, `atm run <issue number>`. `plan.json` gives the order: ticket 3 waits for 1 and 2. `readme-check.sh` does not run
-`atm`; a live PR from this ticket is its own ticket, #41.
+`atm`.
+
+A real one: [`private-install-brief.md`](docs/private-install-brief.md) went through `dulidu run`, and its
+exported ticket, [`private-install-ticket.md`](docs/private-install-ticket.md), went over as:
+
+```sh
+atm run docs/private-install-ticket.md
+```
+
+The result is [PR #43](https://github.com/thellmwhisperer/dulidu/pull/43), merged as `401a878`.
 
 ## Commands
 
