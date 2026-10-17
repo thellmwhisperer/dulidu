@@ -117,7 +117,7 @@ func (m *Model) rightMinimum(width int) int {
 	}
 	top := 0
 	if len(m.findings) > 0 {
-		top = lipgloss.Height(m.findingsBox(width))
+		top = lipgloss.Height(m.findingsBox(width, 0))
 	}
 	if m.showLog() {
 		if top == 0 {
@@ -249,7 +249,7 @@ func (m *Model) row(r *row, width int) string {
 
 func (m *Model) right(width, height int) string {
 	if m.questionsShow() {
-		return m.questionsBox(width, max(1, height-boxBorderRows))
+		return clipRows(m.questionsBox(width, max(1, height-boxBorderRows)), height)
 	}
 	log := m.showLog()
 	if m.agentShows() {
@@ -257,19 +257,39 @@ func (m *Model) right(width, height int) string {
 			logLines := min(len(m.output), max(1, min(height/3-boxBorderRows, height-minimumBoxRows-boxBorderRows)))
 			logBox := m.logBox(width, logLines)
 			top := m.agentBox(width, max(1, height-lipgloss.Height(logBox)-boxBorderRows))
-			return strings.Join([]string{top, logBox}, "\n")
+			return clipRows(strings.Join([]string{top, logBox}, "\n"), height)
 		}
-		return m.agentBox(width, max(1, height-boxBorderRows))
+		return clipRows(m.agentBox(width, max(1, height-boxBorderRows)), height)
 	}
-	var boxes []string
-	if len(m.findings) > 0 {
-		boxes = append(boxes, m.findingsBox(width))
+	if len(m.findings) == 0 {
+		if !log {
+			return ""
+		}
+		return clipRows(m.logBox(width, min(len(m.output), max(1, height-boxBorderRows))), height)
 	}
-	if log {
-		logLines := min(len(m.output), max(1, height-lipgloss.Height(strings.Join(boxes, "\n"))-boxBorderRows))
-		boxes = append(boxes, m.logBox(width, logLines))
+	findingsHeight := height
+	var logBox string
+	if log && height >= minimumBoxRows*2 {
+		logLines := min(len(m.output), max(1, min(height/3-boxBorderRows, height-minimumBoxRows-boxBorderRows)))
+		logBox = m.logBox(width, logLines)
+		findingsHeight = height - lipgloss.Height(logBox)
 	}
-	return strings.Join(boxes, "\n")
+	top := m.findingsBox(width, max(1, findingsHeight))
+	if logBox == "" {
+		return clipRows(top, height)
+	}
+	return clipRows(strings.Join([]string{top, logBox}, "\n"), height)
+}
+
+func clipRows(s string, height int) string {
+	if height < 1 || s == "" {
+		return ""
+	}
+	lines := strings.Split(s, "\n")
+	if len(lines) <= height {
+		return s
+	}
+	return strings.Join(lines[:height], "\n")
 }
 
 func (m *Model) questionsBox(width, lines int) string {
@@ -628,7 +648,7 @@ func oneLine(s string) string {
 	return displayText(ansi.Strip(line))
 }
 
-func (m *Model) findingsBox(width int) string {
+func (m *Model) findingsBox(width, height int) string {
 	counts := map[string]int{}
 	var out []string
 	for i, f := range m.findings {
@@ -642,13 +662,20 @@ func (m *Model) findingsBox(width int) string {
 			out = append(out, "    "+paint(dim, strings.TrimRight(l, " ")))
 		}
 	}
+	if height > boxBorderRows && len(out) > height-boxBorderRows {
+		out = out[:height-boxBorderRows]
+	}
 	title := bold(cyan, "Findings -")
 	for _, sev := range []string{"error", "warning"} {
 		if counts[sev] > 0 {
 			title += " " + paint(severities[sev][1], fmt.Sprintf("%s %d", severities[sev][0], counts[sev]))
 		}
 	}
-	return box(title, strings.Join(out, "\n"), width, dim)
+	result := box(title, strings.Join(out, "\n"), width, dim)
+	if height > 0 {
+		return clipRows(result, height)
+	}
+	return result
 }
 
 func (m *Model) logBox(width, lines int) string {
