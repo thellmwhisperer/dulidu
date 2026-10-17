@@ -1,4 +1,4 @@
-// Package export turns a run's research, analysis and epics into spec.md, tickets/<n>.md in ATM's contract,
+// Package export turns a run's research, analysis and epics into spec.md, tickets/<n>.md in the ten-point contract,
 // plan.json and brief-diseno.md, by code alone: the same run gives the same bytes.
 package export
 
