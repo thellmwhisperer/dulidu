@@ -30,7 +30,7 @@ func after(e pipeline.EpicOutline, nums map[string][]int) []int {
 	return slices.Compact(deps)
 }
 
-// tickets is one tickets/<n>.md per story of r, in ticket order: Type: and the ten sections of ATM's contract,
+// tickets is one tickets/<n>.md per story of r, in ticket order: Type: and the ten sections of the ten-point contract,
 // Acceptance from its first test, and ## Depends on from the epic graph when it waits for any ticket.
 func tickets(r pipeline.Run, nums map[string][]int) []string {
 	ids := map[string]string{}

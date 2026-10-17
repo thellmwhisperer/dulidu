@@ -16,6 +16,7 @@ import (
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/run"
+	"github.com/thellmwhisperer/dulidu/internal/tui/screen"
 )
 
 // Output is the run folder's agent output: every line its agents write, as they write it, then what dulidu itself
@@ -111,94 +112,65 @@ func Follow(dir string, w io.Writer) error {
 	}
 }
 
-// Watch draws the run in dir on w, a terminal of size's columns and rows, with the questions it waits for under
-// its steps, until q comes from keys or ctx ends; a run that died before writing any report ends it too, once
-// grace has passed.
+// Watch draws the run in dir on w, a terminal of size's columns and rows, until q comes from keys or ctx ends;
+// a run that died before writing any report ends it too, once grace has passed. The run itself goes on.
 func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
-	quit := make(chan struct{})
-	go func() {
-		b := make([]byte, 1)
-		for {
-			if n, err := keys.Read(b); err != nil {
-				return
-			} else if n == 1 && b[0] == 'q' {
-				close(quit)
-				return
-			}
-		}
-	}()
-	_, _ = fmt.Fprint(w, "\x1b[?1049h\x1b[?25l")
-	defer func() { _, _ = fmt.Fprint(w, "\x1b[?25h\x1b[?1049l") }()
-	var r pipeline.Report
-	var questions []string
+	return screen.Poll(ctx, w, keys, size, watchLoad(dir))
+}
+
+// watchLoad is dir's report, the questions it waits for and its agent lines. A run that died before writing any
+// report fails it, once grace has passed; a report being written is skipped.
+func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
+	var last screen.Snap
+	have := false
 	stuck := time.Time{} // since a run not running last left its report unreadable
-	for {
-		if now, err := Report(dir); err == nil {
-			r = now
-			stuck = time.Time{}
-		} else if !running(dir) {
-			if stuck.IsZero() {
+	return func(now time.Time) (screen.Snap, error) {
+		alive := running(dir)
+		r, err := Report(dir)
+		if err != nil {
+			if alive {
+				stuck = time.Time{}
+			} else if stuck.IsZero() {
 				stuck = time.Now() // the run may still be about to start and lock its output
 			} else if time.Since(stuck) >= grace {
-				return err // nothing holds the run's output, so nothing will ever write its report
+				return screen.Snap{}, err // nothing holds the run's output, so nothing will ever write its report
 			}
-		} else {
-			stuck = time.Time{}
+			if have {
+				last.Now = now
+				return last, nil
+			}
+			return screen.Snap{Label: filepath.Base(dir), Now: now}, nil
 		}
-		questions = nil
+		stuck = time.Time{}
+		var questions []string
 		if r.Status == "waiting_answers" {
 			questions, _ = Questions(dir)
 		}
-		cols, rows := size()
-		if _, err := fmt.Fprint(w, "\x1b[H"+Frame(filepath.Base(dir), r, questions, tail(dir), cols, rows, time.Now())+"\x1b[J"); err != nil {
-			return err
-		}
-		select {
-		case <-quit:
-			return nil
-		case <-ctx.Done():
-			return nil
-		case <-time.After(every):
-		}
+		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: rawLines(dir), Now: now}
+		have = true
+		return last, nil
 	}
 }
 
-// Frame is the screen of cols by rows: label and r's status on top, r's steps on the left, the questions it waits
-// for under them, the last lines of log, the agent's output, on the right.
+// Frame is the screen of cols by rows: a pipeline box and, beside or under it, the agent, the questions the run
+// waits for, or the findings of a failed step.
 func Frame(label string, r pipeline.Report, questions []string, log []string, cols, rows int, now time.Time) string {
-	cols, rows = max(cols, 20), max(rows, 2)
-	left := min(40, cols/3)
-	right := cols - left - 3
-	log = log[max(0, len(log)-(rows-1)):]
-	lines := []string{fit(label+" "+r.Status+"   q detaches", cols)}
-	for i := range rows - 1 {
-		var step, out string
-		if i < len(r.Steps) {
-			step = Line(r.Steps[i], now)
-		} else if i-len(r.Steps) < len(questions) {
-			step = "? " + questions[i-len(r.Steps)]
-		}
-		if i < len(log) {
-			out = log[i]
-		}
-		lines = append(lines, fit(step, left)+" │ "+fit(out, right))
-	}
-	return strings.Join(lines, "\n")
+	return screen.Frame(screen.Snap{Label: label, Report: r, Questions: questions, Log: log, Now: now}, cols, rows)
 }
 
-// fit is s in exactly w columns: cut or padded, control characters as spaces.
-// ponytail: one column per rune, wide characters overflow; count widths if they show up.
-func fit(s string, w int) string {
-	runes := []rune(strings.Map(func(r rune) rune {
-		if r < ' ' || r == 0x7f {
-			return ' '
-		}
-		return r
-	}, s))
-	if len(runes) > w {
-		runes = runes[:w]
+// rawLines is every non-empty line of dir's agent output, so the screen can keep them and scroll.
+func rawLines(dir string) []string {
+	b, err := os.ReadFile(filepath.Join(dir, Output))
+	if err != nil {
+		return nil
 	}
-	return string(runes) + strings.Repeat(" ", w-len(runes))
+	var lines []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
 }
 
 // tail is the readable lines of the end of dir's agent output.

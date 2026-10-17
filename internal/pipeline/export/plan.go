@@ -6,7 +6,7 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 )
 
-// maxActive is how many tickets ATM runs at once. ponytail: one, since code cannot tell which tickets touch the same
+// maxActive is how many tickets run at once. ponytail: one, since code cannot tell which tickets touch the same
 // files and conflicts_with stays empty; raise it when something fills conflicts_with.
 const maxActive = 1
 
@@ -16,7 +16,7 @@ type planTicket struct {
 	ConflictsWith []int `json:"conflicts_with"`
 }
 
-// plan is plan.json for ATM: every ticket, in order, with the tickets it waits for by the epic graph.
+// plan is plan.json: every ticket, in order, with the tickets it waits for by the epic graph.
 func plan(es pipeline.Epics, nums map[string][]int) []byte {
 	p := struct {
 		Version   int          `json:"version"`
