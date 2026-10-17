@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261017-014831-1
+status: accepted
+category: alien_code
+title: "Cut the 'dulidu attach <label>' line printed after the live view closes. attach now returns tui.Watch's result directly (-3 lines)."
+created_at: 2026-10-17
+incident:
+  pattern: "Cut the 'dulidu attach <label>' line printed after the live view closes. attach now returns tui.Watch's result directly (-3 lines)."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_feature
+      example: "Cut the 'dulidu attach <label>' line printed after the live view closes. attach now returns tui.Watch's result directly (-3 lines)."
+      artifact: "internal/cli/attach.go"
+match:
+  family: speculative_feature
+  artifact: "internal/cli/attach.go"
