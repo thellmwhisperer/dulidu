@@ -346,15 +346,7 @@ func (m *Model) failed() bool {
 }
 
 func (m *Model) agentShows() bool {
-	if m.questionsShow() || m.failed() {
-		return false
-	}
-	for _, r := range m.rows {
-		if !r.check && r.step != "export" && r.state == "running" {
-			return true
-		}
-	}
-	return false
+	return !m.questionsShow() && len(m.findings) == 0
 }
 
 func (m *Model) showLog() bool { return m.failed() && len(m.output) > 0 }

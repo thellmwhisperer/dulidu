@@ -313,7 +313,15 @@ func wrapPlain(s string, width int) []string {
 	if s == "" {
 		return []string{""}
 	}
-	return strings.Split(ansi.Hardwrap(s, width, true), "\n")
+	var out []string
+	for _, line := range strings.Split(ansi.Wrap(s, width, ""), "\n") {
+		if ansi.StringWidth(line) > width {
+			out = append(out, strings.Split(ansi.Hardwrap(line, width, true), "\n")...)
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 var listItem = regexp.MustCompile(`^( {0,3})([-*+]|\d+[.)])[ \t]+(.*)$`)
