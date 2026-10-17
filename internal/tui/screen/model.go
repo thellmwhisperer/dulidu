@@ -125,7 +125,7 @@ func (p *pane) scroll(n int) {
 	p.anchor, p.parent, p.part = "", "", 0
 }
 
-// focused is the pane keys scroll: the right box while it shows, unless the user moved to the pipeline.
+// focused is the pane keys scroll: the agent or questions box while it shows, unless the user moved to the pipeline.
 func (m *Model) focused() *pane {
 	if m.pipelineFocus || !m.rightScrolls() {
 		return &m.pipeline

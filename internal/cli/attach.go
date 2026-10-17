@@ -18,7 +18,7 @@ import (
 // attachCmd is dulidu attach <label>: the run's live view on a terminal, q detaches and the run goes on; anything
 // else gets one line per step, as each finishes, until the run ends.
 func attachCmd() *cobra.Command {
-	return &cobra.Command{Use: "attach <label>", Short: "Watch a run: its steps on the left, its agent on the right",
+	return &cobra.Command{Use: "attach <label>", Short: "Watch a run: pipeline box and agent box",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, err := toplevel()

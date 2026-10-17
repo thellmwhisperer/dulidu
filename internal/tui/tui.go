@@ -1,4 +1,4 @@
-// Package tui is the view of a run folder: its steps and their status on the left, its agent's output on the right,
+// Package tui is the view of a run folder: a pipeline box and, beside or under it, what the agent is doing,
 // live on a terminal, or one line per step on anything else. It reads report.json and the agent output; it never
 // drives the run.
 package tui
