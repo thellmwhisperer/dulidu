@@ -42,7 +42,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 		}
 		m.width, m.height, m.spin = cols, rows, m.spin+1
 		m.Load(snap)
-		if _, err := fmt.Fprint(w, "\x1b[H"+m.View()+"\x1b[J"); err != nil {
+		if err := redraw(w, m.View()); err != nil {
 			return err
 		}
 		timer := time.NewTimer(tick)
@@ -61,7 +61,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 					return nil
 				}
 				m.Update(msg)
-				if _, err := fmt.Fprint(w, "\x1b[H"+m.View()+"\x1b[J"); err != nil {
+				if err := redraw(w, m.View()); err != nil {
 					timer.Stop()
 					return err
 				}
@@ -71,6 +71,11 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 		}
 	next:
 	}
+}
+
+func redraw(w io.Writer, view string) error {
+	_, err := fmt.Fprint(w, "\x1b[2J\x1b[H"+view)
+	return err
 }
 
 func readKeys(r io.Reader, out chan<- tea.Msg) {

@@ -1,9 +1,12 @@
 package screen
 
 import (
+	"bytes"
+	"context"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
@@ -179,6 +182,23 @@ func TestQuestionWrapKeepsAWordThatFits(t *testing.T) {
 	}
 }
 
+func TestNarrowQuestionKeepsWordsWhole(t *testing.T) {
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	q := "Who pays for the kiln, the clay and the long weekend workshop that runs past the usual closing time?"
+	r := pipeline.Report{Status: "waiting_answers", Steps: []pipeline.Step{
+		{Name: "input", Status: "done", Started: at, Finished: at.Add(time.Second)},
+	}}
+	s := plain(render("lumpa", r, []string{q}, nil, 40, 24, at))
+	for _, want := range []string{"workshop", "that runs", "time?"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("question word split, missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "\u2026") {
+		t.Fatalf("question was cut:\n%s", s)
+	}
+}
+
 func TestNarrowTerminalStacksThePipelineOnTop(t *testing.T) {
 	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
 	frame := render("lumpa", runningReport(at), nil, []string{"reading"}, 80, 24, at.Add(time.Minute))
@@ -329,6 +349,133 @@ func TestReadKeysDecodesTheFooterKeys(t *testing.T) {
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("keys %q, want %q", got, want)
 	}
+}
+
+func TestShorterPaintDoesNotLeaveOldCells(t *testing.T) {
+	for _, size := range [][2]int{{120, 40}, {80, 24}} {
+		cols, rows := size[0], size[1]
+		raw := paintTwice(t, cols, rows)
+		home := bytes.LastIndex(raw, []byte("\x1b[H"))
+		if home < 0 {
+			t.Fatal("no paint")
+		}
+		full := screenOf(raw, 120, 40)
+		fresh := screenOf(raw[home+3:], 120, 40)
+		if full != fresh {
+			t.Fatalf("%dx%d shorter frame left old cells:\nfull:\n%sfresh:\n%s", cols, rows, full, fresh)
+		}
+		if strings.Contains(full, "ONLYFIRST") || !strings.Contains(full, "Who pays?") {
+			t.Fatalf("%dx%d second paint was not the questions frame:\n%s", cols, rows, full)
+		}
+	}
+}
+
+func paintTwice(t *testing.T, cols, rows int) []byte {
+	t.Helper()
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	calls := 0
+	load := func(time.Time) (Snap, error) {
+		calls++
+		switch calls {
+		case 1:
+			return Snap{Label: "lumpa", Report: runningReport(at), Log: []string{"ONLYFIRST"}, Now: at}, nil
+		case 2:
+			return Snap{Label: "lumpa", Report: pipeline.Report{Status: "waiting_answers", Steps: []pipeline.Step{
+				{Name: "triage", Status: "passed", Started: at, Finished: at.Add(time.Minute)},
+			}}, Questions: []string{"Who pays?"}, Now: at}, nil
+		default:
+			return Snap{}, errStop
+		}
+	}
+	var buf bytes.Buffer
+	err := Poll(context.Background(), &buf, strings.NewReader(""), func() (int, int) { return cols, rows }, load)
+	if err != errStop {
+		t.Fatalf("Poll: %v", err)
+	}
+	return buf.Bytes()
+}
+
+var errStop = stopError("stop")
+
+type stopError string
+
+func (e stopError) Error() string { return string(e) }
+
+func screenOf(raw []byte, cols, rows int) string {
+	cell := make([]rune, cols*rows)
+	for i := range cell {
+		cell[i] = ' '
+	}
+	x, y := 0, 0
+	clear := func() {
+		for i := range cell {
+			cell[i] = ' '
+		}
+	}
+	i := 0
+	for i < len(raw) {
+		if raw[i] == 0x1b && i+1 < len(raw) && raw[i+1] == '[' {
+			j := i + 2
+			for j < len(raw) && (raw[j] < 0x40 || raw[j] > 0x7e) {
+				j++
+			}
+			if j >= len(raw) {
+				break
+			}
+			body := string(raw[i+2 : j])
+			switch raw[j] {
+			case 'H', 'f':
+				x, y = 0, 0
+			case 'J':
+				if body == "2" || body == "3" {
+					clear()
+				} else if y >= 0 && y < rows {
+					from := y*cols + x
+					if from < 0 {
+						from = 0
+					}
+					for k := from; k < len(cell); k++ {
+						cell[k] = ' '
+					}
+				}
+			case 'K':
+				if y >= 0 && y < rows {
+					for c := max(0, x); c < cols; c++ {
+						cell[y*cols+c] = ' '
+					}
+				}
+			}
+			i = j + 1
+			continue
+		}
+		if raw[i] == '\n' {
+			x = 0
+			y++
+			i++
+			continue
+		}
+		if raw[i] == '\r' {
+			x = 0
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRune(raw[i:])
+		if r == utf8.RuneError && size == 1 {
+			i++
+			continue
+		}
+		if y >= 0 && y < rows && x >= 0 && x < cols {
+			cell[y*cols+x] = r
+		}
+		x++
+		i += size
+	}
+	var b strings.Builder
+	for row := 0; row < rows; row++ {
+		b.WriteString(strings.TrimRight(string(cell[row*cols:(row+1)*cols]), " "))
+		b.WriteByte('\n')
+	}
+	return b.String()
 }
 
 func itoa(n int) string {

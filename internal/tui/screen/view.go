@@ -333,15 +333,27 @@ func wrapPlain(s string, width int) []string {
 	if s == "" {
 		return []string{""}
 	}
-	var out []string
-	for _, line := range strings.Split(ansi.Wrap(s, width, ""), "\n") {
-		if ansi.StringWidth(line) > width {
-			out = append(out, strings.Split(ansi.Hardwrap(line, width, true), "\n")...)
+	lines := strings.Split(ansi.Wrap(s, width, ""), "\n")
+	offset := 0
+	for _, line := range lines {
+		if line == "" {
 			continue
 		}
-		out = append(out, line)
+		start := strings.Index(s[offset:], line)
+		if start < 0 {
+			return lines
+		}
+		offset += start + len(line)
 	}
-	return out
+	if offset >= len(s) {
+		return lines
+	}
+	lines[len(lines)-1] += s[offset:]
+	if ansi.StringWidth(lines[len(lines)-1]) <= width {
+		return lines
+	}
+	last := strings.Split(ansi.Hardwrap(lines[len(lines)-1], width, true), "\n")
+	return append(lines[:len(lines)-1], last...)
 }
 
 var listItem = regexp.MustCompile(`^( {0,3})([-*+]|\d+[.)])[ \t]+(.*)$`)
