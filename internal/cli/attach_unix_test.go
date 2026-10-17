@@ -84,6 +84,23 @@ func TestStatusPrintsARunsSteps(t *testing.T) {
 	}
 }
 
+func TestStatusNamesTheNewestRunThoughItsLabelSortsFirst(t *testing.T) {
+	dir := repo(t)
+	earlierSecond := reportAt(t, dir, "20261016-090000-5", triagePassed)
+	firstInSecond := reportAt(t, dir, "20261017-010000-9", triagePassed)
+	secondInSecond := reportAt(t, dir, "20261017-010000-1", triagePassed)
+	old, later, latest := time.Unix(1790000000, 0), time.Unix(1790000100, 0), time.Unix(1790000200, 0)
+	for run, at := range map[string]time.Time{firstInSecond: old, secondInSecond: later, earlierSecond: latest} {
+		if err := os.Chtimes(run, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if code, out, errOut := dulidu(t, "status"); code != 0 ||
+		out != "20261017-010000-1 done\ninput done 0 min 05 s\ntriage passed 1 min 05 s\n" {
+		t.Fatalf("dulidu status: exit %d\n%s%s", code, out, errOut)
+	}
+}
+
 func TestAttachToAFinishedRunPrintsEveryStepAndItsAgentOutputIsKept(t *testing.T) {
 	runRepo(t, map[string]string{})
 	triageOn(t, `[]`, `[]`)

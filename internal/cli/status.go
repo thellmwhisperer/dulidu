@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,9 +29,17 @@ func statusCmd() *cobra.Command {
 				label = args[0]
 			} else {
 				entries, _ := os.ReadDir(runs)
+				var mod time.Time
 				for _, e := range entries {
-					if e.IsDir() {
-						label = e.Name() // ponytail: labels start with their start time, so the last by name is the newest
+					if !e.IsDir() {
+						continue
+					}
+					m := time.Time{}
+					if info, err := e.Info(); err == nil {
+						m = info.ModTime()
+					}
+					if label == "" || newer(e.Name(), m, label, mod) {
+						label, mod = e.Name(), m
 					}
 				}
 				if label == "" {
@@ -48,4 +57,21 @@ func statusCmd() *cobra.Command {
 			}
 			return nil
 		}}
+}
+
+// began is the start time a run's label begins with, before its serial: 20261017-010000-3 began 20261017-010000.
+func began(label string) string {
+	if i := strings.LastIndex(label, "-"); i > 0 {
+		return label[:i]
+	}
+	return label
+}
+
+// newer says whether the run labelled a, its folder last changed at ma, started after the one labelled b, changed
+// at mb: by label across seconds, by its folder's changes inside one.
+func newer(a string, ma time.Time, b string, mb time.Time) bool {
+	if x, y := began(a), began(b); x != y {
+		return x > y
+	}
+	return ma.After(mb)
 }
