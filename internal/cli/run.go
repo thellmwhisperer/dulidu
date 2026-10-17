@@ -94,7 +94,7 @@ func runCmd() *cobra.Command {
 					return err
 				}
 				step := c.Step("input")
-				step.Harness, step.Status, step.Started = cmp.Or(step.Harness, "claude"), "running", now
+				step.Harness, step.Effort, step.Status, step.Started = cmp.Or(step.Harness, "claude"), c.Steps.Input.Effort, "running", now
 				r = pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
 				if err := pipeline.Write(dir, r); err != nil {
 					return err
@@ -149,7 +149,17 @@ func runCmd() *cobra.Command {
 					err = epics.Run(dir, &r, next("epics", c.Steps.Epics), ask)
 				}
 				if err == nil {
+					r.Report.Status = "running"
+					r.Report.Steps = append(r.Report.Steps, pipeline.Step{Name: "export", Status: "running", Started: time.Now()})
 					err = export.Write(dir, &r)
+					step := &r.Report.Steps[len(r.Report.Steps)-1]
+					step.Finished = time.Now()
+					if err != nil {
+						step.Status, r.Report.Status = "failed at export: "+err.Error(), "failed"
+						return errors.Join(fmt.Errorf("failed at export: %w", err), pipeline.Write(dir, r))
+					}
+					step.Status, r.Report.Status = "passed", "done"
+					err = pipeline.Write(dir, r)
 				}
 				if err != nil {
 					return err

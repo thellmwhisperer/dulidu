@@ -148,7 +148,7 @@ func (r Report) Validate() error {
 	for _, s := range r.Steps {
 		errs = append(errs, need(plain(s.Name), "report: bad step name "+s.Name),
 			need(!blank(s.Status), "report "+s.Name+": no status"),
-			need(!blank(s.Harness), "report "+s.Name+": no harness"),
+			need(s.Name == "export" || !blank(s.Harness), "report "+s.Name+": no harness"),
 			need(!s.Started.IsZero(), "report "+s.Name+": no start"),
 			need(s.Finished.IsZero() || !s.Finished.Before(s.Started), "report "+s.Name+": finished before start"))
 	}
