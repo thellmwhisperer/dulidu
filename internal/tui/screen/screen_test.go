@@ -102,6 +102,41 @@ func TestFailedRunShowsTheFindingsReason(t *testing.T) {
 	}
 }
 
+func TestLongFailureStaysOnTheScreen(t *testing.T) {
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	reason := "failed at research: market: no sources"
+	for i := range 80 {
+		reason += "\nraw stream line " + itoa(i) + " " + strings.Repeat("keeps going ", 8)
+	}
+	reason += "\nTAILMARKER"
+	r := pipeline.Report{Status: "failed", Steps: []pipeline.Step{
+		{Name: "research", Status: reason, Started: at, Finished: at.Add(32 * time.Second)},
+	}}
+	for _, size := range [][2]int{{80, 24}, {120, 40}} {
+		cols, rows := size[0], size[1]
+		frame := render("lumpa", r, nil, []string{"older", "last agent line"}, cols, rows, at.Add(time.Minute))
+		s := plain(frame)
+		lines := strings.Split(s, "\n")
+		if len(lines) > rows {
+			t.Fatalf("%dx%d used %d rows", cols, rows, len(lines))
+		}
+		for _, line := range strings.Split(frame, "\n") {
+			if ansi.StringWidth(line) > cols {
+				t.Fatalf("%dx%d line wider than the terminal: %q", cols, rows, plain(line))
+			}
+		}
+		if !strings.Contains(lines[0], "Pipeline") || !strings.Contains(s, "failed at research: market: no sources") {
+			t.Fatalf("%dx%d lost the pipeline or the start of the reason:\n%s", cols, rows, s)
+		}
+		if !strings.Contains(s, "Log") || !strings.Contains(s, "last agent line") || !strings.Contains(lines[len(lines)-1], "detach") {
+			t.Fatalf("%dx%d lost the log or the footer:\n%s", cols, rows, s)
+		}
+		if strings.Contains(s, "TAILMARKER") {
+			t.Fatalf("%dx%d kept the tail of the reason and would scroll the start off", cols, rows)
+		}
+	}
+}
+
 func TestDoneAndExportKeepEarlierProseInTheAgentBox(t *testing.T) {
 	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
 	var log []string
