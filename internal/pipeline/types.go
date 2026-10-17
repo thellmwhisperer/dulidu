@@ -97,8 +97,8 @@ type Report struct {
 type Step struct {
 	Name     string    `json:"name"`
 	Status   string    `json:"status"`
-	Model    string    `json:"model"`
-	Harness  string    `json:"harness"`
+	Model    string    `json:"model,omitempty"`
+	Harness  string    `json:"harness,omitempty"`
 	Effort   string    `json:"effort,omitempty"`
 	Started  time.Time `json:"started"`
 	Finished time.Time `json:"finished,omitzero"`

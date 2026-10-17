@@ -154,8 +154,8 @@ func TestStopAndResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	steps := resumed.Report.Steps
-	if resumed.Report.Status != "done" || len(steps) != 5 || !reflect.DeepEqual(steps[:2], stopped.Report.Steps) ||
-		steps[2].Name != "research" || steps[3].Name != "analysis" || steps[4].Name != "epics" {
+	if resumed.Report.Status != "done" || len(steps) != 6 || !reflect.DeepEqual(steps[:2], stopped.Report.Steps) ||
+		steps[2].Name != "research" || steps[3].Name != "analysis" || steps[4].Name != "epics" || steps[5].Name != "export" {
 		t.Errorf("report.json after resume: %+v", resumed.Report)
 	}
 	for _, s := range steps[1:] {

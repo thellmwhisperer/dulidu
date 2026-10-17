@@ -56,7 +56,7 @@ func TestRunRequiresTriageListsAndDeliversPersistedContext(t *testing.T) {
 			var report reportFile
 			decodeFile(t, filepath.Join(dir, "report.json"), &report)
 			// A passed triage with no questions goes on to research, analysis and epics.
-			if steps := map[bool]int{true: 5, false: 2}[tc.passed]; len(report.Steps) != steps || report.Steps[0].Status != "done" {
+			if steps := map[bool]int{true: 6, false: 2}[tc.passed]; len(report.Steps) != steps || report.Steps[0].Status != "done" {
 				t.Fatalf("report steps: %+v", report)
 			}
 			if tc.passed {
