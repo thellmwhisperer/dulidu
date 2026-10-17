@@ -102,6 +102,48 @@ func TestFailedRunShowsTheFindingsReason(t *testing.T) {
 	}
 }
 
+func TestDoneAndExportKeepEarlierProseInTheAgentBox(t *testing.T) {
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	var log []string
+	for i := range 40 {
+		log = append(log, "earlier "+itoa(i))
+	}
+	done := pipeline.Report{Status: "done", Steps: []pipeline.Step{
+		{Name: "epics", Status: "passed", Started: at, Finished: at.Add(time.Second)},
+		{Name: "export", Status: "done", Started: at, Finished: at.Add(2 * time.Second)},
+	}}
+	m := New("lumpa", 120, 24)
+	m.Load(Snap{Label: "lumpa", Report: done, Log: log, Now: at.Add(time.Minute)})
+	s := plain(m.View())
+	if !strings.Contains(s, "Agent") || !strings.Contains(s, "earlier 39") || !strings.Contains(s, "t tools") || strings.Contains(s, "Findings") {
+		t.Fatalf("done run dropped the Agent box:\n%s", s)
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyHome})
+	if !strings.Contains(plain(m.View()), "earlier 0") || strings.Contains(plain(m.View()), "earlier 39") {
+		t.Fatalf("earlier prose is not reachable by scrolling up:\n%s", plain(m.View()))
+	}
+	exporting := pipeline.Report{Status: "running", Steps: []pipeline.Step{
+		{Name: "epics", Status: "passed", Started: at, Finished: at.Add(time.Second)},
+		{Name: "export", Status: "running", Started: at.Add(time.Second)},
+	}}
+	frame := plain(render("lumpa", exporting, nil, []string{"earlier prose"}, 120, 40, at.Add(time.Minute)))
+	if !strings.Contains(frame, "Agent") || !strings.Contains(frame, "earlier prose") || strings.Contains(frame, "Questions") || strings.Contains(frame, "Findings") {
+		t.Fatalf("export hid the Agent box:\n%s", frame)
+	}
+}
+
+func TestQuestionWrapKeepsAWordThatFits(t *testing.T) {
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	word := strings.Repeat("k", 70)
+	r := pipeline.Report{Status: "waiting_answers", Steps: []pipeline.Step{
+		{Name: "input", Status: "done", Started: at, Finished: at.Add(time.Second)},
+	}}
+	s := plain(render("lumpa", r, []string{"pay " + word}, nil, 120, 40, at.Add(time.Minute)))
+	if !strings.Contains(s, word) || strings.Contains(s, "\u2026") {
+		t.Fatalf("a word that fits the box was split or cut:\n%s", s)
+	}
+}
+
 func TestNarrowTerminalStacksThePipelineOnTop(t *testing.T) {
 	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
 	frame := render("lumpa", runningReport(at), nil, []string{"reading"}, 80, 24, at.Add(time.Minute))
