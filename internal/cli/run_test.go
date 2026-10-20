@@ -143,17 +143,22 @@ func TestRunPackagesTextAttachmentsTheSameEveryTime(t *testing.T) {
 	}
 }
 
-func TestRunRejectsAnUnsupportedAttachmentBeforeAnyAgentCall(t *testing.T) {
-	calls := runRepo(t, map[string]string{"foo.xyz": "?", "shot.png": "png"})
-	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "shot.png", "--attach", "foo.xyz")
-	if code != 1 || !strings.Contains(errOut, "unsupported attachment: foo.xyz") {
+func TestRunNotesAnUnsupportedAttachmentWithoutDescribingIt(t *testing.T) {
+	calls := runRepo(t, map[string]string{"foo.xyz": "?"})
+	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "foo.xyz")
+	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
 	if _, err := os.Stat(calls); err == nil {
-		t.Error("the agent was called")
+		t.Error("the agent was asked to describe it")
 	}
-	if dirs := runs(t); len(dirs) != 0 {
-		t.Errorf("a run folder was written: %v", dirs)
+	dirs := runs(t)
+	if len(dirs) != 1 || read(t, filepath.Join(dirs[0], "input", "foo.xyz")) != "?" {
+		t.Fatalf("want one run folder with input/foo.xyz, got %v", dirs)
+	}
+	if context := read(t, filepath.Join(dirs[0], "contexto.md")); !strings.HasSuffix(context,
+		"## foo.xyz\n\nNot read: dulidu does not read this type of file.\n") {
+		t.Errorf("want foo.xyz noted as not read:\n%s", context)
 	}
 }
 

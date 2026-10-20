@@ -205,8 +205,8 @@ func TestRunGoesOnModerateAfterInvalidTriage(t *testing.T) {
 }
 
 func TestRunRejectsInputBeforeTriage(t *testing.T) {
-	calls := runRepo(t, map[string]string{"foo.xyz": "?"})
-	if code, _, _ := dulidu(t, "run", "brief.md", "--attach", "foo.xyz"); code != 1 {
+	calls := runRepo(t, map[string]string{"a/notes.md": "one\n", "b/notes.md": "two\n"})
+	if code, _, _ := dulidu(t, "run", "brief.md", "--attach", "a/notes.md", "--attach", "b/notes.md"); code != 1 {
 		t.Fatalf("exit %d", code)
 	}
 	if _, err := os.Stat(calls + ".triage"); err == nil {

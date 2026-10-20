@@ -10,11 +10,12 @@ import (
 	"testing"
 )
 
-func TestPackageStopsWhenAPDFCannotBeRead(t *testing.T) {
+func TestPackageNotesAPDFWithoutPdftotext(t *testing.T) {
 	in := load(t, filepath.Join("testdata", "terms.pdf"))
 	fakeBin(t, true, nil)
-	if _, context, _, err := pack(t, in); err == nil || !strings.Contains(err.Error(), "pdftotext is not installed") || context != "" {
-		t.Fatalf("want the run stopped on the PDF, got %v and\n%s", err, context)
+	want := "## terms.pdf\n\nNot read: pdftotext is not installed: brew install poppler, or apt install poppler-utils.\n"
+	if _, context, _, err := pack(t, in); err != nil || !strings.HasSuffix(context, want) {
+		t.Fatalf("want the PDF noted as not read, got %v and\n%s", err, context)
 	}
 }
 
@@ -52,7 +53,7 @@ func TestDocxSeparatesBreaksTabsAndParagraphs(t *testing.T) {
 	}
 }
 
-func TestLoadRefusesTwoFilesWithOneNameAndUnsupportedOnes(t *testing.T) {
+func TestLoadRefusesTwoFilesWithOneNameAndMissingOnes(t *testing.T) {
 	brief, other := filepath.Join("testdata", "notes.md"), t.TempDir()
 	for _, name := range []string{"notes.md", "brief.md"} {
 		if err := os.WriteFile(filepath.Join(other, name), []byte("other\n"), 0o644); err != nil {
@@ -61,7 +62,7 @@ func TestLoadRefusesTwoFilesWithOneNameAndUnsupportedOnes(t *testing.T) {
 	}
 	for paths, want := range map[[2]string]string{
 		{brief, filepath.Join(other, "notes.md")}: "duplicate attachment name: notes.md",
-		{brief, "missing/foo.xyz"}:                "unsupported attachment: missing/foo.xyz",
+		{brief, "missing/foo.xyz"}:                "open missing/foo.xyz",
 		{brief, filepath.Join(other, "brief.md")}: "input: colliding names",
 	} {
 		_, err := Load(brief, paths[:])

@@ -33,14 +33,14 @@ func TestPackageRejectsImagesWithoutDimensionsBeforeDescription(t *testing.T) {
 	}
 }
 
-func TestPackageRejectsPDFWithoutTextBeforeDescription(t *testing.T) {
+func TestPackageNotesPDFWithoutTextAndDescribesTheRest(t *testing.T) {
 	in := load(t, filepath.Join("testdata", "terms.pdf"), filepath.Join("testdata", "pattern.png"))
 	fakeBin(t, true, map[string]string{
 		"pdftotext": `printf ' \f\n\t'` + "\n",
 		"ffprobe":   `printf '{"streams":[{"width":64,"height":48}]}'` + "\n",
 	})
 	_, context, asked, err := pack(t, in)
-	if err == nil || !strings.Contains(err.Error(), "pdftotext extracted no text") || context != "" || len(asked) != 0 {
-		t.Fatalf("want PDF extraction failure without description, got error %v, context %q, calls %q", err, context, asked)
+	if err != nil || !strings.Contains(context, "## terms.pdf\n\nNot read: pdftotext extracted no text from the PDF.\n") || len(asked) != 1 {
+		t.Fatalf("want the PDF noted and the image described, got error %v, context %q, calls %q", err, context, asked)
 	}
 }
