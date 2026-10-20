@@ -10,7 +10,7 @@ import (
 // Block is one part of an answer: its fields, items and prose, and its sub-sections.
 type Block struct {
 	Name     string
-	RawLines []string
+	RawLines []string          // original lines after the heading, including lines parsed as fields
 	Fields   map[string]string // keys lower-cased
 	Items    []string
 	Prose    string // its other lines, joined by newlines
