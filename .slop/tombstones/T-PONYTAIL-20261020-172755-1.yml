@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261020-172755-1
+status: accepted
+category: alien_code
+title: "Removed `var r pipeline.Run`, which only existed so the deleted resume branch could fill `r`. The single assignment that is left now declares it (`r := pipeline.Run{...}`)."
+created_at: 2026-10-20
+incident:
+  pattern: "Removed `var r pipeline.Run`, which only existed so the deleted resume branch could fill `r`. The single assignment that is left now declares it (`r := pipeline.Run{...}`)."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_feature
+      example: "Removed `var r pipeline.Run`, which only existed so the deleted resume branch could fill `r`. The single assignment that is left now declares it (`r := pipeline.Run{...}`)."
+      artifact: "internal/cli/run.go"
+match:
+  family: speculative_feature
+  artifact: "internal/cli/run.go"

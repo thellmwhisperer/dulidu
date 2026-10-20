@@ -60,7 +60,6 @@ func runCmd() *cobra.Command {
 				return err
 			}
 			runs := filepath.Join(root, ".dulidu", "runs")
-			var r pipeline.Run
 			var dir string
 			var a agent.Agent
 			// ask runs a, the current step's agent, in dir.
@@ -94,7 +93,7 @@ func runCmd() *cobra.Command {
 			now := time.Now()
 			step := c.Step("input")
 			step.Harness, step.Effort, step.Status, step.Started = cmp.Or(step.Harness, "claude"), c.Steps.Input.Effort, "running", now
-			r = pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
+			r := pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
 			if err := pipeline.Write(dir, r); err != nil {
 				return err
 			}
