@@ -82,6 +82,34 @@ func TestExportMatchesGolden(t *testing.T) {
 		t.Errorf("%d tickets, want %d", len(got), len(want))
 	}
 
+	for _, tc := range []struct {
+		name, description, firstTest, goal, acceptance string
+	}{
+		{"sparse story", "", "", "- None.", "- None."},
+		{"whitespace fields", " \n\t", "\t\n ", "- None.", "- None."},
+		{"missing description", "", "Reject a blue-12 bike.", "- None.", "- [ ] Reject a blue-12 bike."},
+		{"missing first test", "Refuse untagged bikes.", "", "Refuse untagged bikes.", "- None."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			r := recorded()
+			r.Epics[0].Stories[0] = pipeline.Story{ID: "US1", Epic: "E1", Title: "Book a wheel",
+				Text: tc.description, FirstTest: tc.firstTest}
+			if err := Write(dir, &r); err != nil {
+				t.Fatal(err)
+			}
+			ticket, err := os.ReadFile(filepath.Join(dir, "tickets", "1.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for heading, want := range map[string]string{"Goal": tc.goal, "Acceptance": tc.acceptance} {
+				if !strings.Contains(string(ticket), "## "+heading+"\n\n"+want+"\n\n") {
+					t.Errorf("%s must contain %q under the empty-section contract; got:\n%s", heading, want, ticket)
+				}
+			}
+		})
+	}
+
 	t.Run("functionality pipes stay in their table cells", func(t *testing.T) {
 		dir := t.TempDir()
 		r := recorded()
