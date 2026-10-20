@@ -148,8 +148,7 @@ func plan(r *pipeline.Run, notes *[]string, ask func(prompt string) (string, err
 	}
 	data := map[string]any{"Input": r.Context, "Personas": list(pipeline.Lines(r.Analysis.Personas)),
 		"Functionalities": list(all), "MustFunctionalities": list(mustLines), "Flows": list(pipeline.Lines(r.Analysis.Flows)),
-		"Constraints": list(r.Analysis.Constraints),
-		"Epics":       r.Triage.Epics, "Stories": r.Triage.StoriesPerEpic}
+		"Constraints": list(r.Analysis.Constraints), "Epics": r.Triage.Epics, "Stories": r.Triage.StoriesPerEpic}
 	prompt, err := prompts.Render("p15-epics-outlines", data)
 	var answer string
 	if err == nil {
