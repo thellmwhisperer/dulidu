@@ -306,6 +306,9 @@ func TestBinaryTicketsCarryTheirStory(t *testing.T) {
 	if got, want := strings.TrimSpace(section(one, "Invariants")), "- "+constraints[1]; got != want {
 		t.Errorf("ticket 1's invariants are %q, want %q", got, want)
 	}
+	if got, want := strings.TrimSpace(section(one, "Scope surface")), "- F1 Book a wheel: One hour, one member per wheel"; got != want {
+		t.Errorf("ticket 1's scope is %q, want %q", got, want)
+	}
 	evidence := section(one, "Evidence (fix / ops)")
 	for _, want := range []string{"- Ana books wheel 2 at 19:00 on Tuesday and finds it waiting\n",
 		"- Luis books wheel 1 at 10:00 on Saturday before his class\n"} {
