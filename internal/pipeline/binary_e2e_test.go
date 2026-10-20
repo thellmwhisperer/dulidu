@@ -88,7 +88,7 @@ func fakeReplay(t *testing.T, answers []string) string {
 }
 
 // TestBinaryRunRecorded runs the built dulidu on the example's brief, piped, with a claude that replays the recorded
-// answers: the run is done, input done and every other step passed, as dulidu status prints in the README.
+// answers: the run is done and every step passed, including the input step, as dulidu status prints in the README.
 func TestBinaryRunRecorded(t *testing.T) {
 	bin := binary(t)
 	repo := t.TempDir()
@@ -131,7 +131,7 @@ func TestBinaryRunRecorded(t *testing.T) {
 		t.Errorf("report.json status %q, want done", r.Report.Status)
 	}
 	want := filepath.Base(dirs[0]) + ` done
-input done 0 min 00 s
+input passed 0 min 00 s
 triage passed 0 min 00 s
 research passed 0 min 00 s
 analysis passed 0 min 00 s

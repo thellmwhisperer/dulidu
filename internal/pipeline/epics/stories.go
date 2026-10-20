@@ -1,21 +1,14 @@
 package epics
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/text"
 )
-
-type story struct {
-	ID, Title, Description string
-	Acceptance             []string
-	FirstTest              string `json:"first_test"`
-	Functionalities        []string
-}
 
 // askStories is e's stories, phase two's call for it on data, or why there are none: each story needs an id,
 // title, description, acceptance criteria, first test and a list of known functionality ids (which may be empty).
@@ -29,23 +22,35 @@ func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, ask f
 	if err != nil {
 		return nil, fmt.Errorf("stories: %s: %w", e.ID, err)
 	}
-	var got []story
-	if json.Unmarshal([]byte(answer), &got) != nil || len(got) == 0 {
-		return nil, errors.New("invalid output: stories of " + e.ID)
+	blocks := text.Parse(answer)[1:]
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("stories: %s has no story blocks", e.ID)
 	}
-	ss := make([]pipeline.Story, len(got))
-	for i, s := range got {
-		if blank(s.ID) || blank(s.Title) || blank(s.FirstTest) || len(s.Acceptance) == 0 || slices.ContainsFunc(s.Acceptance, blank) {
-			return nil, errors.New("invalid output: a story of " + e.ID + " lacks id, title, acceptance or first test")
+	ss := make([]pipeline.Story, len(blocks))
+	for i, b := range blocks {
+		id, title := heading(b)
+		s := pipeline.Story{ID: id, Epic: e.ID, Title: title, Text: description(b, "Functionalities")}
+		for _, section := range b.Sections {
+			switch strings.ToLower(section.Name) {
+			case "acceptance":
+				s.Acceptance = section.Items
+			case "first test":
+				s.FirstTest = strings.TrimSpace(strings.Join(section.RawLines, "\n"))
+			}
 		}
-		if blank(s.Description) {
-			return nil, errors.New("invalid output: a story of " + e.ID + " lacks description")
+		if blank(s.ID) || blank(s.Title) || blank(s.FirstTest) || len(s.Acceptance) == 0 || slices.ContainsFunc(s.Acceptance, blank) {
+			return nil, fmt.Errorf("stories: %s story %s lacks id, title, acceptance or first test", e.ID, id)
+		}
+		if blank(s.Text) {
+			return nil, fmt.Errorf("stories: %s story %s lacks description", e.ID, id)
+		}
+		if value := b.Field("Functionalities"); value != "" {
+			s.Functionalities = references(value)
 		}
 		if s.Functionalities == nil || slices.ContainsFunc(s.Functionalities, func(id string) bool { return !slices.Contains(ids, id) }) {
-			return nil, errors.New("invalid output: a story of " + e.ID + " has invalid functionalities")
+			return nil, fmt.Errorf("stories: %s story %s has invalid functionalities", e.ID, id)
 		}
-		ss[i] = pipeline.Story{ID: s.ID, Epic: e.ID, Title: s.Title, Text: s.Description, Acceptance: s.Acceptance,
-			FirstTest: s.FirstTest, Functionalities: s.Functionalities}
+		ss[i] = s
 	}
 	return ss, nil
 }

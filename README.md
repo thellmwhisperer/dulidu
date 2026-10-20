@@ -38,7 +38,7 @@ $ dulidu run brief.md --attach one.pdf --attach one.png
 /private/tmp/dulidu-readme.rIMby2/work/.dulidu/runs/20261017-071309-1746844562/contexto.md
 $ dulidu status
 20261017-071309-1746844562 done
-input done 0 min 00 s
+input passed 0 min 00 s
 triage passed 0 min 00 s
 research passed 0 min 00 s
 analysis passed 0 min 00 s

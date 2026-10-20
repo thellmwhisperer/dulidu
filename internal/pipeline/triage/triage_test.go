@@ -112,13 +112,13 @@ func TestFailures(t *testing.T) {
 		err    error
 		want   string
 	}{
-		"empty":     {"{}", nil, "classification failed, moderate: invalid output"},
-		"malformed": {`{"complexity": "simple",`, nil, "classification failed, moderate: invalid output"},
-		"null":      {"null", nil, "classification failed, moderate: invalid output"},
+		"empty":     {"{}", nil, "classification failed, moderate: unrecognized classification"},
+		"malformed": {`{"complexity": "simple",`, nil, "classification failed, moderate: unrecognized classification"},
+		"null":      {"null", nil, "classification failed, moderate: unrecognized classification"},
 		"fractional epics": {"Complexity: simple\nEpics: 2.5", nil,
-			"classification failed, moderate: invalid output"},
+			"classification failed, moderate: unrecognized classification"},
 		"bad complexity": {`{"complexity":"huge","epics":1,"reasoning":"Small."}`,
-			nil, "classification failed, moderate: invalid output"},
+			nil, "classification failed, moderate: unrecognized classification"},
 		"agent": {"", errors.New("timed out"), "classification failed, moderate: timed out"},
 	} {
 		dir, r := start(t, "# Contexto\n")

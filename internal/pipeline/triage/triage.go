@@ -39,14 +39,14 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories i
 	lead := text.Parse(answer)[0]
 	epics, epicsErr := strconv.Atoi(lead.Field("Epics"))
 	if err == nil && epicsErr != nil && lead.Field("Epics") != "" {
-		err = errors.New("invalid output")
+		err = errors.New("unrecognized classification")
 	}
 	t := pipeline.Triage{Complexity: lead.Field("Complexity"), Epics: epics, Reasoning: lead.Prose}
 	if most := capEpics[t.Complexity]; t.Epics <= 0 || t.Epics > most {
 		t.Epics = most
 	}
 	if err == nil && t.Validate() != nil {
-		err = errors.New("invalid output")
+		err = errors.New("unrecognized classification")
 	}
 	var notes []string
 	if err != nil {

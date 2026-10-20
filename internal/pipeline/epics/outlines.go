@@ -4,7 +4,6 @@
 package epics
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,27 +11,65 @@ import (
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/text"
 )
-
-type outline struct {
-	ID, Title, Description string
-	DependsOn              []string `json:"depends_on"`
-}
 
 func blank(s string) bool { return strings.TrimSpace(s) == "" }
 
-// outlines is answer, phase one's, as epics without stories, or why it is not a list of epics with id and title.
-func outlines(answer string) (pipeline.Epics, error) {
-	var got []outline
-	if json.Unmarshal([]byte(answer), &got) != nil || len(got) == 0 {
-		return nil, errors.New("invalid output: outlines")
+// heading separates a block's id from its title.
+func heading(b text.Block) (string, string) {
+	parts := strings.Fields(b.Name)
+	if len(parts) == 0 {
+		return "", ""
 	}
-	es := make(pipeline.Epics, len(got))
-	for i, o := range got {
-		if blank(o.ID) || blank(o.Title) {
-			return nil, errors.New("invalid output: an epic lacks id or title")
+	return parts[0], strings.TrimSpace(strings.TrimPrefix(b.Name, parts[0]))
+}
+
+// references reads a comma-separated list; none is an explicitly empty list.
+func references(value string) []string {
+	if strings.EqualFold(strings.TrimSpace(value), "none") {
+		return []string{}
+	}
+	ids := strings.Split(value, ",")
+	for i := range ids {
+		ids[i] = strings.TrimSpace(ids[i])
+	}
+	return ids
+}
+
+// description keeps prose, including colon-bearing lines, before the first sub-section, except the named field.
+func description(b text.Block, field string) string {
+	var lines []string
+	for _, line := range b.RawLines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "### ") {
+			break
 		}
-		es[i] = pipeline.EpicOutline{ID: o.ID, Title: o.Title, Text: o.Description, DependsOn: o.DependsOn}
+		key, _, ok := strings.Cut(line, ":")
+		if !ok || !strings.EqualFold(key, field) {
+			lines = append(lines, line)
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// outlines reads phase one's blocks as epics without stories.
+func outlines(answer string) (pipeline.Epics, error) {
+	blocks := text.Parse(answer)[1:]
+	if len(blocks) == 0 {
+		return nil, errors.New("outlines: no epic blocks")
+	}
+	es := make(pipeline.Epics, len(blocks))
+	for i, b := range blocks {
+		id, title := heading(b)
+		if blank(id) || blank(title) {
+			return nil, fmt.Errorf("outlines: epic %s lacks id or title", id)
+		}
+		var dependencies []string
+		if value := b.Field("Depends on"); value != "" {
+			dependencies = references(value)
+		}
+		es[i] = pipeline.EpicOutline{ID: id, Title: title, Text: description(b, "Depends on"), DependsOn: dependencies}
 	}
 	return es, nil
 }

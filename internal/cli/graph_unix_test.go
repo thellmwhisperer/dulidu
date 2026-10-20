@@ -34,7 +34,7 @@ func TestRunGoesThroughTheWholeGraph(t *testing.T) {
 		if s.Name != "input" && s.Status != "passed" {
 			t.Errorf("step %s: %s", s.Name, s.Status)
 		}
-		if s.Name == "input" && (s.Status != "done" || s.Harness != "claude" || s.Model != "haiku" || s.Effort != "low") {
+		if s.Name == "input" && (s.Status != "passed" || s.Harness != "claude" || s.Model != "haiku" || s.Effort != "low") {
 			t.Errorf("input step: %+v", s)
 		}
 		if (s.Name == "analysis" || s.Name == "epics") && (s.Harness != "claude" || s.Model != "sonnet" || s.Effort != "medium") {

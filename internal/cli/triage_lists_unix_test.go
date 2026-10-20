@@ -61,7 +61,7 @@ func TestRunIgnoresRemovedTriageListsAndDeliversPersistedContext(t *testing.T) {
 			var report reportFile
 			decodeFile(t, filepath.Join(dir, "report.json"), &report)
 			// A triage, classified or failed, goes on to research, analysis and epics.
-			if len(report.Steps) != 6 || report.Steps[0].Status != "done" {
+			if len(report.Steps) != 6 || report.Steps[0].Status != "passed" {
 				t.Fatalf("report steps: %+v", report)
 			}
 			var triage triageFile
@@ -80,11 +80,11 @@ func TestRunIgnoresRemovedTriageListsAndDeliversPersistedContext(t *testing.T) {
 				return
 			}
 			if report.Status != "done" || report.Steps[1].Status != "passed" ||
-				report.Steps[1].Note != "classification failed, moderate: invalid output" {
-				t.Errorf("invalid output report: %+v", report)
+				report.Steps[1].Note != "classification failed, moderate: unrecognized classification" {
+				t.Errorf("unrecognized classification report: %+v", report)
 			}
 			if triage.Complexity != "moderate" || triage.Epics != 5 || triage.ResearchDimensions != nil {
-				t.Errorf("invalid output triage.json: %+v", triage)
+				t.Errorf("unrecognized classification triage.json: %+v", triage)
 			}
 			for _, name := range []string{"triage.json", "research.json", "analysis.json", "epics.json", "spec.md"} {
 				if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
