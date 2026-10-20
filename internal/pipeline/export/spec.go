@@ -3,7 +3,6 @@
 package export
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -95,7 +94,7 @@ func spec(r pipeline.Run, nums map[string][]int, project string) string {
 		for i, s := range d.Sources {
 			sources[i] = fmt.Sprintf("[%s](%s): %s", s.Title, s.URL, s.Supports)
 		}
-		parts = append(parts, "### "+cmp.Or(sections[d.Name], d.Name)+"\n", strings.TrimSpace(d.Text)+"\n", "Sources:\n", list(sources))
+		parts = append(parts, "### "+sections[d.Name]+"\n", strings.TrimSpace(d.Text)+"\n", "Sources:\n", list(sources))
 	}
 	parts = append(parts, "## Analysis\n", "### Personas\n")
 	if len(a.Personas) == 0 {
@@ -106,7 +105,7 @@ func spec(r pipeline.Run, nums map[string][]int, project string) string {
 	}
 	table := "| ID | Priority | Name | Description |\n|----|----------|------|-------------|\n"
 	for _, f := range a.Functionalities {
-		table += "| " + f.ID + " | " + f.Priority + " | " + f.Name + " | " + f.Description + " |\n"
+		table += "| " + f.ID + " | " + f.Priority + " | " + strings.ReplaceAll(f.Name, "|", `\|`) + " | " + strings.ReplaceAll(f.Description, "|", `\|`) + " |\n"
 	}
 	if len(a.Functionalities) == 0 {
 		table = list(nil)
