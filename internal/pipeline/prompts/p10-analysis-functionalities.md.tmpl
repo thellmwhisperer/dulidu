@@ -1,4 +1,13 @@
-You are a product analyst. Extract key functionalities from this project. Respond ONLY with a JSON array (no markdown, no explanation). Each: { "id": "f1", "name": "string", "description": "string", "priority": "must"|"should"|"could" }
+You are a product analyst. Extract key functionalities from this project. Respond in plain text: one block per functionality, a ## <id> <name> heading with ids F1, F2 and on, then a Priority: must | should | could line with one of the three, then its description as prose.
+
+Example:
+## F1 List a bike
+Priority: must
+A seller lists a bike with photos and a price.
+
+## F2 Search
+Priority: could
+A buyer finds bikes by size.
 
 Analyze this project and provide your extraction.
 
@@ -11,4 +20,4 @@ Analyze this project and provide your extraction.
 ## Personas
 {{.Personas}}
 
-Respond with JSON only.
+Respond in plain text only.

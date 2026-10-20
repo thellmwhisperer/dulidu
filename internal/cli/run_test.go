@@ -43,11 +43,11 @@ echo '{"type":"result","result":"A fake description."}'
 
 // fakeGraph answers the analysis and epics prompts in $prompt, as fakeDescriber says.
 const fakeGraph = `case $(head -n 1 "$prompt") in
-*'Extract target user personas'*) list=personas a='[{"name":"Seller","role":"Bike owner","goals":["Sell fast"],"painPoints":["No buyers"]}]' ;;
-*'Extract key functionalities'*) list=functionalities a='[{"name":"List a bike","description":"A seller lists a bike.","priority":"must"}]' ;;
-*'Extract user flows'*) list=flows a='[{"name":"Sell","steps":["List","Sell"]}]' ;;
-*'Extract project constraints'*) list=constraints a='["Spain only"]' ;;
-*'Identify open questions'*) list=questions a='["Which payments?"]' ;;
+*'Extract target user personas'*) list=personas a='## Seller\nRole: Bike owner\n### Goals\n- Sell fast\n### Pain points\n- No buyers' ;;
+*'Extract key functionalities'*) list=functionalities a='## F1 List a bike\nPriority: must\nA seller lists a bike.' ;;
+*'Extract user flows'*) list=flows a='## FL1 Sell\n1. List\n2. Sell' ;;
+*'Extract project constraints'*) list=constraints a='- Spain only' ;;
+*'Identify open questions'*) list=questions a='- Which payments?' ;;
 *'who thinks about HOW'*) list=outlines a='[{"id":"E1","title":"Listings","description":"Bikes get listed.","depends_on":[]}]' ;;
 *'implementation-ready tickets'*) list=stories a='[{"id":"S1","title":"List a bike","description":"A seller lists a bike.","acceptance":["The bike shows up."],"first_test":"TestListBike","functionalities":["F1"]}]' ;;
 *) list= ;;

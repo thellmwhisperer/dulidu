@@ -6,63 +6,56 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/text"
 )
 
-type persona struct {
-	Name, Role        string
-	Goals, PainPoints []string
-}
+// id is the "F1 " or "FL1 " a functionality's or flow's heading starts with.
+var id = regexp.MustCompile(`^[A-Z]{1,2}\d+\b[.:]?\s*`)
 
-type functionality struct{ Name, Description, Priority string }
+// personaLists is a persona's "### " sections by lower-cased name, each with the label its line gives it.
+var personaLists = map[string]string{"goals": "Goals", "pain points": "Pain points"}
 
-type flow struct {
-	Name  string
-	Steps []string
-}
-
-// lists is each list in the order it is asked: its prompt, the key later prompts read it by and how its answer
-// becomes lines.
+// lists is each list in the order it is asked: its prompt, the key later prompts read it by and how its answer's
+// blocks become lines.
 var lists = []struct {
 	name, template, key string
-	parse               func(answer string) ([]string, error)
+	parse               func(blocks []text.Block) ([]string, error)
 }{
-	{"personas", "p09-analysis-personas", "Personas", func(a string) ([]string, error) {
-		return each(a, func(p persona) (string, error) {
-			s := p.Name + " (" + p.Role + ")"
-			if len(p.Goals) > 0 {
-				s += ". Goals: " + strings.Join(p.Goals, "; ")
+	{"personas", "p09-analysis-personas", "Personas", func(bs []text.Block) ([]string, error) {
+		return each(bs[1:], func(b text.Block) (string, error) {
+			s := b.Name + " (" + b.Field("role") + ")"
+			for _, sub := range b.Sections {
+				if label := personaLists[strings.ToLower(sub.Name)]; label != "" && len(sub.Items) > 0 {
+					s += ". " + label + ": " + strings.Join(sub.Items, "; ")
+				}
 			}
-			if len(p.PainPoints) > 0 {
-				s += ". Pain points: " + strings.Join(p.PainPoints, "; ")
-			}
-			return s, errors.Join(
-				need(!blank(p.Name) && !blank(p.Role), "a persona lacks name or role"),
-				need(!slices.ContainsFunc(p.Goals, blank), "a persona has a blank goal"),
-				need(!slices.ContainsFunc(p.PainPoints, blank), "a persona has a blank pain point"))
+			return s, need(!blank(b.Name) && !blank(b.Field("role")), "a persona lacks name or role")
 		})
 	}},
-	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(a string) ([]string, error) {
-		return each(a, func(f functionality) (string, error) {
-			return "[" + f.Priority + "] " + f.Name + ": " + f.Description, errors.Join(
-				need(!blank(f.Name) && !blank(f.Description), "a functionality lacks name or description"),
-				need(slices.Contains([]string{"must", "should", "could"}, f.Priority),
-					"functionality "+f.Name+": priority not must, should or could"))
+	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(bs []text.Block) ([]string, error) {
+		return each(bs[1:], func(b text.Block) (string, error) {
+			name, priority := id.ReplaceAllString(b.Name, ""), b.Field("priority")
+			return "[" + priority + "] " + name + ": " + strings.ReplaceAll(b.Prose, "\n", " "), errors.Join(
+				need(!blank(name) && !blank(b.Prose), "a functionality lacks name or description"),
+				need(slices.Contains([]string{"must", "should", "could"}, priority),
+					"functionality "+name+": priority not must, should or could"))
 		})
 	}},
-	{"flows", "p11-analysis-flows", "Flows", func(a string) ([]string, error) {
-		return each(a, func(f flow) (string, error) {
-			return f.Name + ": " + strings.Join(f.Steps, " → "),
-				need(!blank(f.Name) && len(f.Steps) > 0 && !slices.ContainsFunc(f.Steps, blank), "a flow lacks name or steps")
+	{"flows", "p11-analysis-flows", "Flows", func(bs []text.Block) ([]string, error) {
+		return each(bs[1:], func(b text.Block) (string, error) {
+			name := id.ReplaceAllString(b.Name, "")
+			return name + ": " + strings.Join(b.Items, " → "), need(!blank(name) && len(b.Items) > 0, "a flow lacks name or steps")
 		})
 	}},
-	{"constraints", "p12-analysis-constraints", "Constraints", text},
-	{"questions", "p13-analysis-questions", "Questions", text},
+	{"constraints", "p12-analysis-constraints", "Constraints", items},
+	{"questions", "p13-analysis-questions", "Questions", items},
 }
 
 func blank(s string) bool { return strings.TrimSpace(s) == "" }
@@ -75,23 +68,23 @@ func need(ok bool, msg string) error {
 	return errors.New(msg)
 }
 
-func text(answer string) ([]string, error) {
-	return each(answer, func(s string) (string, error) { return s, need(!blank(s), "a blank item") })
-}
-
-// each is answer, a JSON array with at least one T, each made a line by line, which says what is wrong with it.
-func each[T any](answer string, line func(T) (string, error)) ([]string, error) {
-	var items []T
-	if json.Unmarshal([]byte(answer), &items) != nil {
-		return nil, errors.New("invalid output")
-	}
-	if len(items) == 0 {
+// items is the lead block's "- item" list, at least one.
+func items(bs []text.Block) ([]string, error) {
+	if len(bs[0].Items) == 0 {
 		return nil, errors.New("empty")
 	}
-	lines := make([]string, len(items))
-	for i, item := range items {
+	return bs[0].Items, nil
+}
+
+// each is blocks, at least one, each made a line by line, which says what is wrong with it.
+func each(blocks []text.Block, line func(text.Block) (string, error)) ([]string, error) {
+	if len(blocks) == 0 {
+		return nil, errors.New("empty")
+	}
+	lines := make([]string, len(blocks))
+	for i, b := range blocks {
 		var err error
-		if lines[i], err = line(item); err != nil {
+		if lines[i], err = line(b); err != nil {
 			return nil, err
 		}
 	}
@@ -125,7 +118,7 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 			r.Logs["analysis"] += prompt + "\n\n" + answer + "\n\n"
 		}
 		if err == nil {
-			got[l.name], err = l.parse(answer)
+			got[l.name], err = l.parse(text.Parse(answer))
 		}
 		if err != nil {
 			failed = "failed at analysis: " + l.name

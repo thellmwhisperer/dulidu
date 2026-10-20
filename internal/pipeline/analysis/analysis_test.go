@@ -39,7 +39,7 @@ func start(t *testing.T) (string, *pipeline.Run) {
 // recorded is the recorded answer for list.
 func recorded(t *testing.T, list string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("testdata", list+".json"))
+	b, err := os.ReadFile(filepath.Join("testdata", list+".md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestPersonaEmptyNestedListsAllowed(t *testing.T) {
 	if err := Run(dir, r, step, func(string) (string, error) {
 		calls++
 		if calls == 1 {
-			return `[{"name":"Rosa","role":"seller","goals":[],"painPoints":[]}]`, nil
+			return "## Rosa\nRole: seller\n### Goals\n### Pain points\n", nil
 		}
 		return recorded(t, names[calls-1]), nil
 	}); err != nil {
@@ -130,20 +130,22 @@ func TestFailures(t *testing.T) {
 		err          error
 		want         string
 	}{
-		"flows object":         {"flows", `{}`, nil, "flows: invalid output"},
-		"no priority":          {"functionalities", `[{"id":"f1","name":"List","description":"A bike"}]`, nil, "functionalities: functionality List: priority not must, should or could"},
-		"bad priority":         {"functionalities", `[{"id":"f1","name":"List","description":"A bike","priority":"won't"}]`, nil, "functionalities: functionality List: priority not must, should or could"},
-		"empty questions":      {"questions", `[]`, nil, "questions: empty"},
-		"null constraints":     {"constraints", `null`, nil, "constraints: empty"},
-		"blank constraint":     {"constraints", `["Budget", " "]`, nil, "constraints: a blank item"},
-		"persona without role": {"personas", `[{"name":"Rosa"}]`, nil, "personas: a persona lacks name or role"},
-		"null goal":            {"personas", `[{"name":"Rosa","role":"seller","goals":[null]}]`, nil, "personas: a persona has a blank goal"},
-		"blank goal":           {"personas", `[{"name":"Rosa","role":"seller","goals":[" "]}]`, nil, "personas: a persona has a blank goal"},
-		"null pain point":      {"personas", `[{"name":"Rosa","role":"seller","painPoints":[null]}]`, nil, "personas: a persona has a blank pain point"},
-		"blank pain point":     {"personas", `[{"name":"Rosa","role":"seller","painPoints":[" "]}]`, nil, "personas: a persona has a blank pain point"},
-		"flow without steps":   {"flows", `[{"id":"fl1","name":"Listing","steps":[]}]`, nil, "flows: a flow lacks name or steps"},
-		"prose":                {"personas", "Rosa sells bikes.", nil, "personas: invalid output"},
-		"agent":                {"flows", "", errors.New("timed out"), "flows: timed out"},
+		"flows object":          {"flows", `{}`, nil, "flows: empty"},
+		"no priority":           {"functionalities", "## F1 List\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
+		"bad priority":          {"functionalities", "## F1 List\nPriority: won't\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
+		"no description":        {"functionalities", "## F1 List\nPriority: must", nil, "functionalities: a functionality lacks name or description"},
+		"empty questions":       {"questions", "", nil, "questions: empty"},
+		"null constraints":      {"constraints", "Nothing limits it.", nil, "constraints: empty"},
+		"constraints in blocks": {"constraints", "## Budget\n- Under $50k", nil, "constraints: empty"},
+		"persona without role":  {"personas", "## Rosa", nil, "personas: a persona lacks name or role"},
+		"role under goals":      {"personas", "## Rosa\n### Goals\nRole: seller\n- Sell", nil, "personas: a persona lacks name or role"},
+		"blank role":            {"personas", "## Rosa\nRole: \n### Goals\n- Sell", nil, "personas: a persona lacks name or role"},
+		"second without role":   {"personas", "## Rosa\nRole: seller\n\n## Tom\n### Pain points\n- Prices", nil, "personas: a persona lacks name or role"},
+		"lead persona":          {"personas", "Role: seller\n### Goals\n- Sell", nil, "personas: empty"},
+		"flow without steps":    {"flows", "## FL1 Listing\nScan, photo, publish.", nil, "flows: a flow lacks name or steps"},
+		"prose":                 {"personas", "Rosa sells bikes.", nil, "personas: empty"},
+		"json":                  {"personas", `[{"name":"Rosa","role":"seller"}]`, nil, "personas: empty"},
+		"agent":                 {"flows", "", errors.New("timed out"), "flows: timed out"},
 	} {
 		dir, r := start(t)
 		calls := 0

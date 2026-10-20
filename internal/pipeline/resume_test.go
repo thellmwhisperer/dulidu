@@ -32,11 +32,11 @@ const fakeClaude = `#!/bin/sh
 prompt=$(cat)
 a=
 case "$prompt" in
-*'Extract target user personas'*) a='[{"name":"Lead","role":"Team lead","goals":["Plan"],"painPoints":["Chaos"]}]' ;;
-*'Extract key functionalities'*) a='[{"name":"Plan a sprint","description":"A lead plans a sprint.","priority":"must"}]' ;;
-*'Extract user flows'*) a='[{"name":"Plan","steps":["Open","Plan"]}]' ;;
-*'Extract project constraints'*) a='["Teams of five"]' ;;
-*'Identify open questions'*) a='["Which calendar?"]' ;;
+*'Extract target user personas'*) a='## Lead\nRole: Team lead\n### Goals\n- Plan\n### Pain points\n- Chaos' ;;
+*'Extract key functionalities'*) a='## F1 Plan a sprint\nPriority: must\nA lead plans a sprint.' ;;
+*'Extract user flows'*) a='## FL1 Plan\n1. Open\n2. Plan' ;;
+*'Extract project constraints'*) a='- Teams of five' ;;
+*'Identify open questions'*) a='- Which calendar?' ;;
 *'who thinks about HOW'*) a='[{"id":"E1","title":"Sprints","description":"Teams plan sprints.","depends_on":[]}]' ;;
 *'implementation-ready tickets'*) a='[{"id":"S1","title":"Plan a sprint","description":"A lead plans a sprint.","acceptance":["The sprint shows up."],"first_test":"TestPlanSprint","functionalities":["F1"]}]' ;;
 esac
