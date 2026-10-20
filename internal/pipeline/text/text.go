@@ -10,6 +10,7 @@ import (
 // Block is one part of an answer: its fields, items and prose, and its sub-sections.
 type Block struct {
 	Name     string
+	RawLines []string
 	Fields   map[string]string // keys lower-cased
 	Items    []string
 	Prose    string // its other lines, joined by newlines
@@ -25,18 +26,22 @@ var (
 func Parse(answer string) []Block {
 	blocks := []Block{{}}
 	cur := &blocks[0]
-	for _, line := range strings.Split(answer, "\n") {
-		line = strings.TrimSpace(line)
+	for _, rawLine := range strings.Split(answer, "\n") {
+		line := strings.TrimSpace(rawLine)
 		if name, ok := strings.CutPrefix(line, "## "); ok {
 			blocks = append(blocks, Block{Name: strings.TrimSpace(name)})
 			cur = &blocks[len(blocks)-1]
 			continue
 		}
 		b := &blocks[len(blocks)-1]
+		b.RawLines = append(b.RawLines, rawLine)
 		if name, ok := strings.CutPrefix(line, "### "); ok {
 			b.Sections = append(b.Sections, Block{Name: strings.TrimSpace(name)})
 			cur = &b.Sections[len(b.Sections)-1]
 			continue
+		}
+		if cur != b {
+			cur.RawLines = append(cur.RawLines, rawLine)
 		}
 		if m := item.FindStringSubmatch(line); m != nil {
 			cur.Items = append(cur.Items, m[1])

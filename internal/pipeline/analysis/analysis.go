@@ -42,8 +42,17 @@ var lists = []struct {
 	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(bs []text.Block) ([]string, error) {
 		return each(bs[1:], func(b text.Block) (string, error) {
 			name, priority := id.ReplaceAllString(b.Name, ""), b.Field("priority")
-			return "[" + priority + "] " + name + ": " + strings.ReplaceAll(b.Prose, "\n", " "), errors.Join(
-				need(!blank(name) && !blank(b.Prose), "a functionality lacks name or description"),
+			var lines []string
+			for _, line := range b.RawLines {
+				line = strings.TrimSpace(line)
+				key, _, field := strings.Cut(line, ":")
+				if line != "" && !(field && strings.EqualFold(key, "priority")) {
+					lines = append(lines, line)
+				}
+			}
+			description := strings.Join(lines, " ")
+			return "[" + priority + "] " + name + ": " + description, errors.Join(
+				need(!blank(name) && !blank(description), "a functionality lacks name or description"),
 				need(slices.Contains([]string{"must", "should", "could"}, priority),
 					"functionality "+name+": priority not must, should or could"))
 		})

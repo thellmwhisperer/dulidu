@@ -10,10 +10,13 @@ func TestParse(t *testing.T) {
 	got := Parse("Complexity: simple\nWhy it is.\n\n## Personas\nCOUNT: 2\n- Seller\n1. Buyer\nTwo kinds.\n" +
 		"### Seller\nGoal: sell fast\nOwns bikes.\n## Empty\n")
 	want := []Block{
-		{Fields: map[string]string{"complexity": "simple"}, Prose: "Why it is."},
+		{Fields: map[string]string{"complexity": "simple"}, Prose: "Why it is.",
+			RawLines: []string{"Complexity: simple", "Why it is.", ""}},
 		{Name: "Personas", Fields: map[string]string{"count": "2"}, Items: []string{"Seller", "Buyer"}, Prose: "Two kinds.",
-			Sections: []Block{{Name: "Seller", Fields: map[string]string{"goal": "sell fast"}, Prose: "Owns bikes."}}},
-		{Name: "Empty"},
+			RawLines: []string{"COUNT: 2", "- Seller", "1. Buyer", "Two kinds.", "### Seller", "Goal: sell fast", "Owns bikes."},
+			Sections: []Block{{Name: "Seller", Fields: map[string]string{"goal": "sell fast"}, Prose: "Owns bikes.",
+				RawLines: []string{"Goal: sell fast", "Owns bikes."}}}},
+		{Name: "Empty", RawLines: []string{""}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Parse:\n%+v\nwant\n%+v", got, want)
