@@ -54,7 +54,7 @@ func TestProjectLoadsEveryKeyWithItsStepAgents(t *testing.T) {
 	if err := p.Complete(); err != nil {
 		t.Fatalf("every key set: %v", err)
 	}
-	report := pipeline.Report{Status: "running", Steps: []pipeline.Step{p.Step("research"), p.Step("stories")}}
+	report := pipeline.Report{Status: "running", Steps: []pipeline.Step{p.Step("research"), p.Step("epics")}}
 	b, err := json.Marshal(report)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestProjectLoadsEveryKeyWithItsStepAgents(t *testing.T) {
 	if err := json.Unmarshal(b, &back); err != nil {
 		t.Fatal(err)
 	}
-	want := []pipeline.Step{{Name: "research", Harness: "pi", Model: "medium"}, {Name: "stories", Harness: "claude", Model: "strong"}}
+	want := []pipeline.Step{{Name: "research", Harness: "pi", Model: "medium"}, {Name: "epics", Harness: "claude", Model: "medium"}}
 	if len(back.Steps) != 2 || back.Steps[0] != want[0] || back.Steps[1] != want[1] {
 		t.Fatalf("report.json steps: got %+v, want %+v", back.Steps, want)
 	}
@@ -103,7 +103,7 @@ func TestProjectUnknownKeyIsNamed(t *testing.T) {
 func TestProjectRejectsSecondYAMLDocument(t *testing.T) {
 	for _, c := range []struct{ extra, want string }{
 		{"foo: 1", "config incomplete: foo"},
-		{"platform: mobile", "config incomplete: multiple documents"},
+		{"max_epics: 3", "config incomplete: multiple documents"},
 	} {
 		root, home := t.TempDir(), t.TempDir()
 		path := filepath.Join(root, "dulidu.yaml")
@@ -116,25 +116,49 @@ func TestProjectRejectsSecondYAMLDocument(t *testing.T) {
 }
 
 func TestProjectLaterLayerOverridesOnlyWhatItSets(t *testing.T) {
-	p := load(t, full(t), "steps:\n  research:\n    model: deep\nexclusions: []\n")
+	p := load(t, full(t), "steps:\n  research:\n    model: deep\nagent_timeout: \"\"\n")
 	if err := p.Complete(); err != nil {
 		t.Fatalf("keys across layers: %v", err)
 	}
 	if got := p.Step("research"); got.Harness != "pi" || got.Model != "deep" {
 		t.Fatalf("research: got %+v, want harness pi from the machine, model deep from the repository", got)
 	}
-	if got := p.Step("stories"); got.Harness != "claude" || got.Model != "strong" {
-		t.Fatalf("stories, set only by the machine: got %+v", got)
+	if got := p.Step("epics"); got.Harness != "claude" || got.Model != "medium" {
+		t.Fatalf("epics, set only by the machine: got %+v", got)
 	}
 	var c struct {
-		Exclusions []string `yaml:"exclusions"`
-		MaxEpics   int      `yaml:"max_epics"`
+		AgentTimeout string `yaml:"agent_timeout"`
+		MaxEpics     int    `yaml:"max_epics"`
 	}
 	b, err := yaml.Marshal(p)
 	if err == nil {
 		err = yaml.Unmarshal(b, &c)
 	}
-	if err != nil || len(c.Exclusions) != 0 || c.MaxEpics != 5 {
-		t.Fatalf("exclusions [] over [payments], max_epics kept: got %v, %d, %v", c.Exclusions, c.MaxEpics, err)
+	if err != nil || c.AgentTimeout != "" || c.MaxEpics != 5 {
+		t.Fatalf("agent_timeout empty over 20m, max_epics kept: got %q, %d, %v", c.AgentTimeout, c.MaxEpics, err)
+	}
+}
+
+// Every layer rejects removed keys, even empty ones, before checking their former value types.
+func TestProjectRejectsRemovedKeysInEachLayer(t *testing.T) {
+	for _, machine := range []bool{false, true} {
+		for _, key := range []string{"platform", "project_type", "ticket_size", "exclusions", "steps.stories"} {
+			for _, value := range []string{`""`, "null", "{}", "{model: old}", "[]"} {
+				root, home := t.TempDir(), t.TempDir()
+				path := filepath.Join(root, "dulidu.yaml")
+				if machine {
+					path = filepath.Join(home, ".config", "dulidu", "config.yaml")
+				}
+				body := key + ": " + value + "\n"
+				if key == "steps.stories" {
+					body = "steps:\n  stories: " + value + "\n"
+				}
+				write(t, path, body)
+				_, _, err := Load(root, home)
+				if err == nil || err.Error() != path+": "+key+" is no longer read; delete it" {
+					t.Errorf("%s in %s: %v", body, path, err)
+				}
+			}
+		}
 	}
 }

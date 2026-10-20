@@ -9,7 +9,7 @@ import (
 )
 
 func TestProjectLaterLayerNullEmptiesEarlierValue(t *testing.T) {
-	p := load(t, full(t), "max_epics:\nticket_size: ~\nexclusions: null\nsteps:\n  triage:\n    model:\n")
+	p := load(t, full(t), "max_epics:\nagent_timeout: ~\nvideo_frame_seconds: null\nsteps:\n  triage:\n    model:\n")
 	if err := p.Complete(); err != nil {
 		t.Fatalf("keys across layers: %v", err)
 	}
@@ -17,16 +17,16 @@ func TestProjectLaterLayerNullEmptiesEarlierValue(t *testing.T) {
 		t.Fatalf("triage: got %+v, want model emptied by the repository, harness claude from the machine", got)
 	}
 	var c struct {
-		MaxEpics          int      `yaml:"max_epics"`
-		MaxStoriesPerEpic int      `yaml:"max_stories_per_epic"`
-		TicketSize        string   `yaml:"ticket_size"`
-		Exclusions        []string `yaml:"exclusions"`
+		MaxEpics          int    `yaml:"max_epics"`
+		MaxStoriesPerEpic int    `yaml:"max_stories_per_epic"`
+		AgentTimeout      string `yaml:"agent_timeout"`
+		VideoFrameSeconds int    `yaml:"video_frame_seconds"`
 	}
 	b, err := yaml.Marshal(p)
 	if err == nil {
 		err = yaml.Unmarshal(b, &c)
 	}
-	if err != nil || c.MaxEpics != 0 || c.TicketSize != "" || len(c.Exclusions) != 0 || c.MaxStoriesPerEpic != 8 {
+	if err != nil || c.MaxEpics != 0 || c.AgentTimeout != "" || c.VideoFrameSeconds != 0 || c.MaxStoriesPerEpic != 8 {
 		t.Fatalf("nulls over machine values: got %+v, %v", c, err)
 	}
 }
@@ -48,5 +48,14 @@ func TestProjectUnknownEmptyMappingIsNamed(t *testing.T) {
 	p := load(t, "", full(t, "triage: {harness: claude, model: strong, effort: high}", "triage: {}"))
 	if err := p.Complete(); err == nil || !strings.Contains(err.Error(), "config incomplete: steps.triage.harness") {
 		t.Fatalf("known empty step: %v", err)
+	}
+}
+
+func TestProjectRemovedNullCannotOverrideEarlierLayer(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	write(t, filepath.Join(home, ".config", "dulidu", "config.yaml"), full(t))
+	write(t, filepath.Join(root, "dulidu.yaml"), "exclusions: null\n")
+	if _, _, err := Load(root, home); err == nil || !strings.Contains(err.Error(), "exclusions is no longer read; delete it") {
+		t.Fatalf("removed null must fail instead of clearing a field: %v", err)
 	}
 }

@@ -25,14 +25,13 @@ type Steps struct {
 	Research Step `yaml:"research"`
 	Analysis Step `yaml:"analysis"`
 	Epics    Step `yaml:"epics"`
-	Stories  Step `yaml:"stories"`
 }
 
 // required is every key a run needs some layer to declare, in the order Complete names the first missing.
 var required = func() []string {
-	keys := []string{"platform", "project_type", "max_epics", "max_stories_per_epic", "ticket_size", "exclusions",
+	keys := []string{"max_epics", "max_stories_per_epic",
 		"agent_timeout", "video_frame_seconds"}
-	for _, step := range []string{"input", "triage", "research", "analysis", "epics", "stories"} {
+	for _, step := range []string{"input", "triage", "research", "analysis", "epics"} {
 		for _, key := range []string{"harness", "model", "effort"} {
 			keys = append(keys, "steps."+step+"."+key)
 		}
@@ -53,6 +52,10 @@ func (c *Config) declare(n *yaml.Node, prefix string) error {
 	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		key, value := prefix+n.Content[i].Value, n.Content[i+1]
+		switch key {
+		case "platform", "project_type", "ticket_size", "exclusions", "steps.stories":
+			return fmt.Errorf("%s is no longer read; delete it", key)
+		}
 		if value.Kind == yaml.MappingNode {
 			if len(value.Content) == 0 && !slices.ContainsFunc(known, func(k string) bool { return strings.HasPrefix(k, key+".") }) {
 				return fmt.Errorf("config incomplete: %s", key)
@@ -106,6 +109,6 @@ func (c Config) Complete() error {
 // Step is the named step as report.json records it: its name, harness and model. An unknown name has neither.
 func (c Config) Step(name string) pipeline.Step {
 	s := map[string]Step{"input": c.Steps.Input, "triage": c.Steps.Triage, "research": c.Steps.Research,
-		"analysis": c.Steps.Analysis, "epics": c.Steps.Epics, "stories": c.Steps.Stories}[name]
+		"analysis": c.Steps.Analysis, "epics": c.Steps.Epics}[name]
 	return pipeline.Step{Name: name, Harness: s.Harness, Model: s.Model}
 }

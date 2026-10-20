@@ -321,3 +321,153 @@ func TestBinaryTicketsCarryTheirStory(t *testing.T) {
 		t.Errorf("the stories prompt does not ask for the story's size:\n%s", prompt)
 	}
 }
+
+// The built binary must read the same forms with a whole-answer fence or introductory prose.
+func TestBinaryReadsFencedAnswers(t *testing.T) {
+	bin := binary(t)
+	var plain pipeline.Run
+	for _, wrapped := range []bool{false, true} {
+		repo := realTempDir(t)
+		t.Setenv("HOME", t.TempDir())
+		if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+			t.Fatalf("git init: %v\n%s", err, out)
+		}
+		if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(binaryRead(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		answers, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
+		if err != nil || len(answers) != 15 {
+			t.Fatalf("recordings: %v, %v", answers, err)
+		}
+		answers = answers[1:]
+		if wrapped {
+			for i, path := range answers {
+				body := binaryRead(t, path)
+				switch name := filepath.Base(path); {
+				case name == "13-epics-outlines.md":
+					body = "Here are the epics:\n" + body
+				case name == "02-triage.md":
+					body = "Here is the classification.\n" + body
+				case name == "14-epics-E1.md", strings.Contains(name, "research-"):
+					body = "\n```markdown\n" + body + "```\n\n"
+				}
+				answers[i] = filepath.Join(t.TempDir(), filepath.Base(path))
+				if err := os.WriteFile(answers[i], []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		fakeReplay(t, answers)
+		for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
+			cmd := exec.Command(bin, args...)
+			cmd.Dir, cmd.Stdin = repo, strings.NewReader("")
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("dulidu %v: %v\n%s", args, err, out)
+			}
+		}
+		dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
+		if len(dirs) != 1 {
+			t.Fatalf("run folders: %v", dirs)
+		}
+		r, err := pipeline.Read(dirs[0])
+		if err != nil || r.Report.Status != "done" || len(r.Epics) != 2 || len(r.Epics[0].Stories) != 2 {
+			t.Fatalf("incomplete run: %+v, %v", r, err)
+		}
+		if !wrapped {
+			plain = r
+			continue
+		}
+		for name, pair := range map[string][2]any{
+			"epics and stories": {r.Epics, plain.Epics}, "research prose": {r.Research, plain.Research},
+			"triage": {r.Triage, plain.Triage}, "analysis": {r.Analysis, plain.Analysis},
+		} {
+			got, _ := json.Marshal(pair[0])
+			want, _ := json.Marshal(pair[1])
+			if string(got) != string(want) {
+				t.Errorf("%s changed with wrapping:\n%s\nwant:\n%s", name, got, want)
+			}
+		}
+	}
+}
+
+func TestBinaryDoctorChecksWhatARunNeeds(t *testing.T) {
+	bin := binary(t)
+	repo, path := realTempDir(t), t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(git, filepath.Join(path, "git")); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ffmpeg", "ffprobe", "whisper-cli"} {
+		if err := os.WriteFile(filepath.Join(path, name), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", path)
+	for _, installed := range []bool{false, true} {
+		if installed {
+			if err := os.WriteFile(filepath.Join(path, "pdftotext"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command(bin, "doctor")
+		cmd.Dir = repo
+		out, err := cmd.CombinedOutput()
+		if strings.Contains(string(out), "ok go:") || strings.Contains(string(out), "fail go:") {
+			t.Errorf("doctor checks Go:\n%s", out)
+		}
+		if installed {
+			if err != nil {
+				t.Errorf("doctor with run tools: %v\n%s", err, out)
+			}
+		} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 || !strings.Contains(string(out),
+			"fail pdftotext: not found in PATH: install it with brew install poppler, or apt install poppler-utils") {
+			t.Errorf("doctor without pdftotext: %v\n%s", err, out)
+		}
+	}
+}
+
+func TestBinaryRejectsKeysNobodyReads(t *testing.T) {
+	bin := binary(t)
+	repo := realTempDir(t)
+	t.Setenv("HOME", t.TempDir())
+	if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	cmd := exec.Command(bin, "init")
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("dulidu init: %v\n%s", err, out)
+	}
+	config := filepath.Join(repo, "dulidu.yaml")
+	for _, key := range []string{"platform", "project_type", "ticket_size", "exclusions", "stories"} {
+		if regexp.MustCompile(`(?m)^\s*` + key + `:`).MatchString(binaryRead(t, config)) {
+			t.Errorf("init still writes %s", key)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte("Book a wheel."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"platform", "project_type", "ticket_size", "exclusions", "steps.stories"} {
+		body := key + ": \"\"\n"
+		if key == "steps.stories" {
+			body = "steps:\n  stories: {}\n"
+		}
+		if err := os.WriteFile(config, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(bin, "run", "brief.md")
+		cmd.Dir, cmd.Stdin = repo, strings.NewReader("")
+		out, err := cmd.CombinedOutput()
+		if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 ||
+			!strings.Contains(string(out), "dulidu.yaml: "+key+" is no longer read; delete it") {
+			t.Errorf("removed %s: %v\n%s", key, err, out)
+		}
+	}
+}

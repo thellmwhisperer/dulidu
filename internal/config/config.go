@@ -18,18 +18,14 @@ import (
 // and how long it may take, a Go duration, "" for the default; then the project the steps work on and each
 // step's agent, every one a line in dulidu init's template. Any other key in a layer is an error.
 type Config struct {
-	Harness           string   `yaml:"harness"`
-	Model             string   `yaml:"model"`
-	Effort            string   `yaml:"effort"`
-	AgentTimeout      string   `yaml:"agent_timeout"`
-	Platform          string   `yaml:"platform"`
-	ProjectType       string   `yaml:"project_type"`
-	MaxEpics          int      `yaml:"max_epics"`
-	MaxStoriesPerEpic int      `yaml:"max_stories_per_epic"`
-	TicketSize        string   `yaml:"ticket_size"`
-	Exclusions        []string `yaml:"exclusions"`
-	VideoFrameSeconds int      `yaml:"video_frame_seconds"`
-	Steps             Steps    `yaml:"steps"`
+	Harness           string `yaml:"harness"`
+	Model             string `yaml:"model"`
+	Effort            string `yaml:"effort"`
+	AgentTimeout      string `yaml:"agent_timeout"`
+	MaxEpics          int    `yaml:"max_epics"`
+	MaxStoriesPerEpic int    `yaml:"max_stories_per_epic"`
+	VideoFrameSeconds int    `yaml:"video_frame_seconds"`
+	Steps             Steps  `yaml:"steps"`
 
 	set map[string]bool // every key a layer declared, dotted, empty or not
 }

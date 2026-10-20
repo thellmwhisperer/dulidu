@@ -19,15 +19,59 @@ type Block struct {
 
 var (
 	field = regexp.MustCompile(`^([A-Za-z][\w -]*):\s*(.*)$`)
+	fence = regexp.MustCompile("^(`{3,}|~{3,})[^`~]*$")
 	item  = regexp.MustCompile(`^(?:-|\d+\.)\s+(.*)$`)
 )
 
-// Parse reads answer into its blocks, the first the lead: the text before the first "## ", named "".
+// Unfence removes a single fence surrounding the whole answer; unfinished fences stay untouched.
+// Research uses this without discarding its lead prose, which is the dimension's content.
+func Unfence(answer string) string {
+	lines := strings.Split(strings.TrimSpace(answer), "\n")
+	if len(lines) < 2 {
+		return answer
+	}
+	open := fence.FindStringSubmatch(strings.TrimSpace(lines[0]))
+	if open == nil {
+		return answer
+	}
+	close := strings.TrimSpace(lines[len(lines)-1])
+	if len(close) < len(open[1]) || strings.Trim(close, open[1][:1]) != "" {
+		return answer
+	}
+	for _, line := range lines[1 : len(lines)-1] {
+		if strings.HasPrefix(strings.TrimSpace(line), open[1]) {
+			return answer
+		}
+	}
+	return strings.Join(lines[1:len(lines)-1], "\n")
+}
+
+// Parse reads form blocks, the first named "". It removes a whole-answer fence and introductory
+// prose before the first heading or known field. List-only answers keep their lead items.
 func Parse(answer string) []Block {
+	lines := strings.Split(Unfence(answer), "\n")
+	prose := false
+	for i, raw := range lines {
+		line := strings.TrimSpace(raw)
+		start := strings.HasPrefix(line, "## ")
+		if m := field.FindStringSubmatch(line); m != nil {
+			switch strings.ToLower(m[1]) {
+			case "complexity", "epics", "role", "priority", "depends on", "functionalities":
+				start = true
+			}
+		}
+		if start {
+			if prose {
+				lines = lines[i:]
+			}
+			break
+		}
+		prose = prose || line != ""
+	}
 	blocks := []Block{{}}
 	cur := &blocks[0]
 	inItem := false // the last line was an item or its wrapped line
-	for _, rawLine := range strings.Split(answer, "\n") {
+	for _, rawLine := range lines {
 		line := strings.TrimSpace(rawLine)
 		wrapped := inItem && strings.HasPrefix(rawLine, "  ")
 		inItem = false

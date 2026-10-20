@@ -17,14 +17,15 @@ import (
 // helloLimit bounds dulidu doctor --agent's hello when dulidu.yaml sets no agent_timeout.
 var helloLimit = 2 * time.Minute
 
-// media is the tools a run's videos need, with how to install each.
+// media is the tools a run's PDFs and videos need, with how to install each.
 var media = []struct{ name, hint string }{
+	{"pdftotext", "brew install poppler, or apt install poppler-utils"},
 	{"ffmpeg", "brew install ffmpeg, or apt install ffmpeg"},
 	{"ffprobe", "brew install ffmpeg, or apt install ffmpeg"},
 	{"whisper-cli", "brew install whisper-cpp, or a whisper.cpp build"},
 }
 
-// doctorCmd is dulidu doctor: the go toolchain, git and the config layers found, one line each, a line for each
+// doctorCmd is dulidu doctor: git and the config layers found, one line each, a line for each
 // media tool missing, or, with --agent, the agent's answer to a hello instead. Every check runs; any failure fails
 // the command.
 func doctorCmd() *cobra.Command {
@@ -40,8 +41,6 @@ func doctorCmd() *cobra.Command {
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), strings.Join(strings.Fields(line), " "))
 			}
-			path, err := exec.LookPath("go")
-			check("go", path, err)
 			root, err := toplevel()
 			check("git", root, err)
 			var c config.Config

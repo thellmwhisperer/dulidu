@@ -51,6 +51,7 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 		}
 		var d pipeline.Dimension
 		if err == nil {
+			answer = text.Unfence(answer)
 			blocks := text.Parse(answer)
 			lead, _, _ := strings.Cut("\n"+answer, "\n## ")
 			d.Text = strings.TrimSpace(lead)
