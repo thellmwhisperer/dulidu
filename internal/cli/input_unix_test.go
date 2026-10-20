@@ -93,13 +93,14 @@ func TestRunPackagesAVideoWithDocumentsAndImages(t *testing.T) {
 
 func TestDoctorNamesAMissingMediaToolAndFails(t *testing.T) {
 	for _, c := range []struct{ missing, want string }{
+		{"pdftotext", "fail pdftotext: not found in PATH: install it with brew install poppler"},
 		{"ffmpeg", "fail ffmpeg: not found in PATH: install it with brew install ffmpeg"},
 		{"whisper-cli", "fail whisper-cli: not found in PATH: install it with brew install whisper-cpp"},
 	} {
 		t.Run(c.missing, func(t *testing.T) {
 			repo(t)
 			bin := t.TempDir()
-			for _, name := range []string{"go", "git"} {
+			for _, name := range []string{"git"} {
 				path, err := exec.LookPath(name)
 				if err != nil {
 					t.Fatal(err)
@@ -108,7 +109,7 @@ func TestDoctorNamesAMissingMediaToolAndFails(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			for _, name := range []string{"ffmpeg", "ffprobe", "whisper-cli"} {
+			for _, name := range []string{"pdftotext", "ffmpeg", "ffprobe", "whisper-cli"} {
 				if name == c.missing {
 					continue
 				}
@@ -128,7 +129,7 @@ func TestDoctorNamesAMissingMediaToolAndFails(t *testing.T) {
 func TestDoctorAgentNeedsNoMediaTool(t *testing.T) {
 	agentRepo(t, "pi", "ok", "")
 	bin := strings.SplitN(os.Getenv("PATH"), string(os.PathListSeparator), 2)[0] // the fake pi alone
-	for _, name := range []string{"go", "git"} {
+	for _, name := range []string{"git"} {
 		path, err := exec.LookPath(name)
 		if err != nil {
 			t.Fatal(err)
@@ -139,6 +140,6 @@ func TestDoctorAgentNeedsNoMediaTool(t *testing.T) {
 	}
 	t.Setenv("PATH", bin)
 	if code, out, errOut := dulidu(t, "doctor", "--agent"); code != 0 {
-		t.Fatalf("dulidu doctor --agent with only go, git and the agent: exit %d\n%s%s", code, out, errOut)
+		t.Fatalf("dulidu doctor --agent with only git and the agent: exit %d\n%s%s", code, out, errOut)
 	}
 }

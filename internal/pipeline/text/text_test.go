@@ -37,3 +37,24 @@ func TestParseWrappedItem(t *testing.T) {
 		t.Errorf("Prose = %q, want %q", acc.Prose, "Not wrapped.")
 	}
 }
+
+func TestParseWholeFenceAndLeadProse(t *testing.T) {
+	form := "Complexity: simple\nEpics: 2\nA small project."
+	for _, answer := range []string{
+		"```\n" + form + "\n```", "\n```markdown\n" + form + "\n```\n\n",
+		"~~~text\n" + form + "\n~~~", "Here is the answer:\n\n" + form,
+		"```markdown\nHere is the answer:\n" + form + "\n```",
+	} {
+		if got, want := Parse(answer), Parse(form); !reflect.DeepEqual(got, want) {
+			t.Errorf("Parse(%q) = %+v, want %+v", answer, got, want)
+		}
+	}
+	form = "## E1 Book a wheel\nDepends on: none\nBook it."
+	if got, want := Parse("Here are the epics:\n"+form), Parse(form); !reflect.DeepEqual(got, want) {
+		t.Errorf("heading form = %+v, want %+v", got, want)
+	}
+	// A list-only form has no heading or known key; its items must survive.
+	if got := Parse("- One constraint\n")[0].Items; !reflect.DeepEqual(got, []string{"One constraint"}) {
+		t.Errorf("list-only form = %q", got)
+	}
+}

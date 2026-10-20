@@ -77,8 +77,8 @@ func TestInitWritesConfigAndIgnoresDuliduOnce(t *testing.T) {
 			if err := yaml.Unmarshal([]byte(first), &keys); err != nil {
 				t.Fatal(err)
 			}
-			if len(keys) != 12 {
-				t.Fatalf("dulidu.yaml has %d keys, want 12: %v", len(keys), keys)
+			if len(keys) != 8 {
+				t.Fatalf("dulidu.yaml has %d keys, want 8: %v", len(keys), keys)
 			}
 			for _, key := range []string{"harness", "model", "effort", "agent_timeout"} {
 				if value, ok := keys[key]; !ok || value != "" {
@@ -144,8 +144,16 @@ func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
 	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(dir, "dulidu.yaml"))), &fields); err != nil {
 		t.Fatal(err)
 	}
+	for _, key := range []string{"platform", "project_type", "ticket_size", "exclusions"} {
+		if _, ok := fields[key]; ok {
+			t.Errorf("dulidu init still declares removed key %s", key)
+		}
+	}
+	if steps := fields["steps"].(map[string]any); len(steps) != 5 || steps["stories"] != nil {
+		t.Errorf("dulidu init steps must omit stories: %v", steps)
+	}
 	want := []string{"harness", "model", "effort", "agent_timeout"}
-	project := []string{"platform", "project_type", "max_epics", "max_stories_per_epic", "ticket_size", "exclusions",
+	project := []string{"max_epics", "max_stories_per_epic",
 		"video_frame_seconds", "steps"}
 	if len(fields) != len(want)+len(project) {
 		t.Fatalf("dulidu.yaml has %d keys, want %d: %v", len(fields), len(want)+len(project), fields)
@@ -164,6 +172,20 @@ func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
 
 func TestDoctorPrintsOneLinePerCheck(t *testing.T) {
 	repo(t)
+	bin := t.TempDir()
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(git, filepath.Join(bin, "git")); err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range []string{"pdftotext", "ffmpeg", "ffprobe", "whisper-cli"} {
+		if err := os.WriteFile(filepath.Join(bin, tool), []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", bin)
 	if code, _, _ := dulidu(t, "init"); code != 0 {
 		t.Fatal("dulidu init failed")
 	}
@@ -175,7 +197,7 @@ func TestDoctorPrintsOneLinePerCheck(t *testing.T) {
 	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
 		names = append(names, strings.SplitN(l, ":", 2)[0])
 	}
-	if got := strings.Join(names, "|"); got != "ok go|ok git|ok config" {
+	if got := strings.Join(names, "|"); got != "ok git|ok config" {
 		t.Fatalf("got checks %s\n%s", got, out)
 	}
 }
@@ -185,7 +207,7 @@ func TestDoctorFailsWhenACheckFails(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Chdir(t.TempDir())
 	code, out, _ := dulidu(t, "doctor")
-	if code != 1 || !strings.Contains(out, "fail go:") || !strings.Contains(out, "fail git:") ||
+	if code != 1 || !strings.Contains(out, "fail pdftotext:") || strings.Contains(out, "fail go:") || !strings.Contains(out, "fail git:") ||
 		!strings.Contains(out, "ok config:") {
 		t.Fatalf("dulidu doctor with nothing on PATH: exit %d\n%s", code, out)
 	}

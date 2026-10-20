@@ -26,16 +26,9 @@ effort: ""
 # How long a run may take, as 90s or 20m; "" is 30m for runs, 2m for doctor --agent
 agent_timeout: ""
 
-# The product: the platform it runs on and the kind of project it is
-platform: ""
-project_type: ""
 # At most this many epics, and stories in each; empty is no limit
 max_epics:
 max_stories_per_epic:
-# How big one ticket should be
-ticket_size: ""
-# What stays out of the epics and stories, one item each
-exclusions: []
 # Seconds between the frames read from a video in the input; empty is 10
 video_frame_seconds:
 
@@ -61,16 +54,11 @@ steps:
     harness: claude
     model: sonnet
     effort: medium
-  # epics outlines the work: a medium model
+  # epics outlines the work and writes its stories: a medium model
   epics:
     harness: claude
     model: sonnet
     effort: medium
-  # stories writes the tickets: a strong model
-  stories:
-    harness: claude
-    model: opus
-    effort: high
 `
 
 // initCmd is dulidu init: dulidu.yaml from template unless there is one, and .dulidu/ in .gitignore unless it is.
