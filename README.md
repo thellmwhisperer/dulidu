@@ -167,6 +167,8 @@ dulidu update   # updates an installed release to the latest release
 dulidu release vX.Y.Z # builds and publishes a tagged release
 ```
 
+`runs` reads each folder's `report.json`, so it also lists older runs whose `analysis.json` has string lists without rewriting their files.
+
 Configuration is layered: built-in defaults, `~/.config/dulidu/config.yaml`, then the repository's `dulidu.yaml`.
 `dulidu init` writes a template with every required project and step key. Each step has its own agent CLI, model and effort, with suggested defaults. Top-level harness, model and effort configure `doctor --agent`. Every required key must be present across the layers, even when empty; unknown keys are rejected. Errors name the key as `config incomplete: <key>`. The agent uses its installed CLI and existing authentication.
 
