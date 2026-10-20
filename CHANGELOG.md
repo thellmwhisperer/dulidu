@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/thellmwhisperer/dulidu/compare/v0.1.6...v0.1.7) (2026-10-20)
+
+
+### Bug Fixes
+
+* dulidu attach on a real terminal answers q, tab and the scroll keys ([942c9d5](https://github.com/thellmwhisperer/dulidu/commit/942c9d5146c60016b80f52733a4cef844867186e))
+
 ## [0.1.6](https://github.com/thellmwhisperer/dulidu/compare/v0.1.5...v0.1.6) (2026-10-20)
 
 
