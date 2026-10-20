@@ -1,10 +1,12 @@
 package export
 
 import (
+	"bytes"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,6 +79,38 @@ func TestExportMatchesGolden(t *testing.T) {
 	if len(got) != len(want) {
 		t.Errorf("%d tickets, want %d", len(got), len(want))
 	}
+
+	t.Run("functionality pipes stay in their table cells", func(t *testing.T) {
+		dir := t.TempDir()
+		r := recorded()
+		r.Analysis.Functionalities[0].Name = "Export | rows"
+		r.Analysis.Functionalities[0].Description = "Export rows using | as the separator."
+		if err := pipeline.Write(dir, r); err != nil {
+			t.Fatal(err)
+		}
+		before, err := os.ReadFile(filepath.Join(dir, "analysis.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := Write(dir, &r); err != nil {
+			t.Fatal(err)
+		}
+		spec, err := os.ReadFile(filepath.Join(dir, "spec.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `| F1 | must | Export \| rows | Export rows using \| as the separator. |`
+		if !strings.Contains(string(spec), want+"\n") {
+			t.Errorf("spec.md must preserve four functionality cells; want %q in:\n%s", want, spec)
+		}
+		after, err := os.ReadFile(filepath.Join(dir, "analysis.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(before, after) {
+			t.Error("export changed analysis.json while escaping the functionality table")
+		}
+	})
 }
 
 func TestReexportRemovesObsoleteTickets(t *testing.T) {
