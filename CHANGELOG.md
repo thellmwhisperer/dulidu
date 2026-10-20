@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/thellmwhisperer/dulidu/compare/v0.1.2...v0.1.3) (2026-10-20)
+
+
+### Features
+
+* Research reads plain text: prose and a Sources list ([5de259d](https://github.com/thellmwhisperer/dulidu/commit/5de259d165eca9543a4d1749cd1938d4810bc0b1))
+
 ## [0.1.2](https://github.com/thellmwhisperer/dulidu/compare/v0.1.1...v0.1.2) (2026-10-20)
 
 
