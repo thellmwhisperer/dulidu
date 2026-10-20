@@ -143,5 +143,7 @@ jobs:
           set -euo pipefail
           sh install.sh --version "$TAG"
           version="$("$DULIDU_PREFIX/dulidu" --version)"
+          # Split the expected "dulidu vX.Y.Z (...)" output into command and tag.
+          # shellcheck disable=SC2086
           set -- $version
           [ "$1" = dulidu ] && [ "$2" = "$TAG" ]
