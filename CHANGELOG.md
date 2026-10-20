@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/thellmwhisperer/dulidu/compare/v0.1.4...v0.1.5) (2026-10-20)
+
+
+### Features
+
+* Epics read plain text: the whole run without JSON from the model ([be0bf38](https://github.com/thellmwhisperer/dulidu/commit/be0bf38993ec20a257b9610da7b12da3bc272bf1))
+
 ## [0.1.4](https://github.com/thellmwhisperer/dulidu/compare/v0.1.3...v0.1.4) (2026-10-20)
 
 
