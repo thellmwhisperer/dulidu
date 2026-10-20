@@ -23,6 +23,22 @@ var (
 	buildErr  error
 )
 
+const binaryExample = "testdata/run-example"
+
+func binaryRead(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func binaryLines(path string) int {
+	b, _ := os.ReadFile(path)
+	return strings.Count(string(b), "\n")
+}
+
 // binary is ./cmd/dulidu built with go build, once per test process.
 func binary(t *testing.T) string {
 	t.Helper()
@@ -62,7 +78,7 @@ func fakeReplay(t *testing.T, answers []string) string {
 		t.Fatal(err)
 	}
 	for i, path := range answers {
-		line, _ := json.Marshal(map[string]string{"type": "result", "result": read(t, path)})
+		line, _ := json.Marshal(map[string]string{"type": "result", "result": binaryRead(t, path)})
 		if err := os.WriteFile(filepath.Join(replay, strconv.Itoa(i+1)), append(line, '\n'), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -80,11 +96,11 @@ func TestBinaryRunRecorded(t *testing.T) {
 	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, out)
 	}
-	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(read(t, filepath.Join(example, "brief.md"))), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(binaryRead(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// The brief alone has no image, so the input step asks nothing.
-	answers, _ := filepath.Glob(filepath.Join(example, "answers", "*"))
+	answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
 	answers = answers[1:]
 	replay := fakeReplay(t, answers)
 	t.Setenv("HOME", t.TempDir())
@@ -101,7 +117,7 @@ func TestBinaryRunRecorded(t *testing.T) {
 	run("init")
 	run("run", "brief.md")
 
-	if n := lines(filepath.Join(replay, "calls")); n != len(answers) {
+	if n := binaryLines(filepath.Join(replay, "calls")); n != len(answers) {
 		t.Errorf("claude was called %d times, want %d", n, len(answers))
 	}
 	dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
