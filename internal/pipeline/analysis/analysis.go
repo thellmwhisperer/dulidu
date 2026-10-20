@@ -77,19 +77,13 @@ func need(ok bool, msg string) error {
 	return errors.New(msg)
 }
 
-// items is the lead block's "- item" list, at least one.
+// items is the lead block's "- item" list, possibly empty.
 func items(bs []text.Block) ([]string, error) {
-	if len(bs[0].Items) == 0 {
-		return nil, errors.New("empty")
-	}
-	return bs[0].Items, nil
+	return append([]string{}, bs[0].Items...), nil
 }
 
-// each is blocks, at least one, each made a line by line, which says what is wrong with it.
+// each is blocks, possibly empty, each made a line by line, which says what is wrong with it.
 func each(blocks []text.Block, line func(text.Block) (string, error)) ([]string, error) {
-	if len(blocks) == 0 {
-		return nil, errors.New("empty")
-	}
 	lines := make([]string, len(blocks))
 	for i, b := range blocks {
 		var err error
@@ -102,7 +96,7 @@ func each(blocks []text.Block, line func(text.Block) (string, error)) ([]string,
 
 // Run analyses r.Context and r.Research in dir, the run folder: it adds step to r's report, running, and writes r;
 // then asks ask once per list, in lists' order, with its prompt on contexto.md, research.json and the lists before it.
-// When every answer is a list of at least one valid item the five are r.Analysis and the step passed; at the first
+// When every answer is a list of valid items, possibly empty, the five are r.Analysis and the step passed; at the first
 // that is not, no later one is asked, r gets no analysis, the step and r fail, the step "failed at analysis: <list>",
 // and Run's error says that and why.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {

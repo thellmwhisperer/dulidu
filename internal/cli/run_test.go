@@ -14,7 +14,7 @@ import (
 // $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid plain-text triage, simple with no epics line, so
 // simple's cap of 3. The nth research prompt's call it appends to $FAKE_LOG.research, keeps its prompt in $FAKE_LOG.research.<n> and answers with $FAKE_RESEARCH/<n>'s line,
 // else a valid dimension. An analysis list's or epics phase's call it appends to $FAKE_LOG.graph, as the list or phase
-// and its arguments, and answers validly, with an empty list for the one named $FAKE_BAD. Every other call is the
+// and its arguments, and answers validly, failing the agent for the one named $FAKE_FAIL. Every other call is the
 // input step's: it appends its arguments to $FAKE_LOG and describes any image the same.
 const fakeDescriber = `#!/bin/sh
 prompt=$(mktemp)
@@ -56,7 +56,10 @@ esac
 if [ -n "$list" ]; then
   rm -f "$prompt"
   printf '%s %s\n' "$list" "$*" >> "$FAKE_LOG.graph"
-  if [ "$list" = "$FAKE_BAD" ]; then a='[]'; fi
+  if [ "$list" = "$FAKE_FAIL" ]; then
+    echo 'fake agent failed' >&2
+    exit 1
+  fi
   printf '{"type":"result","result":"%s"}\n' "$(printf '%s' "$a" | sed 's/"/\\"/g')"
   exit 0
 fi`

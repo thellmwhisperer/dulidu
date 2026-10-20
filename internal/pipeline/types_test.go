@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestAnalysisAllowsEmptyListsButRejectsBlankItems(t *testing.T) {
+	a := Analysis{Personas: []string{}, Functionalities: []string{}, Flows: []string{},
+		Constraints: []string{}, Questions: []string{}}
+	if err := a.Validate(); err != nil {
+		t.Fatalf("empty lists: %v", err)
+	}
+	for name, list := range map[string]*[]string{
+		"personas": &a.Personas, "functionalities": &a.Functionalities, "flows": &a.Flows,
+	} {
+		for _, invalid := range [][]string{nil, {"valid item", " \t"}} {
+			*list = invalid
+			if a.Validate() == nil {
+				t.Errorf("%s accepts %v", name, invalid)
+			}
+		}
+		*list = []string{}
+	}
+}
+
 func TestValidateRejects(t *testing.T) {
 	for name, v := range map[string]interface{ Validate() error }{
 		"brief": &Brief{}, "input": &InputContext{}, "triage": &Triage{}, "research": &Research{},
