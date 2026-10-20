@@ -64,15 +64,6 @@ func list(items []string) string {
 	return "- " + strings.Join(items, "\n- ") + "\n"
 }
 
-// functionalities is a's functionalities, each led by its id.
-func functionalities(a pipeline.Analysis) []string {
-	fs := make([]string, len(a.Functionalities))
-	for i, f := range a.Functionalities {
-		fs[i] = f.ID + " " + f.String()
-	}
-	return fs
-}
-
 // sections is the title spec.md gives each research dimension, as the prototype's report.
 var sections = map[string]string{"business": "Business Context", "users": "Users & Personas",
 	"market": "Market & Competition", "technical": "Technical Landscape", "project": "Project Scope"}
