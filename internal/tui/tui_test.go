@@ -41,8 +41,11 @@ func TestFrameShowsTheQuestionsUnderTheSteps(t *testing.T) {
 	}}
 	frame := Frame("20261017-010000-1", r, []string{"Who pays?", "For how long?"}, nil, 120, 40, at.Add(time.Minute))
 	if strings.Contains(frame, "Agent") || !strings.Contains(frame, "Questions") || !strings.Contains(frame, "1. Who pays?") ||
-		!strings.Contains(frame, "2. For how long?") || !strings.Contains(frame, "dulidu run --resume 20261017-010000-1 --answers answers.md") {
+		!strings.Contains(frame, "2. For how long?") || !strings.Contains(frame, "detach") {
 		t.Fatalf("questions box:\n%s", frame)
+	}
+	if strings.Contains(frame, "--resume") || strings.Contains(frame, "--answers") {
+		t.Fatalf("legacy run offers removed flags in its screen:\n%s", frame)
 	}
 }
 
