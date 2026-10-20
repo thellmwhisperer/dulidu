@@ -32,7 +32,7 @@ func complete() Run {
 		Research:    &Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []Source{{URL: "https://example.com/market", Title: "Market", Supports: "Crowded."}}}}},
 		Analysis:    &Analysis{Personas: []string{"seller"}, Functionalities: []string{"list a bike"}, Flows: []string{"sell"}, Questions: []string{"fees?"}},
 		Epics:       Epics{{ID: "E1", Title: "Selling", Text: "Sellers list bikes."}},
-		Tickets:     map[string]Story{"E1-1": {Epic: "E1", Title: "List a bike", Text: "As a seller", Acceptance: []string{"the bike shows up"}}},
+		Tickets:     map[string]Story{"E1-1": {ID: "US1", Epic: "E1", Title: "List a bike", Text: "As a seller", Acceptance: []string{"the bike shows up"}}},
 		Spec:        "# Spec\n",
 		Plan:        []byte(`{"order": ["E1-1"]}` + "\n"),
 		DesignBrief: "# Brief de diseño\n",
@@ -82,7 +82,7 @@ func TestRunFolderReplacement(t *testing.T) {
 	replacement := Run{
 		Report:  complete().Report,
 		Input:   &InputContext{Brief: Brief{Text: "A different brief.\n"}, Files: map[string]string{"new.md": "New input.\n"}},
-		Tickets: map[string]Story{"E2-1": {Epic: "E2", Title: "New story", Acceptance: []string{"done"}}},
+		Tickets: map[string]Story{"E2-1": {ID: "US2", Epic: "E2", Title: "New story", Acceptance: []string{"done"}}},
 		Logs:    map[string]string{"analysis": "new log\n"},
 	}
 	for _, want := range []Run{replacement, {Report: replacement.Report}} {

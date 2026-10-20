@@ -11,8 +11,8 @@ import (
 )
 
 // askStories is e's stories, phase two's call for it on data, or why there are none: each story needs an id,
-// title, description, acceptance criteria, first test and a list of known functionality ids (which may be empty).
-func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, ask func(prompt string) (string, error)) ([]pipeline.Story, error) {
+// title; other fields are optional. Unknown functionality ids are dropped with a note.
+func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, notes *[]string, ask func(prompt string) (string, error)) ([]pipeline.Story, error) {
 	data["Epic"] = e
 	prompt, err := prompts.Render("p16-epics-stories", data)
 	var answer string
@@ -38,18 +38,19 @@ func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, ask f
 				s.FirstTest = strings.TrimSpace(strings.Join(section.RawLines, "\n"))
 			}
 		}
-		if blank(s.ID) || blank(s.Title) || blank(s.FirstTest) || len(s.Acceptance) == 0 || slices.ContainsFunc(s.Acceptance, blank) {
-			return nil, fmt.Errorf("stories: %s story %s lacks id, title, acceptance or first test", e.ID, id)
-		}
-		if blank(s.Text) {
-			return nil, fmt.Errorf("stories: %s story %s lacks description", e.ID, id)
+		if blank(s.ID) || blank(s.Title) {
+			return nil, fmt.Errorf("stories: %s story %s lacks id or title", e.ID, id)
 		}
 		if value := b.Field("Functionalities"); value != "" {
 			s.Functionalities = references(value)
 		}
-		if s.Functionalities == nil || slices.ContainsFunc(s.Functionalities, func(id string) bool { return !slices.Contains(ids, id) }) {
-			return nil, fmt.Errorf("stories: %s story %s has invalid functionalities", e.ID, id)
-		}
+		s.Functionalities = slices.DeleteFunc(s.Functionalities, func(id string) bool {
+			if slices.Contains(ids, id) {
+				return false
+			}
+			*notes = append(*notes, fmt.Sprintf("dropped functionality %s from %s in %s", id, s.ID, e.ID))
+			return true
+		})
 		ss[i] = s
 	}
 	return ss, nil

@@ -170,7 +170,7 @@ func plan(r *pipeline.Run, notes *[]string, ask func(prompt string) (string, err
 		es[i].DependsOn = slices.DeleteFunc(es[i].DependsOn, func(id string) bool {
 			return !slices.ContainsFunc(es, func(e pipeline.EpicOutline) bool { return e.ID == id })
 		})
-		if es[i].Stories, err = askStories(es[i], data, ids, ask); err != nil {
+		if es[i].Stories, err = askStories(es[i], data, ids, notes, ask); err != nil {
 			return nil, err
 		}
 		es[i].Stories = trim(es[i].Stories, r.Triage.StoriesPerEpic, "stories in "+es[i].ID, notes)
