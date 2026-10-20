@@ -26,8 +26,11 @@ var (
 func Parse(answer string) []Block {
 	blocks := []Block{{}}
 	cur := &blocks[0]
+	inItem := false // the last line was an item or its wrapped line
 	for _, rawLine := range strings.Split(answer, "\n") {
 		line := strings.TrimSpace(rawLine)
+		wrapped := inItem && strings.HasPrefix(rawLine, "  ")
+		inItem = false
 		if name, ok := strings.CutPrefix(line, "## "); ok {
 			blocks = append(blocks, Block{Name: strings.TrimSpace(name)})
 			cur = &blocks[len(blocks)-1]
@@ -45,11 +48,15 @@ func Parse(answer string) []Block {
 		}
 		if m := item.FindStringSubmatch(line); m != nil {
 			cur.Items = append(cur.Items, m[1])
+			inItem = true
 		} else if m := field.FindStringSubmatch(line); m != nil {
 			if cur.Fields == nil {
 				cur.Fields = map[string]string{}
 			}
 			cur.Fields[strings.ToLower(m[1])] = m[2]
+		} else if wrapped && line != "" {
+			cur.Items[len(cur.Items)-1] += " " + line
+			inItem = true
 		} else if line != "" {
 			cur.Prose = strings.TrimPrefix(cur.Prose+"\n"+line, "\n")
 		}

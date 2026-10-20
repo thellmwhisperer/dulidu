@@ -25,3 +25,15 @@ func TestParse(t *testing.T) {
 		t.Error("Field is not matched without case or a missing one is not empty")
 	}
 }
+
+// An item wrapped over indented lines reads as one item; an unindented line after an item is still prose.
+func TestParseWrappedItem(t *testing.T) {
+	acc := Parse("## Story\n### Acceptance\n- Given a free court,\n  when I book it,\n  then it is reserved.\n" +
+		"1. Second\n   wrapped too.\nNot wrapped.\n")[1].Sections[0]
+	if want := []string{"Given a free court, when I book it, then it is reserved.", "Second wrapped too."}; !reflect.DeepEqual(acc.Items, want) {
+		t.Errorf("Items = %q, want %q", acc.Items, want)
+	}
+	if acc.Prose != "Not wrapped." {
+		t.Errorf("Prose = %q, want %q", acc.Prose, "Not wrapped.")
+	}
+}
