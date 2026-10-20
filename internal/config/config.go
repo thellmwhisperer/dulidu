@@ -14,9 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is dulidu's configuration: the agent CLI doctor greets, its model and effort, passed through untouched,
-// and how long it may take, a Go duration, "" for the default; then the project the steps work on and each
-// step's agent, every one a line in dulidu init's template. Any other key in a layer is an error.
+// Config is dulidu's layered agent, run-limit and input settings. Unknown keys are errors.
 type Config struct {
 	Harness           string `yaml:"harness"`
 	Model             string `yaml:"model"`
