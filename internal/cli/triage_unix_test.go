@@ -128,7 +128,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	}
 }
 
-func TestRunStopsAfterTriageWithMissingQuestions(t *testing.T) {
+func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	calls := runRepo(t, map[string]string{})
 	triageWith(t, `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":[],`+
 		`"context_present":["brief"],"missing_questions":["Who sells the bikes?"],"project_type":"other"}`)
@@ -143,7 +143,7 @@ func TestRunStopsAfterTriageWithMissingQuestions(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if len(report.Steps) != 2 || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" {
+	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if got := read(t, calls+".triage"); strings.Count(got, "\n") != 1 {
@@ -152,9 +152,12 @@ func TestRunStopsAfterTriageWithMissingQuestions(t *testing.T) {
 	if _, err := os.Stat(calls); err == nil {
 		t.Error("a text brief called the agent for a description")
 	}
+	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
+		t.Error("questions.json was written")
+	}
 	for _, name := range []string{"research.json", "analysis.json", "epics.json", "spec.md"} {
-		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
-			t.Errorf("%s was written after triage", name)
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("%s was not written after triage: %v", name, err)
 		}
 	}
 }

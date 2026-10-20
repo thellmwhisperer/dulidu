@@ -191,22 +191,22 @@ func TestRunWithNoDimensionsPassesResearchWithoutACall(t *testing.T) {
 	}
 }
 
-func TestRunWithMissingQuestionsDoesNotResearch(t *testing.T) {
+func TestRunWithMissingQuestionsResearches(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market"]`, `["Who sells the bikes?"]`)
 	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}
 	dir := runs(t)[0]
-	if n := calls(t, log+".research"); n != 0 {
-		t.Errorf("%d research calls with questions pending, want none", n)
+	if n := calls(t, log+".research"); n != 1 {
+		t.Errorf("%d research calls with triage's questions, want 1", n)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "research.json")); err == nil {
-		t.Error("research.json was written with questions pending")
+	if _, err := os.Stat(filepath.Join(dir, "research.json")); err != nil {
+		t.Errorf("research.json was not written with triage's questions: %v", err)
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if len(report.Steps) != 2 || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" {
+	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" {
 		t.Errorf("report.json: %+v", report)
 	}
 }

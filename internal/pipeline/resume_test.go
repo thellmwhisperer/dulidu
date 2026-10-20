@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -58,7 +57,7 @@ case "$prompt" in
 esac
 `
 
-// thinTriage is triage's answer on the thin brief: three questions before going on.
+// thinTriage is triage's answer on the thin brief: three questions, which never stop the run.
 const thinTriage = `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":["users"],` +
 	`"context_present":["brief"],"missing_questions":["What do teams do with the app?","Who are the users?",` +
 	`"How many teams are there?"],"project_type":"new_product"}`
@@ -94,16 +93,114 @@ func lines(path string) int {
 	return strings.Count(string(b), "\n")
 }
 
-func TestStopAndResume(t *testing.T) {
-	repo, bin, log := t.TempDir(), t.TempDir(), filepath.Join(t.TempDir(), "calls")
+// realTempDir is t.TempDir() with its symlinks resolved, as git rev-parse --show-toplevel prints it: on macOS
+// /var/folders is /private/var/folders.
+func realTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// TestBinaryRunNeverStopsAtTriage runs the built dulidu on the example's brief with a claude that replays the
+// recorded answers, triage's with one missing question: the run goes on to the export, and --resume is no flag.
+func TestBinaryRunNeverStopsAtTriage(t *testing.T) {
+	bin, repo := binary(t), realTempDir(t)
+	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(read(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "a.md"), []byte("Bike shops print the tags.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The brief alone has no image, so the input step asks nothing; triage asks one question.
+	answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
+	answers = answers[1:]
+	var triage map[string]any
+	if err := json.Unmarshal([]byte(read(t, answers[0])), &triage); err != nil {
+		t.Fatal(err)
+	}
+	triage["missing_questions"] = []string{"Who prints the tags?"}
+	asked, _ := json.Marshal(triage)
+	answers[0] = filepath.Join(t.TempDir(), "triage.json")
+	if err := os.WriteFile(answers[0], asked, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	replay := fakeReplay(t, answers)
+	t.Setenv("HOME", t.TempDir())
+	run := func(args ...string) (string, error) {
+		cmd := exec.Command(bin, args...)
+		cmd.Dir = repo
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	if out, err := run("init"); err != nil {
+		t.Fatalf("dulidu init: %v\n%s", err, out)
+	}
+
+	out, err := run("run", "brief.md")
+	if err != nil {
+		t.Fatalf("dulidu run: %v\n%s", err, out)
+	}
+	if n := lines(filepath.Join(replay, "calls")); n != len(answers) {
+		t.Errorf("claude was called %d times, want %d", n, len(answers))
+	}
+	dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
+	if len(dirs) != 1 {
+		t.Fatalf("run folders: %v", dirs)
+	}
+	dir := dirs[0]
+	if want := filepath.Join(dir, "contexto.md") + "\n"; out != want {
+		t.Errorf("dulidu run printed %q, want %q", out, want)
+	}
+	r, err := pipeline.Read(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := []string{}
+	for _, s := range r.Report.Steps {
+		names = append(names, s.Name)
+		if s.Name != "input" && s.Status != "passed" {
+			t.Errorf("step %s: %s", s.Name, s.Status)
+		}
+	}
+	if r.Report.Status != "done" || strings.Join(names, " ") != "input triage research analysis epics export" {
+		t.Errorf("dulidu run: status %s, steps %v, want done through the export", r.Report.Status, names)
+	}
+	if !slices.Equal(r.Triage.MissingQuestions, []string{"Who prints the tags?"}) {
+		t.Errorf("triage.json missing_questions: %q", r.Triage.MissingQuestions)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
+		t.Error("questions.json was written")
+	}
+	if strings.Contains(r.Context, "## Answers") {
+		t.Errorf("contexto.md has answers:\n%s", r.Context)
+	}
+
+	out, err = run("run", "--resume", "x", "--answers", "a.md")
+	if err == nil || !strings.Contains(out, "unknown flag: --resume") {
+		t.Errorf("dulidu run --resume x --answers a.md: %v\n%s", err, out)
+	}
+	if n := lines(filepath.Join(replay, "calls")); n != len(answers) {
+		t.Errorf("--resume called claude: %d calls, want %d", n, len(answers))
+	}
+}
+
+// TestThinTriageGoesOnToTheExport runs dulidu on a thin brief whose triage asks three questions: research, analysis,
+// epics and the export run once each on contexto.md as input packaged it, and the open questions are analysis' list.
+func TestThinTriageGoesOnToTheExport(t *testing.T) {
+	repo, bin, log := realTempDir(t), t.TempDir(), filepath.Join(t.TempDir(), "calls")
 	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, out)
 	}
 	triage := filepath.Join(t.TempDir(), "triage")
 	line, _ := json.Marshal(map[string]string{"type": "result", "result": thinTriage})
 	for path, s := range map[string]string{filepath.Join(bin, "claude"): fakeClaude, triage: string(line) + "\n",
-		filepath.Join(repo, "brief.md"):   "An app for teams.\n",
-		filepath.Join(repo, "answers.md"): "Teams of five plan their sprints.\n"} {
+		filepath.Join(repo, "brief.md"): "An app for teams.\n"} {
 		if err := os.WriteFile(path, []byte(s), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -125,72 +222,60 @@ func TestStopAndResume(t *testing.T) {
 		t.Fatalf("run folders: %v", dirs)
 	}
 	dir, label := dirs[0], filepath.Base(dirs[0])
-	stopped, err := pipeline.Read(dir)
+	if want := filepath.Join(dir, "contexto.md") + "\n"; out != want {
+		t.Errorf("dulidu run printed %q, want %q", out, want)
+	}
+	r, err := pipeline.Read(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stopped.Report.Status != "waiting_answers" || len(stopped.Report.Steps) != 2 || stopped.Report.Steps[1].Name != "triage" ||
-		stopped.Report.Steps[1].Status != "passed" {
-		t.Fatalf("report.json after triage: %+v", stopped.Report)
-	}
-	var questions []string
-	if b, err := os.ReadFile(filepath.Join(dir, "questions.json")); err != nil || json.Unmarshal(b, &questions) != nil ||
-		len(questions) != 3 || !slices.Equal(questions, stopped.Triage.MissingQuestions) || !strings.HasPrefix(out, string(b)) {
-		t.Fatalf("questions.json %q (%v) is not triage's 3 questions as printed:\n%s", b, err, out)
-	}
-	if lines(log+".research") != 0 || stopped.Research != nil {
-		t.Fatal("research ran with questions pending")
-	}
-	kept := map[string]string{}
-	for _, name := range []string{"input/brief.md", "triage.json", "questions.json", "agent/triage.log"} {
-		kept[name] = read(t, filepath.Join(dir, name))
-	}
-
-	if code, out, errOut := dulidu(t, repo, "run", "--resume", label, "--answers", "answers.md"); code != 0 {
-		t.Fatalf("dulidu run --resume: exit %d\n%s%s", code, out, errOut)
-	}
-	resumed, err := pipeline.Read(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	steps := resumed.Report.Steps
-	if resumed.Report.Status != "done" || len(steps) != 6 || !reflect.DeepEqual(steps[:2], stopped.Report.Steps) ||
-		steps[2].Name != "research" || steps[3].Name != "analysis" || steps[4].Name != "epics" || steps[5].Name != "export" {
-		t.Errorf("report.json after resume: %+v", resumed.Report)
+	steps := r.Report.Steps
+	if r.Report.Status != "done" || len(steps) != 6 || steps[1].Name != "triage" || steps[2].Name != "research" ||
+		steps[3].Name != "analysis" || steps[4].Name != "epics" || steps[5].Name != "export" {
+		t.Fatalf("report.json: %+v", r.Report)
 	}
 	for _, s := range steps[1:] {
 		if s.Status != "passed" {
-			t.Errorf("step %s after resume: %s", s.Name, s.Status)
+			t.Errorf("step %s: %s", s.Name, s.Status)
 		}
 	}
-	if lines(log+".graph") != 7 || resumed.Analysis == nil || len(resumed.Epics) != 1 || resumed.Spec == "" ||
-		len(resumed.Plan) == 0 || resumed.DesignBrief == "" {
-		t.Errorf("resume did not reach export: %+v", resumed)
+	if len(r.Triage.MissingQuestions) != 3 {
+		t.Errorf("triage.json missing_questions: %q", r.Triage.MissingQuestions)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "tickets", "1.md")); err != nil {
-		t.Errorf("resume wrote no ticket: %v", err)
+	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
+		t.Error("questions.json was written")
 	}
 	if n := lines(log + ".triage"); n != 1 {
 		t.Errorf("triage ran %d times, want once", n)
 	}
-	if want := stopped.Context + "\n## Answers\n\nTeams of five plan their sprints.\n"; resumed.Context != want {
-		t.Errorf("contexto.md after resume:\n%s", resumed.Context)
+	if lines(log+".research") != 1 || strings.Contains(read(t, log+".research.prompt"), "## Answers") ||
+		r.Research == nil || len(r.Research.Dimensions) != 1 {
+		t.Errorf("research did not run once on contexto.md: %+v", r.Research)
 	}
-	if lines(log+".research") != 1 || !strings.Contains(read(t, log+".research.prompt"), "## Answers") ||
-		resumed.Research == nil || len(resumed.Research.Dimensions) != 1 || resumed.Logs["research"] == "" {
-		t.Errorf("research did not run once on the answers: %+v", resumed.Research)
+	if strings.Contains(r.Context, "## Answers") {
+		t.Errorf("contexto.md has answers:\n%s", r.Context)
 	}
-	for name, s := range kept {
-		if read(t, filepath.Join(dir, name)) != s {
-			t.Errorf("%s changed on resume", name)
+	if lines(log+".graph") != 7 || r.Analysis == nil || len(r.Epics) != 1 || r.Spec == "" || len(r.Plan) == 0 ||
+		r.DesignBrief == "" {
+		t.Fatalf("the run did not reach export: %+v", r)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "tickets", "1.md")); err != nil {
+		t.Errorf("the run wrote no ticket: %v", err)
+	}
+	if !slices.Equal(r.Analysis.Questions, []string{"Which calendar?"}) || !strings.Contains(r.Spec, "Which calendar?") {
+		t.Errorf("open questions are not analysis' list: %q\n%s", r.Analysis.Questions, r.Spec)
+	}
+	for _, q := range r.Triage.MissingQuestions {
+		if strings.Contains(r.Spec, q) {
+			t.Errorf("spec.md has triage's question %q", q)
 		}
 	}
 
 	code, _, errOut = dulidu(t, repo, "run", "--resume", label)
-	if want := "run " + label + " is done, nothing to resume"; code != 1 || !strings.Contains(errOut, want) {
-		t.Errorf("resuming a passed run: exit %d, stderr %q", code, errOut)
+	if code == 0 || !strings.Contains(errOut, "unknown flag: --resume") {
+		t.Errorf("dulidu run --resume: exit %d, stderr %q", code, errOut)
 	}
-	if lines(log+".triage") != 1 || lines(log+".research") != 1 || read(t, filepath.Join(dir, "contexto.md")) != resumed.Context {
-		t.Error("resuming a passed run ran a step or changed contexto.md")
+	if lines(log+".triage") != 1 || lines(log+".research") != 1 || read(t, filepath.Join(dir, "contexto.md")) != r.Context {
+		t.Error("dulidu run --resume ran a step or changed contexto.md")
 	}
 }

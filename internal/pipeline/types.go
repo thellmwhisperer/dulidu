@@ -112,7 +112,6 @@ type Run struct {
 	Input       *InputContext     // input/: brief.md and the files beside it
 	Context     string            // contexto.md
 	Triage      *Triage           // triage.json
-	Questions   []string          // questions.json: triage's missing questions, while and after the run waits for answers
 	Research    *Research         // research.json
 	Analysis    *Analysis         // analysis.json
 	Epics       Epics             // epics.json
