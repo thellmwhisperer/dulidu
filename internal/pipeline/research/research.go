@@ -52,9 +52,10 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 		var d pipeline.Dimension
 		if err == nil {
 			blocks := text.Parse(answer)
-			d.Text = blocks[0].Prose
+			lead, _, _ := strings.Cut("\n"+answer, "\n## ")
+			d.Text = strings.TrimSpace(lead)
 			for _, block := range blocks[1:] {
-				if !strings.EqualFold(block.Name, "Sources") {
+				if block.Name != "Sources" {
 					continue
 				}
 				for _, item := range block.Items {

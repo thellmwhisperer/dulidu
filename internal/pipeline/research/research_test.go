@@ -81,6 +81,28 @@ func TestFiveDimensionsMakeFiveCallsAndFiveEntries(t *testing.T) {
 	if !strings.Contains(got.Logs["research"], answer("technical")) {
 		t.Errorf("agent/research.log: %q", got.Logs["research"])
 	}
+
+	t.Run("complete lead text", func(t *testing.T) {
+		dir, r := start(t)
+		const lead = "Demand is growing.\nRevenue comes from two channels: subscriptions and bookings.\n\n- bullet"
+		if err := Run(dir, r, step, func(string) (string, error) {
+			return " \n" + lead + "\n\n## Sources\n- [Survey](https://example.com/survey): Subscriptions fund operations.", nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		got, err := pipeline.Read(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Research == nil || len(got.Research.Dimensions) != 5 {
+			t.Fatalf("research.json: %+v", got.Research)
+		}
+		for _, d := range got.Research.Dimensions {
+			if d.Text != lead {
+				t.Errorf("%s text: %q, want %q", d.Name, d.Text, lead)
+			}
+		}
+	})
 }
 
 func TestResearchDoesNotNeedTriageToChooseDimensions(t *testing.T) {
@@ -115,16 +137,19 @@ func TestFailures(t *testing.T) {
 		err    error
 		want   string
 	}{
-		"empty sources": {"Crowded.\n\n## Sources\n", nil, "failed at research: users: no sources"},
-		"no sources":    {"Crowded.\n\n## Other\n- [t](u): s", nil, "failed at research: users: no sources"},
-		"no text":       {" \n\n## Sources\n- [t](u): s", nil, "failed at research: users: no text"},
-		"blank title":   {"Crowded.\n\n## Sources\n- [ ](u): s", nil, "failed at research: users: a source lacks url, title or supports"},
-		"prose":         {"Crowded.", nil, "failed at research: users: no sources"},
-		"blank url":     {"Crowded.\n\n## Sources\n- [t](): s", nil, "failed at research: users: a source lacks url, title or supports"},
-		"blank claim":   {"Crowded.\n\n## Sources\n- [t](u): ", nil, "failed at research: users: a source lacks url, title or supports"},
-		"malformed":     {"Crowded.\n\n## Sources\n- Not a link", nil, "failed at research: users: invalid source"},
-		"bad second":    {answer("users") + "\n- Not a link", nil, "failed at research: users: invalid source"},
-		"agent":         {"", errors.New("timed out"), "failed at research: users: timed out"},
+		"lowercase sources": {"Crowded.\n\n## sources\n- [t](u): s", nil, "failed at research: users: no sources"},
+		"uppercase sources": {"Crowded.\n\n## SOURCES\n- [t](u): s", nil, "failed at research: users: no sources"},
+		"sources first":     {"## Sources\n- [t](u): s", nil, "failed at research: users: no text"},
+		"empty sources":     {"Crowded.\n\n## Sources\n", nil, "failed at research: users: no sources"},
+		"no sources":        {"Crowded.\n\n## Other\n- [t](u): s", nil, "failed at research: users: no sources"},
+		"no text":           {" \n\n## Sources\n- [t](u): s", nil, "failed at research: users: no text"},
+		"blank title":       {"Crowded.\n\n## Sources\n- [ ](u): s", nil, "failed at research: users: a source lacks url, title or supports"},
+		"prose":             {"Crowded.", nil, "failed at research: users: no sources"},
+		"blank url":         {"Crowded.\n\n## Sources\n- [t](): s", nil, "failed at research: users: a source lacks url, title or supports"},
+		"blank claim":       {"Crowded.\n\n## Sources\n- [t](u): ", nil, "failed at research: users: a source lacks url, title or supports"},
+		"malformed":         {"Crowded.\n\n## Sources\n- Not a link", nil, "failed at research: users: invalid source"},
+		"bad second":        {answer("users") + "\n- Not a link", nil, "failed at research: users: invalid source"},
+		"agent":             {"", errors.New("timed out"), "failed at research: users: timed out"},
 	} {
 		dir, r := start(t)
 		calls := 0
