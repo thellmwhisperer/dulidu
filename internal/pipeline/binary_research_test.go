@@ -24,15 +24,15 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := []string{"business", "users", "market", "technical", "project"}
-	// Triage answers in plain text; research still answers in JSON.
+	// Triage and research answer in plain text; the run files remain JSON.
 	answers := []string{filepath.Join(replies, "triage.json")}
 	if err := os.WriteFile(answers[0], []byte("Complexity: simple\nEpics: 2\n\nOne exchange.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range names {
 		path := filepath.Join(replies, name+".json")
-		answer := `{"text":"Finding for ` + name + `.","sources":[{"url":"https://example.com/` + name +
-			`","title":"Source for ` + name + `","supports":"Finding for ` + name + `."}]}`
+		answer := "Finding for " + name + ".\n\n## Sources\n" +
+			"- [Source for " + name + "](https://example.com/" + name + "): Finding for " + name + "."
 		if err := os.WriteFile(path, []byte(answer), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +80,8 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 	for i, name := range names {
 		d := r.Research.Dimensions[i]
 		if d.Name != name || d.Text != "Finding for "+name+"." || len(d.Sources) != 1 ||
-			d.Sources[0].URL != "https://example.com/"+name {
+			d.Sources[0].URL != "https://example.com/"+name ||
+			d.Sources[0].Title != "Source for "+name || d.Sources[0].Supports != "Finding for "+name+"." {
 			t.Errorf("dimension %d: %+v", i, d)
 		}
 		tmpl := []string{"p03-research-business", "p04-research-users", "p05-research-market", "p06-research-technical", "p07-research-project"}[i]
@@ -125,15 +126,15 @@ func TestBinaryResearchSearchesTheWeb(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := []string{"business", "users", "market", "technical", "project"}
-	// Triage answers in plain text; research still answers in JSON.
+	// Triage and research answer in plain text; the run files remain JSON.
 	answers := []string{filepath.Join(replies, "triage.json")}
 	if err := os.WriteFile(answers[0], []byte("Complexity: simple\nEpics: 2\n\nOne exchange.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range names {
 		path := filepath.Join(replies, name+".json")
-		answer := `{"text":"Finding for ` + name + `.","sources":[{"url":"https://example.com/` + name +
-			`","title":"Source for ` + name + `","supports":"Finding for ` + name + `."}]}`
+		answer := "Finding for " + name + ".\n\n## Sources\n" +
+			"- [Source for " + name + "](https://example.com/" + name + "): Finding for " + name + "."
 		if err := os.WriteFile(path, []byte(answer), 0o644); err != nil {
 			t.Fatal(err)
 		}

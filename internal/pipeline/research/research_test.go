@@ -36,8 +36,8 @@ func start(t *testing.T) (string, *pipeline.Run) {
 
 // answer is a valid answer for dimension.
 func answer(dimension string) string {
-	return `{"text":"About ` + dimension + `.","sources":[{"url":"https://example.com/` + dimension +
-		`","title":"On ` + dimension + `","supports":"About ` + dimension + `."}]}`
+	return "About " + dimension + ".\n\n## Sources\n" +
+		"- [On " + dimension + "](https://example.com/" + dimension + "): About " + dimension + "."
 }
 
 func TestFiveDimensionsMakeFiveCallsAndFiveEntries(t *testing.T) {
@@ -115,11 +115,15 @@ func TestFailures(t *testing.T) {
 		err    error
 		want   string
 	}{
-		"empty sources": {`{"text":"Crowded.","sources":[]}`, nil, "failed at research: users: no sources"},
-		"no sources":    {`{"text":"Crowded."}`, nil, "failed at research: users: no sources"},
-		"no text":       {`{"text":" ","sources":[{"url":"u","title":"t","supports":"s"}]}`, nil, "failed at research: users: no text"},
-		"blank title":   {`{"text":"Crowded.","sources":[{"url":"u","title":"","supports":"s"}]}`, nil, "failed at research: users: a source lacks url, title or supports"},
-		"prose":         {"Crowded.", nil, "failed at research: users: invalid output"},
+		"empty sources": {"Crowded.\n\n## Sources\n", nil, "failed at research: users: no sources"},
+		"no sources":    {"Crowded.\n\n## Other\n- [t](u): s", nil, "failed at research: users: no sources"},
+		"no text":       {" \n\n## Sources\n- [t](u): s", nil, "failed at research: users: no text"},
+		"blank title":   {"Crowded.\n\n## Sources\n- [ ](u): s", nil, "failed at research: users: a source lacks url, title or supports"},
+		"prose":         {"Crowded.", nil, "failed at research: users: no sources"},
+		"blank url":     {"Crowded.\n\n## Sources\n- [t](): s", nil, "failed at research: users: a source lacks url, title or supports"},
+		"blank claim":   {"Crowded.\n\n## Sources\n- [t](u): ", nil, "failed at research: users: a source lacks url, title or supports"},
+		"malformed":     {"Crowded.\n\n## Sources\n- Not a link", nil, "failed at research: users: invalid source"},
+		"bad second":    {answer("users") + "\n- Not a link", nil, "failed at research: users: invalid source"},
 		"agent":         {"", errors.New("timed out"), "failed at research: users: timed out"},
 	} {
 		dir, r := start(t)

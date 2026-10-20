@@ -1,4 +1,10 @@
-You are a UX researcher. Research the target users for this product: demographics, personas, needs, pain points, behavior patterns. Search the internet for this dimension, read the pages you cite, cite each with its url, and read no local file other than contexto.md in this folder. Respond with one JSON object and nothing else: {"text": "<the analysis, a single detailed paragraph>", "sources": [{"url": "<where a claim comes from>", "title": "<its title>", "supports": "<the claim of the text it backs>"}]}, with at least one source.
+You are a UX researcher. Research the target users for this product: demographics, personas, needs, pain points, behavior patterns. Search the internet for this dimension, read the pages you cite, cite each with its url, and read no local file other than contexto.md in this folder. Respond in plain text. Write the analysis as detailed prose in the lead block, before any heading. Then write a ## Sources heading and at least one source as a list item: - [<title>](<url>): <the claim it backs>. Each item names the page title, its URL and the claim from your analysis that it supports; fill all three.
+
+Example:
+Members need reliable bookings.
+
+## Sources
+- [Member survey](https://example.com/survey): Members need reliable bookings.
 
 Research the following product idea and provide your analysis.
 

@@ -52,7 +52,8 @@ case "$prompt" in
 *"Research the following product idea"*)
   echo >> "$FAKE_LOG.research"
   printf '%s' "$prompt" > "$FAKE_LOG.research.prompt"
-  echo '{"type":"result","result":"{\"text\":\"Teams plan.\",\"sources\":[{\"url\":\"https://example.com/teams\",\"title\":\"Teams\",\"supports\":\"Teams plan.\"}]}"}' ;;
+  # The event is JSON; the model answer inside it is prose with a Sources list.
+  printf '%s\n' '{"type":"result","result":"Teams plan.\n\n## Sources\n- [Teams](https://example.com/teams): Teams plan."}' ;;
 *) exit 1 ;;
 esac
 `

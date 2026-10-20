@@ -32,7 +32,8 @@ if grep -q '^Research the following product idea' "$prompt"; then
   n=$(wc -l < "$FAKE_LOG.research" | tr -d ' ')
   mv "$prompt" "$FAKE_LOG.research.$n"
   if [ -n "$FAKE_RESEARCH" ]; then cat "$FAKE_RESEARCH/$n"; exit 0; fi
-  echo '{"type":"result","result":"{\"text\":\"A fake finding.\",\"sources\":[{\"url\":\"https://example.com/fake\",\"title\":\"Fake\",\"supports\":\"A fake finding.\"}]}"}'
+  # The event is JSON; the model answer inside it is prose with a Sources list.
+  printf '%s\n' '{"type":"result","result":"A fake finding.\n\n## Sources\n- [Fake](https://example.com/fake): A fake finding."}'
   exit 0
 fi
 rm -f "$prompt"
