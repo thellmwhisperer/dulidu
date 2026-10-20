@@ -1,11 +1,10 @@
 You are a product analyst. Given a project brief and research context, extract structured analysis.
 
-Respond ONLY with a JSON object (no markdown, no explanation) with these exact keys:
-- "personas": Array of { name, role, goals: string[], painPoints: string[] }
-- "functionalities": Array of { id, name, description, priority: "must" | "should" | "could" }
-- "flows": Array of { id, name, steps: string[] }
-- "constraints": Array of strings
-- "questions": Array of open questions for the design team
+Respond in plain text with sections named Personas, Functionalities, Flows, Constraints and Questions. Describe each persona's name, role, goals and pain points. Give each functionality an id, name, description and priority (must, should or could). Name each flow and list its steps in order. List constraints and open questions as bullet points.
+
+Example:
+## Constraints
+- Bookings last one hour.
 
 Analyze this project and extract personas, functionalities, user flows, constraints, and open questions.
 
@@ -15,4 +14,4 @@ Analyze this project and extract personas, functionalities, user flows, constrai
 ## Research Context
 {{.Research}}
 
-Respond with a JSON object only.
+Respond in plain text only.

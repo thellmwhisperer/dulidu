@@ -111,7 +111,7 @@ func runCmd() *cobra.Command {
 				log.WriteString(prompt + "\n\n" + final + "\n\n")
 				return final, err
 			})
-			r.Report.Steps[0].Status, r.Report.Steps[0].Finished = "done", time.Now()
+			r.Report.Steps[0].Status, r.Report.Steps[0].Finished = "passed", time.Now()
 			if err != nil {
 				r.Report.Status, r.Report.Steps[0].Status = "failed", "failed"
 			}

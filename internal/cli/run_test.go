@@ -41,6 +41,7 @@ printf '%s\n' "$*" >> "$FAKE_LOG"
 echo '{"type":"result","result":"A fake description."}'
 `
 
+// Model answers use plain-text blocks; only the agent transport wraps them in a structured result event.
 // fakeGraph answers the analysis and epics prompts in $prompt, as fakeDescriber says.
 const fakeGraph = `case $(head -n 1 "$prompt") in
 *'Extract target user personas'*) list=personas a='## Seller\nRole: Bike owner\n### Goals\n- Sell fast\n### Pain points\n- No buyers' ;;
@@ -48,8 +49,8 @@ const fakeGraph = `case $(head -n 1 "$prompt") in
 *'Extract user flows'*) list=flows a='## FL1 Sell\n1. List\n2. Sell' ;;
 *'Extract project constraints'*) list=constraints a='- Spain only' ;;
 *'Identify open questions'*) list=questions a='- Which payments?' ;;
-*'who thinks about HOW'*) list=outlines a='[{"id":"E1","title":"Listings","description":"Bikes get listed.","depends_on":[]}]' ;;
-*'implementation-ready tickets'*) list=stories a='[{"id":"S1","title":"List a bike","description":"A seller lists a bike.","acceptance":["The bike shows up."],"first_test":"TestListBike","functionalities":["F1"]}]' ;;
+*'who thinks about HOW'*) list=outlines a='## E1 Listings\nDepends on: none\nBikes get listed.' ;;
+*'implementation-ready tickets'*) list=stories a='## S1 List a bike\nFunctionalities: F1\nA seller lists a bike.\n### Acceptance\n- The bike shows up.\n### First test\nTestListBike' ;;
 *) list= ;;
 esac
 if [ -n "$list" ]; then

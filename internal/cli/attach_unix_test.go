@@ -110,7 +110,7 @@ func TestAttachToAFinishedRunPrintsEveryStepAndItsAgentOutputIsKept(t *testing.T
 	}
 	dir := runs(t)[0]
 	code, out, errOut := dulidu(t, "attach", filepath.Base(dir))
-	if want := `^input done \d+ min \d\d s\ntriage passed \d+ min \d\d s\nresearch passed \d+ min \d\d s\n` +
+	if want := `^input passed \d+ min \d\d s\ntriage passed \d+ min \d\d s\nresearch passed \d+ min \d\d s\n` +
 		`analysis passed \d+ min \d\d s\nepics passed \d+ min \d\d s\nexport passed \d+ min \d\d s\n$`; code != 0 ||
 		!regexp.MustCompile(want).MatchString(out) {
 		t.Fatalf("dulidu attach: exit %d\n%s%s", code, out, errOut)

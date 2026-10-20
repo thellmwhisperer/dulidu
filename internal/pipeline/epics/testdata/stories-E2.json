@@ -1,3 +1,0 @@
-[{"id": "US2", "title": "Charge the card at pickup", "description": "As Tom I want to pay when I collect so that I see the bike first",
-  "acceptance": ["Given a reserved bike, when Tom collects it, then his card is charged once"],
-  "first_test": "Write a test that collects a reserved bike and expects one charge.", "functionalities": ["F3"]}]

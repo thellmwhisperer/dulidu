@@ -25,6 +25,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Model answers use plain-text blocks; only the agent transport wraps them in a structured result event.
 // fakeClaude answers the triage prompt with $FAKE_TRIAGE's line, a research prompt with a valid dimension and an
 // analysis list's or epics phase's prompt validly. Each call adds a line to $FAKE_LOG.<step>, the analysis and epics
 // ones to $FAKE_LOG.graph; the last research prompt is kept in $FAKE_LOG.research.prompt.
@@ -37,8 +38,8 @@ case "$prompt" in
 *'Extract user flows'*) a='## FL1 Plan\n1. Open\n2. Plan' ;;
 *'Extract project constraints'*) a='- Teams of five' ;;
 *'Identify open questions'*) a='- Which calendar?' ;;
-*'who thinks about HOW'*) a='[{"id":"E1","title":"Sprints","description":"Teams plan sprints.","depends_on":[]}]' ;;
-*'implementation-ready tickets'*) a='[{"id":"S1","title":"Plan a sprint","description":"A lead plans a sprint.","acceptance":["The sprint shows up."],"first_test":"TestPlanSprint","functionalities":["F1"]}]' ;;
+*'who thinks about HOW'*) a='## E1 Sprints\nDepends on: none\nTeams plan sprints.' ;;
+*'implementation-ready tickets'*) a='## S1 Plan a sprint\nFunctionalities: F1\nA lead plans a sprint.\n### Acceptance\n- The sprint shows up.\n### First test\nTestPlanSprint' ;;
 esac
 if [ -n "$a" ]; then
   echo >> "$FAKE_LOG.graph"
