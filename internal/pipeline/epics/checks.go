@@ -3,6 +3,7 @@ package epics
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 )
@@ -18,14 +19,14 @@ func trim[S ~[]E, E any](s S, limit int, what string, notes *[]string) S {
 	return s[:limit]
 }
 
-// uncovered is nil when a story of es delivers each of musts, functionality ids.
-func uncovered(es pipeline.Epics, musts []string) error {
-	for _, id := range musts {
-		if !slices.ContainsFunc(es, func(e pipeline.EpicOutline) bool {
+// uncovered notes the musts, functionality ids, that no story of es delivers, as the prototype did not check them.
+func uncovered(es pipeline.Epics, musts []string, notes *[]string) {
+	missing := slices.DeleteFunc(slices.Clone(musts), func(id string) bool {
+		return slices.ContainsFunc(es, func(e pipeline.EpicOutline) bool {
 			return slices.ContainsFunc(e.Stories, func(s pipeline.Story) bool { return slices.Contains(s.Functionalities, id) })
-		}) {
-			return fmt.Errorf("uncovered must: %s", id)
-		}
+		})
+	})
+	if len(missing) > 0 {
+		*notes = append(*notes, "uncovered must: "+strings.Join(missing, ", "))
 	}
-	return nil
 }

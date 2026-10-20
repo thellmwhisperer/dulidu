@@ -172,8 +172,8 @@ Depends on: none`, depends: [][]string{{"E2"}, {"E3"}, {"E4"}, nil}, note: "drop
 	}
 }
 
-func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
-	two := `## US1 A
+// two is E1's answer with two stories, US2 delivering F3.
+const two = `## US1 A
 Functionalities: F1
 A story
 ### Acceptance
@@ -188,6 +188,56 @@ Another story
 - b
 ### First test
 t`
+
+func TestUncoveredMustIsANote(t *testing.T) {
+	for name, c := range map[string]struct {
+		epics   int
+		stories int // 0 is 2
+		instead map[int]string
+		note    string
+		calls   int
+	}{
+		"uncovered must": {instead: map[int]string{2: `## US2 B
+Functionalities: none
+No functionality
+### Acceptance
+- b
+### First test
+t`},
+			note: "uncovered must: F3", calls: 3},
+		"the cut epic held a must": {epics: 1,
+			note: "kept 1 of 2 epics; uncovered must: F3", calls: 2},
+		"the cut story held a must": {epics: 1, stories: 1, instead: map[int]string{1: two},
+			note: "kept 1 of 2 epics; kept 1 of 2 stories in E1; uncovered must: F3", calls: 2},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, r := start(t)
+			if c.epics > 0 {
+				r.Triage.Epics = c.epics
+			}
+			r.Triage.StoriesPerEpic = cmp.Or(c.stories, 2)
+			var asked []string
+			if err := Run(dir, r, step, recorded(t, &asked, c.instead)); err != nil {
+				t.Fatal(err)
+			}
+			if len(asked) != c.calls {
+				t.Errorf("%d calls, want %d", len(asked), c.calls)
+			}
+			got, err := pipeline.Read(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Epics == nil {
+				t.Error("epics.json not written")
+			}
+			if s := got.Report.Steps[1]; s.Status != "passed" || s.Note != c.note || got.Report.Status != "done" {
+				t.Errorf("report: %+v, want note %q", got.Report, c.note)
+			}
+		})
+	}
+}
+
+func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 	for name, c := range map[string]struct {
 		epics   int
 		stories int // 0 is 2
@@ -210,18 +260,6 @@ Depends on: E1
 ## E1 B
 Depends on: none`},
 			check: "duplicate epic", says: "duplicate epic: E1", calls: 1},
-		"uncovered must": {instead: map[int]string{2: `## US2 B
-Functionalities: none
-No functionality
-### Acceptance
-- b
-### First test
-t`},
-			check: "uncovered must", says: "uncovered must: F3", calls: 3},
-		"the cut epic held a must": {epics: 1,
-			check: "uncovered must", says: "uncovered must: F3", calls: 2},
-		"the cut story held a must": {epics: 1, stories: 1, instead: map[int]string{1: two},
-			check: "uncovered must", says: "uncovered must: F3", calls: 2},
 		"no first test": {instead: map[int]string{1: `## US1 A
 Functionalities: F1
 A story
