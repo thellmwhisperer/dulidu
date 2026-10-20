@@ -37,7 +37,10 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories i
 	}
 	r.Logs["triage"] = prompt + "\n\n" + answer + "\n\n"
 	lead := text.Parse(answer)[0]
-	epics, _ := strconv.Atoi(lead.Field("Epics"))
+	epics, epicsErr := strconv.Atoi(lead.Field("Epics"))
+	if err == nil && epicsErr != nil && lead.Field("Epics") != "" {
+		err = errors.New("invalid output")
+	}
 	t := pipeline.Triage{Complexity: lead.Field("Complexity"), Epics: epics, Reasoning: lead.Prose}
 	if most := capEpics[t.Complexity]; t.Epics <= 0 || t.Epics > most {
 		t.Epics = most
