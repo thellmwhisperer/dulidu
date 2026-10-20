@@ -17,7 +17,7 @@ Sources are in the reference snapshot c10131b, `poc/src/pipeline/`. Removed sent
 |---|---|---|---|
 | P01 | `triage.ts:6-18, 54-56` | `p01-triage-classifier` | A named company in the complex example, now an enterprise dashboard. |
 | P02 | `steps/step0-research.ts:6-15, 48-54` | `p02-research-full` | Nothing. |
-| P03 | `steps/step0-research.ts:21, 56-62` | `p03-research-business` | The answer is prose in the lead block followed by `## Sources`, with at least one `- [<title>](<url>): <the claim it backs>` item. The reader maps each item to url, title and supports in `research.json`. The prompt also directs the agent to search the internet, read cited pages, cite their URLs and read no local file except `contexto.md`. |
+| P03 | `steps/step0-research.ts:21, 56-62` | `p03-research-business` | The answer format and research instructions changed; see [research usage](../../../README.md#commands). |
 | P04 | `steps/step0-research.ts:26, 56-62` | `p04-research-users` | Same. |
 | P05 | `steps/step0-research.ts:31, 56-62` | `p05-research-market` | Same. |
 | P06 | `steps/step0-research.ts:36, 56-62` | `p06-research-technical` | Same. |
