@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   test:
+    # Skipped while GitHub billing blocks runners; local tests and lint suffice (decision 7577). Delete this line when billing is back.
+    if: false
     strategy:
       fail-fast: false
       matrix:
