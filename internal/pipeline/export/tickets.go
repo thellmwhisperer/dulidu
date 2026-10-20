@@ -56,13 +56,17 @@ func tickets(r pipeline.Run, nums map[string][]int) []string {
 				scope[i] = ids[id]
 			}
 			kind := cmp.Or(s.Type, "feature")
+			acceptance := list(nil)
+			if strings.TrimSpace(s.FirstTest) != "" {
+				acceptance = "- [ ] " + s.FirstTest + "\n"
+			}
 			parts := []string{"# " + s.Title + "\n", "Type: " + kind + "\n", "## Kind\n", kind + "\n",
-				"## Goal\n", strings.TrimSpace(s.Text) + "\n",
+				"## Goal\n", cmp.Or(strings.TrimSpace(s.Text), "- None.") + "\n",
 				"## Non-goals\n", list(s.NonGoals),
 				"## Invariants\n", list(s.Invariants),
 				"## Behavioral contract / States\n", list(s.Acceptance),
 				"## Scope surface\n", list(scope),
-				"## Acceptance\n", "- [ ] " + s.FirstTest + "\n",
+				"## Acceptance\n", acceptance,
 				"## Split triggers\n", list(s.SplitTriggers),
 				"## Dependencies / Parent\n", list([]string{"Parent: " + e.ID + " " + e.Title + ".", "Story: " + s.ID + ".",
 					"Depends on: " + waits + "."})}
