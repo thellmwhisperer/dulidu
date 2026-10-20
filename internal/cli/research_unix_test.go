@@ -126,7 +126,7 @@ func TestRunResearchesAllFiveDimensionsOnceWithSources(t *testing.T) {
 	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Name != "input" || report.Steps[1].Name != "triage" ||
 		report.Steps[1].Status != "passed" || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" ||
 		report.Steps[2].Model != "sonnet" || report.Steps[2].Harness != "claude" || report.Steps[2].Effort != "medium" ||
-		report.Steps[2].Note != "dimensions: business, users, market, technical, project" {
+		report.Steps[2].Note != "dimensions: business, users, market, technical, project; web: on" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if !strings.Contains(read(t, filepath.Join(dir, "agent", "research.log")), finding("technical")) ||

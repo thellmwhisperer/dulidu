@@ -75,7 +75,7 @@ func TestFiveDimensionsMakeFiveCallsAndFiveEntries(t *testing.T) {
 	}
 	s := got.Report.Steps[2]
 	if got.Report.Status != "done" || len(got.Report.Steps) != 3 || s.Name != "research" || s.Status != "passed" ||
-		s.Model != "sonnet" || s.Note != "dimensions: business, users, market, technical, project" || got.Triage == nil || got.Context != context {
+		s.Model != "sonnet" || s.Note != "dimensions: business, users, market, technical, project; web: on" || got.Triage == nil || got.Context != context {
 		t.Errorf("report: %+v", got.Report)
 	}
 	if !strings.Contains(got.Logs["research"], answer("technical")) {
