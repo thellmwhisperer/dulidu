@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
+	"github.com/thellmwhisperer/dulidu/internal/tui"
 )
 
 // runsCmd is dulidu runs: one line per run folder in .dulidu/runs, newest first: label, status, last step, started.
@@ -38,11 +39,11 @@ func runsCmd() *cobra.Command {
 				if !e.IsDir() {
 					continue
 				}
-				r, err := pipeline.Read(filepath.Join(dir, e.Name()))
+				r, err := tui.Report(filepath.Join(dir, e.Name()))
 				if err != nil {
 					return fmt.Errorf("run %s: %w", e.Name(), err)
 				}
-				runs = append(runs, run{e.Name(), r.Report})
+				runs = append(runs, run{e.Name(), r})
 			}
 			slices.SortStableFunc(runs, func(a, b run) int { return b.report.Started.Compare(a.report.Started) })
 			for _, r := range runs {
