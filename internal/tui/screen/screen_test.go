@@ -3,6 +3,7 @@ package screen
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -315,6 +316,40 @@ func TestMarkdownWrapsInsideTheAgentBox(t *testing.T) {
 	}
 	if strings.Contains(raw, "\x1b[38;") || strings.Contains(raw, "\x1b[48;") {
 		t.Fatalf("a colour outside ANSI roles:\n%q", raw)
+	}
+	for _, block := range []string{
+		"`{\"complexity\":\"simple\"}`",
+		"`{\"complexity\":\"" + strings.Repeat("simple", 30) + "\"}`",
+		"```json\n{\n  \"complexity\": \"simple\"\n}\n```",
+		"~~~\n[\n  {\"complexity\": \"simple\"}\n]\n~~~",
+		"{\n  \"complexity\": \"simple\",\n  \"nested\": [true, false]\n}",
+	} {
+		for _, kind := range []string{"text", "thinking", "result"} {
+			text := "Before the data.\n" + block + "\nAfter the data.\n```go\nfmt.Println(answer)\n```"
+			event := map[string]any{"type": "assistant", "message": map[string]any{
+				"content": []map[string]string{{"type": kind, "text": text}},
+			}}
+			if kind == "result" {
+				event = map[string]any{"type": "result", "result": text}
+			}
+			encoded, err := json.Marshal(event)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, width := range []int{80, 120} {
+				frame := plain(render("lumpa", runningReport(at), nil, []string{string(encoded)}, width, 40, at))
+				for _, want := range []string{"Before the data.", "After the data.", "fmt.Println(answer)"} {
+					if !strings.Contains(frame, want) {
+						t.Errorf("%s at width %d lost %q around %q:\n%s", kind, width, want, block, frame)
+					}
+				}
+				for _, hidden := range []string{"complexity", "simple", "nested", "{", "}", "[", "]"} {
+					if strings.Contains(frame, hidden) {
+						t.Errorf("%s at width %d displays JSON %q from %q:\n%s", kind, width, hidden, block, frame)
+					}
+				}
+			}
+		}
 	}
 }
 

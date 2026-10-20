@@ -507,16 +507,27 @@ func agentTextRows(prefix, text string, width int) []string {
 		}
 		return r
 	}, ansi.Strip(text))
-	if json.Valid([]byte(text)) {
-		return nil
-	}
 	w := max(1, width-6)
 	var rows []string
 	var codeMarker byte
 	codeLength := 0
-	for _, line := range strings.Split(text, "\n") {
+	lines := strings.Split(text, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 		if json.Valid([]byte(line)) {
 			continue
+		}
+		if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			remainder := strings.Join(lines[i:], "\n")
+			decoder := json.NewDecoder(strings.NewReader(remainder))
+			var value json.RawMessage
+			if decoder.Decode(&value) == nil {
+				tail, _, _ := strings.Cut(remainder[decoder.InputOffset():], "\n")
+				if strings.TrimSpace(tail) == "" {
+					i += strings.Count(remainder[:decoder.InputOffset()], "\n")
+					continue
+				}
+			}
 		}
 		var wrapped []string
 		marker, length, info, isFence := fence(line)
@@ -531,6 +542,9 @@ func agentTextRows(prefix, text string, width int) []string {
 			continue
 		} else {
 			lineText, hasCode, isBlock := markdown(line)
+			if json.Valid([]byte(ansi.Strip(lineText))) {
+				continue
+			}
 			if isBlock {
 				wrapped = plainRows(lineText, w, hasCode)
 			} else if list, ok := listRows(line, w); ok {
@@ -540,6 +554,9 @@ func agentTextRows(prefix, text string, width int) []string {
 			}
 		}
 		for _, l := range wrapped {
+			if json.Valid([]byte(ansi.Strip(l))) {
+				continue
+			}
 			if rows == nil {
 				rows = append(rows, prefix+l)
 			} else {
