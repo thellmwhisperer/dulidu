@@ -60,22 +60,14 @@ func TestParseWholeFenceAndLeadProse(t *testing.T) {
 }
 
 func TestParsePreservesListBeforeHeadingOrField(t *testing.T) {
-	for _, marker := range []string{"-", "1."} {
-		for _, heading := range []bool{true, false} {
-			first := marker + " Launch in one city first"
-			answer := first + "\n## Notes\nDetails"
-			want := []Block{
-				{RawLines: []string{first}, Items: []string{"Launch in one city first"}},
-				{Name: "Notes", RawLines: []string{"Details"}, Prose: "Details"},
-			}
-			if !heading {
-				answer = first + "\nPriority: must"
-				want = []Block{{
-					RawLines: []string{first, "Priority: must"},
-					Items:    []string{"Launch in one city first"},
-					Fields:   map[string]string{"priority": "must"},
-				}}
-			}
+	items := []string{"Launch in one city first"}
+	for _, first := range []string{"- " + items[0], "1. " + items[0]} {
+		for answer, want := range map[string][]Block{
+			first + "\n## Notes\nDetails": {{RawLines: []string{first}, Items: items},
+				{Name: "Notes", RawLines: []string{"Details"}, Prose: "Details"}},
+			first + "\nPriority: must": {{RawLines: []string{first, "Priority: must"}, Items: items,
+				Fields: map[string]string{"priority": "must"}}},
+		} {
 			if got := Parse(answer); !reflect.DeepEqual(got, want) {
 				t.Errorf("Parse(%q) = %+v, want %+v", answer, got, want)
 			}
