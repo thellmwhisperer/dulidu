@@ -18,13 +18,16 @@ var templates = map[string]string{"business": "p03-research-business", "users": 
 	"market": "p05-research-market", "technical": "p06-research-technical", "project": "p07-research-project"}
 
 // Run researches r.Context in dir, the run folder: it adds step to r's report, running, with the dimensions in its
-// note, asks ask once per dimension in the prototype's order with that dimension's prompt, and writes r
-// back. When every answer is a dimension with text and sources they are r.Research, in order, and the step passed; at
+// note, then web: on for claude, asks ask once per dimension in the prototype's order with that dimension's prompt,
+// and writes r back. When every answer is a dimension with text and sources they are r.Research, in order, and the step passed; at
 // the first that is not, no later one is asked, the step and r fail, the step "failed at research: <dimension>:
 // <reason>", and that is Run's error.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
 	names := []string{"business", "users", "market", "technical", "project"}
 	step.Status, step.Started, step.Note = "running", time.Now(), "dimensions: "+strings.Join(names, ", ")
+	if step.Harness == "claude" { // its agent searches the web
+		step.Note += "; web: on"
+	}
 	r.Report.Status, r.Report.Steps = "running", append(r.Report.Steps, step)
 	if err := pipeline.Write(dir, *r); err != nil {
 		return err

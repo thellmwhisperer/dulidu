@@ -70,7 +70,8 @@ func runCmd() *cobra.Command {
 			next := func(name string, s config.Step) pipeline.Step {
 				step := c.Step(name)
 				step.Harness, step.Effort = cmp.Or(step.Harness, "claude"), s.Effort
-				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit, Log: live}
+				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit, Log: live,
+					Web: name == "research"}
 				return step
 			}
 			if dir = background; dir == "" {

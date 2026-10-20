@@ -21,11 +21,13 @@ import (
 )
 
 // Agent is the agent CLI dulidu runs: its harness, its model and effort, passed through untouched, and how long
-// it may take, 0 for agentTimeout. Log, when set, gets each line it writes as it writes it.
+// it may take, 0 for agentTimeout. Log, when set, gets each line it writes as it writes it. Web gives claude
+// WebSearch and WebFetch.
 type Agent struct {
 	Harness, Model, Effort string
 	Timeout                time.Duration
 	Log                    io.Writer
+	Web                    bool
 }
 
 // acpArgv is the agents dulidu speaks ACP with, by harness: the command line it runs in the directory.
@@ -71,6 +73,10 @@ func (a Agent) argv(dir, final, prompt string) (argv []string, stdin string) {
 	}
 	switch a.Harness {
 	case "claude":
+		tools := tools
+		if a.Web {
+			tools += ",WebSearch,WebFetch"
+		}
 		argv = []string{"claude", "-p", "--output-format", "stream-json", "--verbose", "--setting-sources", "project",
 			"--strict-mcp-config", "--permission-mode", "acceptEdits", "--tools", tools, "--allowedTools", tools}
 		return with(with(argv, a.Model, "--model", a.Model), a.Effort, "--effort", a.Effort), prompt
