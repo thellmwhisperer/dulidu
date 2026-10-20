@@ -2,6 +2,14 @@
 
 ## Research
 
+### business
+
+The studio sells recurring memberships with online booking.
+
+Sources:
+
+- [Example business finding](https://example.com/business): The studio sells recurring memberships with online booking.
+
 ### users
 
 Studio members want a wheel free when they arrive and to know their pieces made the weekly firing.
@@ -17,6 +25,22 @@ Community studios book wheels on paper sign-up sheets or general booking apps th
 Sources:
 
 - [Tools small studios use](https://example.com/studio-tools): studios book wheels on paper sheets
+
+### technical
+
+Booking and membership records need consistent updates.
+
+Sources:
+
+- [Example technical finding](https://example.com/technical): Booking and membership records need consistent updates.
+
+### project
+
+The first release covers members booking studio sessions.
+
+Sources:
+
+- [Example project finding](https://example.com/project): The first release covers members booking studio sessions.
 
 ## Personas
 

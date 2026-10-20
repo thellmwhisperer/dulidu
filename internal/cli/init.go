@@ -46,7 +46,7 @@ steps:
     harness: claude
     model: haiku
     effort: low
-  # triage decides what the brief is about and what to research: a strong model
+  # triage classifies the brief and caps its epics: a strong model
   triage:
     harness: claude
     model: opus
