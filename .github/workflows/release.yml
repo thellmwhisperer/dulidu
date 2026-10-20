@@ -125,6 +125,8 @@ jobs:
   # The real artefact: the release just published, installed by install.sh, must answer its own tag.
   answers:
     needs: [release-please, finalize]
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -139,9 +141,15 @@ jobs:
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
           DULIDU_PREFIX: ${{ runner.temp }}/bin
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          sh install.sh --version "$TAG"
+          # A job-scoped .curlrc makes install.sh's GitHub API call authenticated, not anonymous.
+          umask 077
+          curl_config="$(mktemp -d "$RUNNER_TEMP/dulidu-curl.XXXXXX")"
+          trap 'rm -rf "$curl_config"' EXIT
+          printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" > "$curl_config/.curlrc"
+          CURL_HOME="$curl_config" sh install.sh --version "$TAG"
           version="$("$DULIDU_PREFIX/dulidu" --version)"
           # Split the expected "dulidu vX.Y.Z (...)" output into command and tag.
           # shellcheck disable=SC2086
