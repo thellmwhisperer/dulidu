@@ -37,11 +37,11 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// The three recorded briefs, answered by their recorded answers with max_epics 8: existing asks 12, complex caps it.
+// The three recorded briefs, answered by their recorded plain-text answers with max_epics 8: existing asks 12, complex caps it.
 func TestRecordedBriefs(t *testing.T) {
 	seen := map[string]bool{}
 	for _, name := range []string{"thin", "attachments", "existing"} {
-		context, answer := read(t, filepath.Join("testdata", name+".md")), read(t, filepath.Join("testdata", name+".json"))
+		context, answer := read(t, filepath.Join("testdata", name+".md")), read(t, filepath.Join("testdata", name+".txt"))
 		dir, r := start(t, context)
 		want, err := prompts.Render("triage", map[string]any{"Context": context})
 		if err != nil {
@@ -90,8 +90,8 @@ func TestRecordedBriefs(t *testing.T) {
 // max_epics clamps complex's 8; max_stories_per_epic goes on to the epics step, not into triage.json.
 func TestMaxEpicsClampsTheComplexityCap(t *testing.T) {
 	dir, r := start(t, "# Contexto\n")
-	answer := `{"complexity":"complex","epics":12,"reasoning":"A migration of three systems.",` +
-		`"research_dimensions":[]}`
+	answer := "Complexity: complex\nEpics: 12\nResearch dimensions:\n\n" +
+		"A migration of three systems.\n"
 	if err := Run(dir, r, step, 5, 10, func(string) (string, error) { return answer, nil }); err != nil {
 		t.Fatal(err)
 	}
@@ -136,11 +136,11 @@ func TestFailures(t *testing.T) {
 	}
 }
 
-// The removed dimension selector cannot invalidate a classification or survive in triage.json.
+// The removed dimension selector, a line triage no longer reads, cannot invalidate a classification or survive in triage.json.
 func TestRemovedDimensionsDoNotChangeClassification(t *testing.T) {
 	for _, value := range []string{`["legal"]`, `["users","users"]`, `null`, `[]`, `"ignored"`} {
 		dir, r := start(t, "# Contexto\n")
-		answer := `{"complexity":"simple","epics":1,"reasoning":"Small.","research_dimensions":` + value + `}`
+		answer := "Complexity: simple\nEpics: 1\nResearch dimensions: " + value + "\n\nSmall.\n"
 		if err := Run(dir, r, step, 0, 0, func(prompt string) (string, error) {
 			if strings.Contains(prompt, "research_dimensions") {
 				t.Error("triage prompt still asks for dimensions")

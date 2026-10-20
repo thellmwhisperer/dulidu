@@ -57,10 +57,11 @@ case "$prompt" in
 esac
 `
 
-// thinTriage is triage's answer on the thin brief, with three questions triage.json does not keep and never stop the run.
-const thinTriage = `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":["users"],` +
-	`"context_present":["brief"],"missing_questions":["What do teams do with the app?","Who are the users?",` +
-	`"How many teams are there?"],"project_type":"new_product"}`
+// thinTriage is triage's plain-text answer on the thin brief, with three questions triage.json does not keep and
+// never stop the run.
+const thinTriage = "Complexity: simple\nResearch dimensions: users\nContext present: brief\nProject type: new_product\n\n" +
+	"Missing questions:\n- What do teams do with the app?\n- Who are the users?\n- How many teams are there?\n\n" +
+	"One app for teams, its users and scope unknown.\n"
 
 // dulidu runs dulidu with args in dir and returns its exit code, stdout and stderr.
 func dulidu(t *testing.T, dir string, args ...string) (int, string, string) {
@@ -120,14 +121,13 @@ func TestBinaryRunNeverStopsAtTriage(t *testing.T) {
 	// The brief alone has no image, so the input step asks nothing; triage asks one question.
 	answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
 	answers = answers[1:]
-	var triage map[string]any
-	if err := json.Unmarshal([]byte(read(t, answers[0])), &triage); err != nil {
-		t.Fatal(err)
+	triage := read(t, answers[0])
+	if !strings.HasPrefix(triage, "Complexity: ") {
+		t.Fatalf("the recorded triage answer is not plain text: %q", triage)
 	}
-	triage["missing_questions"] = []string{"Who prints the tags?"}
-	asked, _ := json.Marshal(triage)
-	answers[0] = filepath.Join(t.TempDir(), "triage.json")
-	if err := os.WriteFile(answers[0], asked, 0o644); err != nil {
+	asked := triage + "\nMissing questions:\n- Who prints the tags?\n"
+	answers[0] = filepath.Join(t.TempDir(), "triage.txt")
+	if err := os.WriteFile(answers[0], []byte(asked), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	replay := fakeReplay(t, answers)

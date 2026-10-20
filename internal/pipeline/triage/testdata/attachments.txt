@@ -1,0 +1,4 @@
+Complexity: moderate
+Epics: 5
+
+Players and clubs, rates and a court map, one payment integration.

@@ -9,24 +9,25 @@ import (
 	"testing"
 )
 
-// Removed lists cannot change classification; research always asks all five dimensions.
+// Removed lists cannot change classification; research always asks all five dimensions. The answers are plain text,
+// each removed list a line triage does not read.
 func TestRunIgnoresRemovedTriageListsAndDeliversPersistedContext(t *testing.T) {
-	const valid = `{"complexity":"simple","epics":2,"reasoning":"One check.",` +
-		`"research_dimensions":[],"context_present":[],"missing_questions":[],"project_type":"other"}`
+	const valid = "Complexity: simple\nEpics: 2\n" +
+		"Research dimensions:\nContext present:\nMissing questions:\nProject type: other\n\nOne check.\n"
 	for _, tc := range []struct {
 		name, from, to string
 		passed         bool // classified, not failed into moderate
 	}{
 		{"all empty arrays", "", "", true},
-		{"research omitted", `"research_dimensions":[],`, "", true},
-		{"invalid complexity", `"complexity":"simple"`, `"complexity":"huge"`, false},
-		{"research invalid", `"research_dimensions":[]`, `"research_dimensions":["legal"]`, true},
-		{"research duplicate", `"research_dimensions":[]`, `"research_dimensions":["users","users"]`, true},
-		{"research null", `"research_dimensions":[],`, `"research_dimensions":null,`, true},
-		{"context omitted", `"context_present":[],`, "", true},
-		{"context null", `"context_present":[],`, `"context_present":null,`, true},
-		{"questions omitted", `"missing_questions":[],`, "", true},
-		{"questions null", `"missing_questions":[],`, `"missing_questions":null,`, true},
+		{"research omitted", "Research dimensions:\n", "", true},
+		{"invalid complexity", "Complexity: simple", "Complexity: huge", false},
+		{"research invalid", "Research dimensions:\n", "Research dimensions: legal\n", true},
+		{"research duplicate", "Research dimensions:\n", "Research dimensions: users, users\n", true},
+		{"research null", "Research dimensions:\n", "Research dimensions: null\n", true},
+		{"context omitted", "Context present:\n", "", true},
+		{"context null", "Context present:\n", "Context present: null\n", true},
+		{"questions omitted", "Missing questions:\n", "", true},
+		{"questions null", "Missing questions:\n", "Missing questions: null\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			const brief = "The bike exchange needs a seller identity check.\n"

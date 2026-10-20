@@ -101,6 +101,7 @@ func TestStatusNamesTheNewestRunThoughItsLabelSortsFirst(t *testing.T) {
 	}
 }
 
+// A finished run attaches to every step it ran and keeps the agents' lines, triage's plain text among them.
 func TestAttachToAFinishedRunPrintsEveryStepAndItsAgentOutputIsKept(t *testing.T) {
 	runRepo(t, map[string]string{})
 	triageOn(t, `[]`, `[]`)
@@ -114,7 +115,7 @@ func TestAttachToAFinishedRunPrintsEveryStepAndItsAgentOutputIsKept(t *testing.T
 		!regexp.MustCompile(want).MatchString(out) {
 		t.Fatalf("dulidu attach: exit %d\n%s%s", code, out, errOut)
 	}
-	if got := read(t, filepath.Join(dir, "agent.out")); !strings.Contains(got, `\"complexity\":\"simple\"`) {
+	if got := read(t, filepath.Join(dir, "agent.out")); !strings.Contains(got, `Complexity: simple\n`) {
 		t.Errorf("agent.out lacks the agents' lines:\n%s", got)
 	}
 }

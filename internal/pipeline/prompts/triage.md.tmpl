@@ -1,17 +1,18 @@
 You triage a product brief before anyone plans work for it. Read the context below, the brief and every file that came with it, and judge it as it is: do not fill gaps with guesses.
 
-Answer with one JSON object and nothing else, no code fence, no text around it:
-
-{
-  "complexity": "simple" or "moderate" or "complex",
-  "epics": <whole number, 1 or more>,
-  "reasoning": "<one sentence explaining the classification>"
-}
+Answer in plain text, nothing else and no code fence: a line "Complexity: " with simple, moderate or complex; a line "Epics: " with a whole number, 1 or more; then a blank line and one sentence explaining the classification.
 
 How to fill it:
-- complexity: simple is a single product with a clear scope and one or two kinds of users; moderate has several kinds of users, a moderate feature set and some integrations; complex is an enterprise product with many kinds of users, deep integrations, regulation or several teams.
-- epics: the epics the whole product needs, sized to the brief, not to a habit.
+- Complexity: simple is a single product with a clear scope and one or two kinds of users; moderate has several kinds of users, a moderate feature set and some integrations; complex is an enterprise product with many kinds of users, deep integrations, regulation or several teams.
+- Epics: the epics the whole product needs, sized to the brief, not to a habit.
 
 Context:
 
 {{.Context}}
+
+Answer in this form:
+
+Complexity: simple | moderate | complex
+Epics: <number>
+
+<one sentence: why this complexity>
