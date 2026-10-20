@@ -237,6 +237,7 @@ t`},
 	}
 }
 
+// Optional story fields now pass; malformed identities and failed calls still stop the run.
 func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 	for name, c := range map[string]struct {
 		epics   int
@@ -245,15 +246,19 @@ func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 		check   string // the step's status after "failed at epics: "
 		says    string // in Run's error
 		calls   int
+		passes  bool
+		note    string
 	}{
 		"no epic blocks": {instead: map[int]string{0: ""},
 			check: "outlines", says: "no epic blocks", calls: 1},
 		"no epic title": {instead: map[int]string{0: "## E2\nDepends on: none\nA description."},
 			check: "outlines", says: "epic E2 lacks id or title", calls: 1},
+		"no story title": {instead: map[int]string{1: "## US1\n"},
+			check: "stories", says: "lacks id or title", calls: 2},
 		"no story blocks": {instead: map[int]string{1: ""},
 			check: "stories", says: "E1 has no story blocks", calls: 2},
 		"no acceptance": {instead: map[int]string{1: "## US1 A\nFunctionalities: F1\nA story\n### First test\nt"},
-			check: "stories", says: "lacks id, title, acceptance or first test", calls: 2},
+			passes: true, calls: 3},
 		"duplicate epic": {instead: map[int]string{0: `## E1 A
 Depends on: E1
 
@@ -265,14 +270,14 @@ Functionalities: F1
 A story
 ### Acceptance
 - a`},
-			check: "stories", says: "lacks id, title, acceptance or first test", calls: 2},
+			passes: true, calls: 3},
 		"no description": {instead: map[int]string{1: `## US1 A
 Functionalities: F1
 ### Acceptance
 - a
 ### First test
 t`},
-			check: "stories", says: "lacks description", calls: 2},
+			passes: true, calls: 3},
 		"unknown functionality": {instead: map[int]string{1: `## US1 A
 Functionalities: F1, F999
 A story
@@ -280,14 +285,14 @@ A story
 - a
 ### First test
 t`},
-			check: "stories", says: "invalid functionalities", calls: 2},
+			passes: true, calls: 3, note: "dropped functionality F999 from US1 in E1"},
 		"missing functionalities": {instead: map[int]string{1: `## US1 A
 A story
 ### Acceptance
 - a
 ### First test
 t`},
-			check: "stories", says: "invalid functionalities", calls: 2},
+			passes: true, calls: 3, note: "uncovered must: F1"},
 		"agent error": {instead: map[int]string{}, check: "outlines", says: "outlines: down", calls: 1},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -302,6 +307,38 @@ t`},
 				ask = func(p string) (string, error) { asked = append(asked, p); return "", errors.New("down") }
 			}
 			err := Run(dir, r, step, ask)
+			if c.passes {
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, readErr := pipeline.Read(dir)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if len(asked) != c.calls || len(got.Epics) != 2 || len(got.Epics[0].Stories) != 1 {
+					t.Fatalf("calls %d, epics %+v", len(asked), got.Epics)
+				}
+				story := got.Epics[0].Stories[0]
+				want := pipeline.Story{ID: "US1", Epic: "E1", Title: "A", Text: "A story",
+					Acceptance: []string{"a"}, FirstTest: "t", Functionalities: []string{"F1"}}
+				switch name {
+				case "no acceptance":
+					want.Acceptance = nil
+				case "no first test":
+					want.FirstTest = ""
+				case "no description":
+					want.Text = ""
+				case "missing functionalities":
+					want.Functionalities = nil
+				}
+				if !reflect.DeepEqual(story, want) {
+					t.Errorf("story: %+v, want %+v", story, want)
+				}
+				if s := got.Report.Steps[1]; s.Status != "passed" || s.Note != c.note || got.Report.Status != "done" {
+					t.Errorf("report: %+v, want note %q", got.Report, c.note)
+				}
+				return
+			}
 			if err == nil || !strings.Contains(err.Error(), "failed at epics: "+c.check) || !strings.Contains(err.Error(), c.says) {
 				t.Fatalf("error: %v, want %q and %q", err, "failed at epics: "+c.check, c.says)
 			}

@@ -49,8 +49,16 @@ func TestValidateRejects(t *testing.T) {
 	}
 	story := r.Tickets["E1-1"]
 	story.Acceptance = nil
+	if err := story.Validate(); err != nil {
+		t.Errorf("a story without acceptance must validate: %v", err)
+	}
+	story.ID = ""
 	if story.Validate() == nil {
-		t.Error("a story without acceptance validates")
+		t.Error("a story without an id validates")
+	}
+	story.ID, story.Title = "US1", ""
+	if story.Validate() == nil {
+		t.Error("a story without a title validates")
 	}
 	research := Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []Source{}}}}
 	if research.Validate() == nil {

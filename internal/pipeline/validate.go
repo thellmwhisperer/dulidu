@@ -127,7 +127,7 @@ func (es Epics) Validate() error {
 
 func (s Story) Validate() error {
 	return errors.Join(need(!blank(s.Epic), "story: no epic"), need(!blank(s.Title), "story: no title"),
-		need(filled(s.Acceptance), "story "+s.Title+": no acceptance"))
+		need(!blank(s.ID), "story: no id"))
 }
 
 func (r Report) Validate() error {
