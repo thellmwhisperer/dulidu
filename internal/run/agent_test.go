@@ -25,7 +25,7 @@ func TestResearchWebArgvKeepsOtherStepsUnchanged(t *testing.T) {
 			}
 			want := base
 			if web && harness == "codex" {
-				want = append([]string{"codex", "--search"}, base[1:]...)
+				want = append([]string{"codex", "exec", "-c", `web_search="live"`}, base[2:]...)
 			}
 			wantStdin := ""
 			if harness == "hermes" {

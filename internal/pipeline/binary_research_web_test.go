@@ -140,8 +140,8 @@ func TestBinaryResearchWebOtherHarness(t *testing.T) {
 			for i, tmpl := range []string{"p03-research-business", "p04-research-users", "p05-research-market", "p06-research-technical", "p07-research-project"} {
 				args := strings.Split(strings.TrimSuffix(binaryRead(t, filepath.Join(fake, "args-"+strconv.Itoa(i+1))), "\x00"), "\x00")
 				if harness == "codex" {
-					if len(args) < 2 || !slices.Equal(args[:2], []string{"--search", "exec"}) {
-						t.Errorf("research call %d lacks codex --search exec: %q", i+1, args)
+					if len(args) < 4 || !slices.Equal(args[:4], []string{"exec", "-c", `web_search="live"`, "--json"}) {
+						t.Errorf("research call %d lacks codex exec -c web_search=\"live\": %q", i+1, args)
 					}
 					continue
 				}
