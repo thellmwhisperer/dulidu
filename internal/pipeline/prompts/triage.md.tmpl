@@ -4,19 +4,15 @@ Answer with one JSON object and nothing else, no code fence, no text around it:
 
 {
   "complexity": "simple" or "moderate" or "complex",
-  "caps": {"epics": <whole number, 1 or more>, "stories_per_epic": <whole number, 1 or more>},
-  "research_dimensions": [any of "business", "users", "market", "technical", "project"],
-  "context_present": [<each kind of context the brief gives: the brief itself, each attachment by name, existing code, data, designs>],
-  "missing_questions": [<each question the brief must answer before a spec can be written>],
-  "project_type": "new_product" or "existing_codebase" or "migration" or "other"
+  "epics": <whole number, 1 or more>,
+  "reasoning": "<one sentence explaining the classification>",
+  "research_dimensions": [any of "business", "users", "market", "technical", "project"]
 }
 
 How to fill it:
-- complexity: how much the product does, how many kinds of users it serves and how many systems it touches.
-- caps: the epics the whole product needs and the stories the largest of them needs; size them to the brief, not to a habit.
+- complexity: simple is a single product with a clear scope and one or two kinds of users; moderate has several kinds of users, a moderate feature set and some integrations; complex is an enterprise product with many kinds of users, deep integrations, regulation or several teams.
+- epics: the epics the whole product needs, sized to the brief, not to a habit; at most 3 for simple, 5 for moderate, 8 for complex.
 - research_dimensions: only the dimensions where outside research would change the plan; leave out what the context already settles.
-- missing_questions: empty when the brief is enough to plan from. When the goal, the users or the scope cannot be told from the context, ask, one short question per gap, and do not plan around the gap.
-- project_type: existing_codebase when the work changes software that already runs, migration when it moves an existing product to a new base, new_product when nothing exists yet.
 
 Context:
 

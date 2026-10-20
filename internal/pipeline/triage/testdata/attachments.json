@@ -1,1 +1,1 @@
-{"complexity": "moderate", "caps": {"epics": 5, "stories_per_epic": 6}, "research_dimensions": ["market", "technical"], "context_present": ["brief", "rates.csv", "court.png"], "missing_questions": [], "project_type": "new_product"}
+{"complexity": "moderate", "epics": 5, "reasoning": "Players and clubs, rates and a court map, one payment integration.", "research_dimensions": ["market", "technical"]}

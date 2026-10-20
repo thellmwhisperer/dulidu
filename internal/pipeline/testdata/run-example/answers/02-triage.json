@@ -1,1 +1,1 @@
-{"complexity": "simple", "caps": {"epics": 2, "stories_per_epic": 2}, "research_dimensions": ["users", "market"], "context_present": ["brief", "one.pdf", "one.png"], "missing_questions": [], "project_type": "new_product"}
+{"complexity": "simple", "epics": 2, "reasoning": "One studio, its members and its manager, no integrations.", "research_dimensions": ["users", "market"]}

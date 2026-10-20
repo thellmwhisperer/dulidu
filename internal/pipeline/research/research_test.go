@@ -25,9 +25,9 @@ func start(t *testing.T, dimensions ...string) (string, *pipeline.Run) {
 		{Name: "input", Status: "done", Harness: "claude", Started: at, Finished: at},
 		{Name: "triage", Status: "passed", Harness: "claude", Started: at, Finished: at}}},
 		Input: &pipeline.InputContext{Brief: pipeline.Brief{Text: "A brief.\n"}}, Context: context,
-		Triage: &pipeline.Triage{Complexity: "simple", Caps: pipeline.Caps{Epics: 2, StoriesPerEpic: 3},
-			ResearchDimensions: append([]string{}, dimensions...), ContextPresent: []string{"brief"},
-			MissingQuestions: []string{}, ProjectType: "new_product"}}
+		Triage: &pipeline.Triage{Complexity: "simple", Epics: 2,
+			ResearchDimensions: append([]string{}, dimensions...),
+			Reasoning:          "One kind of user."}}
 	dir := t.TempDir()
 	if err := pipeline.Write(dir, *r); err != nil {
 		t.Fatal(err)

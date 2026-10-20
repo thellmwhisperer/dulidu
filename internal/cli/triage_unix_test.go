@@ -28,9 +28,11 @@ func triageWith(t *testing.T, answer string) {
 	t.Setenv("FAKE_TRIAGE", path)
 }
 
-// triageFile is triage.json as the declared schema has it.
+// triageFile is triage.json as the declared schema has it, and the fields it no longer has, absent.
 type triageFile struct {
 	Complexity string
+	Epics      int
+	Reasoning  string
 	Caps       struct {
 		Epics          int
 		StoriesPerEpic int `json:"stories_per_epic"`
@@ -57,11 +59,12 @@ func decodeFile(t *testing.T, path string, v any) {
 func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	png := read(t, filepath.Join("..", "pipeline", "input", "testdata", "pattern.png"))
 	calls := runRepo(t, map[string]string{"notes.md": "Spain first.\n", "pattern.png": png})
-	yml := strings.Replace(read(t, "dulidu.yaml"), "max_epics:\n", "max_epics: 8\n", 1)
+	yml := strings.Replace(read(t, "dulidu.yaml"), "max_epics:\n", "max_epics: 6\n", 1)
+	yml = strings.Replace(yml, "max_stories_per_epic:\n", "max_stories_per_epic: 4\n", 1)
 	if err := os.WriteFile("dulidu.yaml", []byte(yml), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	triageWith(t, `{"complexity":"complex","caps":{"epics":12,"stories_per_epic":4},`+
+	triageWith(t, `{"complexity":"complex","epics":12,"reasoning":"Many markets.",`+
 		`"research_dimensions":["market","users"],"context_present":["brief","notes.md","pattern.png"],`+
 		`"missing_questions":[],"project_type":"new_product"}`)
 	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "notes.md", "--attach", "pattern.png"); code != 0 {
@@ -89,17 +92,21 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 
 	var triage triageFile
 	decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
-	if triage.Caps.Epics != 8 || triage.Caps.StoriesPerEpic != 4 || triage.Complexity != "complex" ||
-		!slices.Equal(triage.ResearchDimensions, []string{"market", "users"}) || triage.ProjectType != "new_product" ||
-		len(triage.ContextPresent) != 3 || len(triage.MissingQuestions) != 0 {
+	// complex caps 12 at 8, max_epics at 6; the stories cap is max_stories_per_epic's, in the stories prompt.
+	if triage.Epics != 6 || triage.Caps.Epics != 0 || triage.Caps.StoriesPerEpic != 0 || triage.Complexity != "complex" ||
+		!slices.Equal(triage.ResearchDimensions, []string{"market", "users"}) || triage.ProjectType != "" ||
+		triage.ContextPresent != nil || triage.MissingQuestions != nil || triage.Reasoning != "Many markets." {
 		t.Errorf("triage.json: %+v", triage)
+	}
+	if !strings.Contains(read(t, filepath.Join(dir, "agent", "epics.log")), "At most 4, but") {
+		t.Error("the stories prompt lacks max_stories_per_epic's cap")
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
 	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Name != "input" ||
 		report.Steps[0].Status != "done" || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" ||
 		report.Steps[1].Model != "opus" || report.Steps[1].Harness != "claude" ||
-		!strings.Contains(report.Steps[1].Note, "clamped") || report.Steps[2].Name != "research" {
+		report.Steps[1].Note != "clamped epics from 8 to max_epics 6" || report.Steps[2].Name != "research" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if read(t, filepath.Join(dir, "input", "pattern.png")) != png || read(t, filepath.Join(dir, "input", "notes.md")) != "Spain first.\n" {
@@ -130,7 +137,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 
 func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	calls := runRepo(t, map[string]string{})
-	triageWith(t, `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":[],`+
+	triageWith(t, `{"complexity":"simple","epics":2,"reasoning":"One shop.","research_dimensions":[],`+
 		`"context_present":["brief"],"missing_questions":["Who sells the bikes?"],"project_type":"other"}`)
 	if code, out, errOut := dulidu(t, "run", "brief.md"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
@@ -138,7 +145,7 @@ func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	dir := runs(t)[0]
 	var triage triageFile
 	decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
-	if !slices.Equal(triage.MissingQuestions, []string{"Who sells the bikes?"}) || triage.ProjectType != "other" {
+	if triage.MissingQuestions != nil || triage.ProjectType != "" || triage.Epics != 2 {
 		t.Errorf("triage.json: %+v", triage)
 	}
 	var report reportFile
@@ -162,24 +169,26 @@ func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	}
 }
 
-func TestRunFailsAtTriageOnInvalidOutput(t *testing.T) {
+// An invalid triage answer is a failed triage: moderate, 5 epics, and the run goes on.
+func TestRunGoesOnModerateAfterInvalidTriage(t *testing.T) {
 	for name, answer := range map[string]string{"empty": "{}", "malformed": `{"complexity": "simple",`, "prose": "Simple."} {
 		t.Run(name, func(t *testing.T) {
 			calls := runRepo(t, map[string]string{"notes.md": "Spain first.\n"})
 			triageWith(t, answer)
 			code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "notes.md")
-			if code != 1 || !strings.Contains(errOut, "failed at triage: invalid output") {
+			if code != 0 {
 				t.Fatalf("exit %d, stderr %q", code, errOut)
 			}
 			dir := runs(t)[0]
 			var report reportFile
 			decodeFile(t, filepath.Join(dir, "report.json"), &report)
-			if report.Status != "failed" || len(report.Steps) != 2 || report.Steps[0].Status != "done" ||
-				report.Steps[1].Status != "failed at triage: invalid output" {
+			if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Status != "done" ||
+				report.Steps[1].Status != "passed" || report.Steps[1].Note != "classification failed, moderate: invalid output" {
 				t.Errorf("report.json: %+v", report)
 			}
-			if _, err := os.Stat(filepath.Join(dir, "triage.json")); err == nil {
-				t.Error("triage.json was written")
+			var triage triageFile
+			if decodeFile(t, filepath.Join(dir, "triage.json"), &triage); triage.Complexity != "moderate" || triage.Epics != 5 {
+				t.Errorf("triage.json: %+v", triage)
 			}
 			if read(t, filepath.Join(dir, "input", "notes.md")) != "Spain first.\n" ||
 				!strings.Contains(read(t, filepath.Join(dir, "contexto.md")), "Spain first.") {

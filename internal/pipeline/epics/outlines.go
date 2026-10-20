@@ -37,8 +37,8 @@ func outlines(answer string) (pipeline.Epics, error) {
 	return es, nil
 }
 
-// Run plans r.Analysis, within r.Triage.Caps, in dir, the run folder: it adds step to r's report, running, and
-// writes r; then asks ask for the outlines and, once they keep the cap and their dependencies, for each epic's
+// Run plans r.Analysis, within r.Triage.Epics and, when positive, r.Triage.StoriesPerEpic, in dir, the run folder: it
+// adds step to r's report, running, and writes r; then asks ask for the outlines and, once they keep the cap and their dependencies, for each epic's
 // stories. Functionalities are F1, F2... in the analysis' order. When every check holds the epics with their stories
 // are r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
 // fail, the step "failed at epics: <check>", and Run's error says that and what broke it.
@@ -80,10 +80,9 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 			musts, mustLines = append(musts, id), append(mustLines, id+" "+rest)
 		}
 	}
-	caps := r.Triage.Caps
 	data := map[string]any{"Input": r.Context, "Personas": list(r.Analysis.Personas), "Functionalities": list(all),
 		"MustFunctionalities": list(mustLines), "Flows": list(r.Analysis.Flows), "Constraints": list(r.Analysis.Constraints),
-		"Epics": caps.Epics, "Stories": caps.StoriesPerEpic}
+		"Epics": r.Triage.Epics, "Stories": r.Triage.StoriesPerEpic}
 	prompt, err := prompts.Render("p15-epics-outlines", data)
 	var answer string
 	if err == nil {
@@ -94,7 +93,7 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 	}
 	es, err := outlines(answer)
 	if err == nil {
-		err = overCap(len(es), caps.Epics, "epics")
+		err = overCap(len(es), r.Triage.Epics, "epics")
 	}
 	if err == nil {
 		err = es.Validate() // duplicate id, unknown dependency or cycle
@@ -103,8 +102,8 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 		return nil, err
 	}
 	for i := range es {
-		if es[i].Stories, err = askStories(es[i], data, ids, ask); err == nil {
-			err = overCap(len(es[i].Stories), caps.StoriesPerEpic, "stories in "+es[i].ID)
+		if es[i].Stories, err = askStories(es[i], data, ids, ask); err == nil && r.Triage.StoriesPerEpic > 0 {
+			err = overCap(len(es[i].Stories), r.Triage.StoriesPerEpic, "stories in "+es[i].ID)
 		}
 		if err != nil {
 			return nil, err
