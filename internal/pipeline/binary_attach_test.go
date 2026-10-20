@@ -37,10 +37,12 @@ func TestBinaryAttachAnswersKeysInATerminal(t *testing.T) {
 	if err != nil || len(dirs) != 1 {
 		t.Fatalf("run folders: %v, %v", dirs, err)
 	}
-	// Give the finished run enough history to prove scrolling, independently of
-	// which agent event formats the view supports.
+	// Give the finished run enough assistant history to prove scrolling.
+	// Non-event lines belong only in failed-step findings, never in Agent.
 	logPath := filepath.Join(dirs[0], "agent.out")
-	log := binaryRead(t, logPath) + strings.Repeat("terminal scroll history\n", 60) + "terminal history end\n"
+	history := `{"type":"assistant","message":{"content":[{"type":"text","text":"terminal scroll history"}]}}` + "\n"
+	end := `{"type":"result","result":"terminal history end"}` + "\n"
+	log := binaryRead(t, logPath) + strings.Repeat(history, 60) + end
 	if err := os.WriteFile(logPath, []byte(log), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -49,7 +49,7 @@ func TestFrameShowsTheQuestionsUnderTheSteps(t *testing.T) {
 	}
 }
 
-func TestTailReadsTheAgentsTextAndTools(t *testing.T) {
+func TestWatchReadsTheAgentsTextAndTools(t *testing.T) {
 	dir := t.TempDir()
 	out := strings.Join([]string{
 		`{"type":"system","subtype":"init"}`,
@@ -61,9 +61,37 @@ func TestTailReadsTheAgentsTextAndTools(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, Output), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	want := "Reading the brief.|Then triage.|→ Read|codex says|dulidu: failed at research"
-	if got := strings.Join(tail(dir), "|"); got != want {
-		t.Errorf("tail: %q, want %q", got, want)
+	if err := os.WriteFile(filepath.Join(dir, "report.json"), []byte(`{"status":"running"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := watchLoad(dir)(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := screen.New("test", 120, 40)
+	m.Load(snap)
+	frame := m.View()
+	for _, want := range []string{"Reading the brief.", "Then triage.", "→ Read", "codex says"} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("frame lacks %q: %s", want, frame)
+		}
+	}
+	if strings.Contains(frame, "dulidu: failed at research") {
+		t.Errorf("diagnostic in Agent: %s", frame)
+	}
+	if got := strings.Join(rawLines(dir), "|"); !strings.Contains(got, "dulidu: failed at research") {
+		t.Errorf("raw diagnostic was lost: %s", got)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "report.json"), []byte(`{"status":"failed"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snap, err = watchLoad(dir)(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Load(snap)
+	if frame = m.View(); !strings.Contains(frame, "Log") || !strings.Contains(frame, "dulidu: failed at research") {
+		t.Errorf("failed step lost its diagnostic: %s", frame)
 	}
 }
 
@@ -157,7 +185,7 @@ func TestScrollKeysAndTFolding(t *testing.T) {
 	}
 	m = screen.New("lumpa", 120, 40)
 	m.Load(screen.Snap{Label: "lumpa", Report: r, Log: folded, Now: at.Add(time.Minute)})
-	if !strings.Contains(m.View(), "2 tools: Edit, Bash") || strings.Contains(m.View(), "ok Edit") {
+	if !strings.Contains(m.View(), "2 tools: → Edit, → Bash") || strings.Contains(m.View(), "ok Edit") {
 		t.Fatalf("tools should be folded:\n%s", m.View())
 	}
 	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})

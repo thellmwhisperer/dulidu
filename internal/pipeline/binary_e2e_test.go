@@ -42,6 +42,11 @@ func binaryLines(path string) int {
 // binary is ./cmd/dulidu built with go build, once per test process.
 func binary(t *testing.T) string {
 	t.Helper()
+	// The test runner uses its own GOCOVERDIR. Keep binary coverage separate.
+	coverage := os.Getenv("DULIDU_TEST_COVERDIR")
+	if coverage != "" {
+		t.Setenv("GOCOVERDIR", coverage)
+	}
 	builtOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "dulidu-bin-")
 		if err != nil {
@@ -49,7 +54,12 @@ func binary(t *testing.T) string {
 			return
 		}
 		built = filepath.Join(dir, "dulidu")
-		if out, err := exec.Command("go", "build", "-o", built, "../../cmd/dulidu").CombinedOutput(); err != nil {
+		args := []string{"build"}
+		if coverage != "" {
+			args = append(args, "-cover")
+		}
+		args = append(args, "-o", built, "../../cmd/dulidu")
+		if out, err := exec.Command("go", args...).CombinedOutput(); err != nil {
 			buildErr = fmt.Errorf("go build: %v\n%s", err, out)
 		}
 	})

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -112,20 +113,24 @@ func Follow(dir string, w io.Writer) error {
 	}
 }
 
-// Watch draws the run in dir on w, a terminal of size's columns and rows, until q comes from keys or ctx ends;
-// a run that died before writing any report ends it too, once grace has passed. The run itself goes on.
+// Watch draws the run in dir on w until q, ctx ends, or an observed live run ends.
+// An already finished run stays open for inspection. A run with no report ends
+// the view once grace has passed. Leaving the view never stops the run.
 func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
 	return screen.Poll(ctx, w, keys, size, watchLoad(dir))
 }
 
-// watchLoad is dir's report, the questions it waits for and its agent lines. A run that died before writing any
-// report fails it, once grace has passed; a report being written is skipped.
+// watchLoad is dir's report, questions and agent prose. It returns the final frame
+// with io.EOF when a live run ends. Missing reports fail after grace; writes are skipped.
 func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
 	var last screen.Snap
 	have := false
+	wasAlive := false
 	stuck := time.Time{} // since a run not running last left its report unreadable
 	return func(now time.Time) (screen.Snap, error) {
 		alive := running(dir)
+		ended := wasAlive && !alive
+		wasAlive = wasAlive || alive
 		r, err := Report(dir)
 		if err != nil {
 			if alive {
@@ -146,8 +151,15 @@ func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
 		if r.Status == "waiting_answers" {
 			questions, _ = Questions(dir)
 		}
-		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: rawLines(dir), Now: now}
+		log := rawLines(dir)
+		if r.Status != "failed" {
+			log = slices.DeleteFunc(log, func(line string) bool { return !json.Valid([]byte(line)) })
+		}
+		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: log, Now: now}
 		have = true
+		if ended {
+			return last, io.EOF
+		}
 		return last, nil
 	}
 }
@@ -171,60 +183,4 @@ func rawLines(dir string) []string {
 		}
 	}
 	return lines
-}
-
-// tail is the readable lines of the end of dir's agent output.
-func tail(dir string) []string {
-	f, err := os.Open(filepath.Join(dir, Output))
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = f.Close() }()
-	if info, err := f.Stat(); err == nil && info.Size() > 64<<10 {
-		_, _ = f.Seek(-64<<10, io.SeekEnd) // ponytail: the last 64 KiB fill any screen
-	}
-	b, _ := io.ReadAll(f)
-	var lines []string
-	for _, line := range strings.Split(string(b), "\n") {
-		if text := readable(line); text != "" {
-			lines = append(lines, strings.Split(text, "\n")...)
-		}
-	}
-	return lines
-}
-
-// readable is what a person reads in one line of agent output: an event's text or the tool it calls, the line
-// itself when it is no JSON, "" when it says nothing to read.
-func readable(line string) string {
-	line = strings.TrimSpace(line)
-	if !json.Valid([]byte(line)) {
-		return line
-	}
-	var e struct {
-		Type    string
-		Message struct {
-			Content []struct{ Type, Text, Name string }
-		}
-		Part struct{ Text string } // opencode's
-		Item struct{ Text string } // codex's
-	}
-	_ = json.Unmarshal([]byte(line), &e) // a field of another type is left empty, the rest is read
-	var texts []string
-	if e.Type == "assistant" || e.Type == "message_end" {
-		for _, c := range e.Message.Content {
-			switch c.Type {
-			case "text":
-				texts = append(texts, c.Text)
-			case "tool_use", "toolCall":
-				texts = append(texts, "→ "+c.Name)
-			}
-		}
-	}
-	if e.Type == "text" {
-		texts = append(texts, e.Part.Text)
-	}
-	if e.Type == "item.completed" {
-		texts = append(texts, e.Item.Text)
-	}
-	return strings.TrimSpace(strings.Join(texts, "\n"))
 }
