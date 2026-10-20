@@ -9,13 +9,10 @@ import (
 
 func TestTriageRejectsWhatTheSchemaDoesNot(t *testing.T) {
 	for name, change := range map[string]string{
-		"complexity":         `{"complexity":"huge"}`,
-		"zero epics":         `{"epics":0}`,
-		"negative epics":     `{"epics":-1}`,
-		"research dimension": `{"research_dimensions":["legal"]}`,
-		"no complexity":      `{"complexity":""}`,
-		"duplicate":          `{"research_dimensions":["users","users"]}`,
-		"no dimension list":  `{"research_dimensions":null}`,
+		"complexity":     `{"complexity":"huge"}`,
+		"zero epics":     `{"epics":0}`,
+		"negative epics": `{"epics":-1}`,
+		"no complexity":  `{"complexity":""}`,
 	} {
 		tr := *complete().Triage
 		if err := json.Unmarshal([]byte(change), &tr); err != nil {
@@ -26,12 +23,11 @@ func TestTriageRejectsWhatTheSchemaDoesNot(t *testing.T) {
 		}
 	}
 	tr := *complete().Triage
-	tr.ResearchDimensions = []string{"business", "users", "market", "technical", "project"}
 	if err := json.Unmarshal([]byte(`{"reasoning":""}`), &tr); err != nil {
 		t.Fatal(err)
 	}
 	if err := tr.Validate(); err != nil {
-		t.Errorf("a triage with every dimension and no reasoning: %v", err)
+		t.Errorf("a triage without dimensions or reasoning: %v", err)
 	}
 }
 
@@ -48,5 +44,30 @@ func TestStepNoteRoundTrips(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("read back:\n%+v\nwant:\n%+v", got, want)
+	}
+}
+
+func TestTriageIgnoresRemovedResearchDimensions(t *testing.T) {
+	for _, legacy := range []string{`{}`, `{"research_dimensions":null}`, `{"research_dimensions":[]}`,
+		`{"research_dimensions":["legal"]}`, `{"research_dimensions":["users","users"]}`,
+		`{"research_dimensions":"not a list"}`} {
+		tr := Triage{Complexity: "simple", Epics: 2}
+		if err := json.Unmarshal([]byte(legacy), &tr); err != nil {
+			t.Fatalf("legacy field %s: %v", legacy, err)
+		}
+		if err := tr.Validate(); err != nil {
+			t.Errorf("legacy field %s affects validation: %v", legacy, err)
+		}
+		b, err := json.Marshal(tr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fields map[string]any
+		if err := json.Unmarshal(b, &fields); err != nil {
+			t.Fatal(err)
+		}
+		if _, exists := fields["research_dimensions"]; exists {
+			t.Errorf("triage.json retains the removed field: %s", b)
+		}
 	}
 }

@@ -38,9 +38,11 @@ func TestValidateRejects(t *testing.T) {
 		t.Error("a research dimension with empty sources validates")
 	}
 	triage := *r.Triage
-	triage.ResearchDimensions = []string{"market", "market"}
-	if err := triage.Validate(); err == nil || err.Error() != "triage: duplicate research dimension market" {
-		t.Errorf("duplicate triage dimensions: %v", err)
+	if err := json.Unmarshal([]byte(`{"research_dimensions":["market","market"]}`), &triage); err != nil {
+		t.Fatal(err)
+	}
+	if err := triage.Validate(); err != nil {
+		t.Errorf("the removed research_dimensions field affected triage validation: %v", err)
 	}
 	dimension := Dimension{Name: "market", Text: "Crowded.", Sources: []Source{{URL: "u", Title: "t", Supports: "s"}}}
 	if err := (Research{Dimensions: []Dimension{dimension, dimension}}).Validate(); err == nil ||

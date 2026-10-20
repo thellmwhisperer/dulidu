@@ -47,15 +47,8 @@ func (c InputContext) Validate() error {
 }
 
 func (t Triage) Validate() error {
-	errs := []error{need(slices.Contains([]string{"simple", "moderate", "complex"}, t.Complexity), "triage: bad complexity"),
-		need(t.Epics > 0, "triage: epics not positive"), need(t.ResearchDimensions != nil, "triage: missing list")}
-	seen := map[string]bool{}
-	for _, d := range t.ResearchDimensions {
-		errs = append(errs, need(slices.Contains([]string{"business", "users", "market", "technical", "project"}, d),
-			"triage: bad research dimension "+d), need(!seen[d], "triage: duplicate research dimension "+d))
-		seen[d] = true
-	}
-	return errors.Join(errs...)
+	return errors.Join(need(slices.Contains([]string{"simple", "moderate", "complex"}, t.Complexity), "triage: bad complexity"),
+		need(t.Epics > 0, "triage: epics not positive"))
 }
 
 // Validate is nil for a dimension with text and at least one source, every field of each filled.
@@ -67,7 +60,7 @@ func (d Dimension) Validate() error {
 	return errors.Join(errs...)
 }
 
-// Validate allows an empty list, triage switching no dimension on, but not a missing one.
+// Validate checks the recorded dimensions and allows an empty list, but not a missing one.
 func (r Research) Validate() error {
 	errs := []error{need(r.Dimensions != nil, "research: no dimensions")}
 	seen := map[string]bool{}

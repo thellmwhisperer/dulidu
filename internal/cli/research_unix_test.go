@@ -68,26 +68,26 @@ func calls(t *testing.T, path string) int {
 	return strings.Count(string(b), "\n")
 }
 
-func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
+func TestRunResearchesAllFiveDimensionsOnceWithSources(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market","users","technical"]`, `[]`)
-	researchWith(t, finding("market"), finding("users"), finding("technical"))
+	researchWith(t, finding("business"), finding("users"), finding("market"), finding("technical"), finding("project"))
 	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}
 	dir := runs(t)[0]
-	if n := calls(t, log+".research"); n != 3 {
-		t.Fatalf("%d research calls, want 3", n)
+	if n := calls(t, log+".research"); n != 5 {
+		t.Fatalf("%d research calls, want 5", n)
 	}
-	if got := read(t, log+".research"); strings.Count(got, "--model sonnet") != 3 || strings.Count(got, "--effort medium") != 3 {
+	if got := read(t, log+".research"); strings.Count(got, "--model sonnet") != 5 || strings.Count(got, "--effort medium") != 5 {
 		t.Errorf("research calls did not use the research step's model and effort: %q", got)
 	}
 	context := read(t, filepath.Join(dir, "contexto.md"))
 	if !strings.Contains(context, unique) {
 		t.Fatalf("contexto.md lacks the attachment:\n%s", context)
 	}
-	dims := []string{"market", "users", "technical"}
-	for i, tmpl := range []string{"p05-research-market", "p04-research-users", "p06-research-technical"} {
+	dims := []string{"business", "users", "market", "technical", "project"}
+	for i, tmpl := range []string{"p03-research-business", "p04-research-users", "p05-research-market", "p06-research-technical", "p07-research-project"} {
 		want, err := prompts.Render(tmpl, map[string]any{"Input": context})
 		if err != nil {
 			t.Fatal(err)
@@ -103,7 +103,7 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 
 	var research researchFile
 	decodeFile(t, filepath.Join(dir, "research.json"), &research)
-	if len(research.Dimensions) != 3 {
+	if len(research.Dimensions) != 5 {
 		t.Fatalf("research.json: %+v", research)
 	}
 	for i, d := range research.Dimensions {
@@ -115,7 +115,7 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	}
 	var triage triageFile
 	decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
-	if !reflect.DeepEqual(triage.ResearchDimensions, dims) {
+	if triage.ResearchDimensions != nil {
 		t.Errorf("triage.json: %+v", triage)
 	}
 	if read(t, filepath.Join(dir, "input", "rules.md")) != unique || read(t, filepath.Join(dir, "input", "brief.md")) == "" {
@@ -126,7 +126,7 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Name != "input" || report.Steps[1].Name != "triage" ||
 		report.Steps[1].Status != "passed" || report.Steps[2].Name != "research" || report.Steps[2].Status != "passed" ||
 		report.Steps[2].Model != "sonnet" || report.Steps[2].Harness != "claude" || report.Steps[2].Effort != "medium" ||
-		report.Steps[2].Note != "dimensions: market, users, technical" {
+		report.Steps[2].Note != "dimensions: business, users, market, technical, project" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if !strings.Contains(read(t, filepath.Join(dir, "agent", "research.log")), finding("technical")) ||
@@ -155,34 +155,57 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 	}
 }
 
-func TestRunRejectsDuplicateTriageDimensionBeforeResearch(t *testing.T) {
+func TestRunIgnoresDuplicateTriageDimensionBeforeResearch(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market","market"]`, `[]`)
-	// A duplicate dimension is an invalid answer, a failed triage: moderate, with no dimension.
+	// The removed field cannot invalidate triage or choose the research dimensions.
 	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
 	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
-	if n := calls(t, log+".research"); n != 0 {
-		t.Errorf("%d research calls after duplicate triage dimension", n)
+	if n := calls(t, log+".research"); n != 5 {
+		t.Errorf("%d research calls after duplicate legacy dimensions, want five", n)
 	}
-	if got := strings.Join(strings.Fields(read(t, filepath.Join(runs(t)[0], "research.json"))), ""); got != `{"dimensions":[]}` {
-		t.Errorf("research.json after duplicate triage dimension: %s", got)
+	dir := runs(t)[0]
+	var triage triageFile
+	decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
+	if triage.Complexity != "simple" || triage.Epics != 2 || triage.ResearchDimensions != nil {
+		t.Errorf("removed research_dimensions affected triage: %+v", triage)
+	}
+	var research researchFile
+	decodeFile(t, filepath.Join(dir, "research.json"), &research)
+	if len(research.Dimensions) != 5 {
+		t.Fatalf("research.json after duplicate legacy dimensions: %+v", research)
+	}
+	for i, name := range []string{"business", "users", "market", "technical", "project"} {
+		if research.Dimensions[i].Name != name {
+			t.Errorf("dimension %d: %s, want %s", i, research.Dimensions[i].Name, name)
+		}
 	}
 }
 
-func TestRunWithNoDimensionsPassesResearchWithoutACall(t *testing.T) {
+func TestRunWithNoDimensionsAsksAllFiveDimensions(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `[]`, `[]`)
 	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}
 	dir := runs(t)[0]
-	if n := calls(t, log+".research"); n != 0 {
-		t.Errorf("%d research calls, want none", n)
+	if n := calls(t, log+".research"); n != 5 {
+		t.Errorf("%d research calls, want five", n)
 	}
-	if got := strings.Join(strings.Fields(read(t, filepath.Join(dir, "research.json"))), ""); got != `{"dimensions":[]}` {
-		t.Errorf("research.json: %s", got)
+	var research researchFile
+	decodeFile(t, filepath.Join(dir, "research.json"), &research)
+	if len(research.Dimensions) != 5 {
+		t.Fatalf("research.json: %+v", research)
+	}
+	for i, name := range []string{"business", "users", "market", "technical", "project"} {
+		if research.Dimensions[i].Name != name || len(research.Dimensions[i].Sources) == 0 {
+			t.Errorf("dimension %d: %+v", i, research.Dimensions[i])
+		}
+		if !strings.Contains(read(t, filepath.Join(dir, "spec.md")), "### "+name+"\n") {
+			t.Errorf("spec.md lacks research section %s", name)
+		}
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
@@ -199,8 +222,8 @@ func TestRunWithMissingQuestionsResearches(t *testing.T) {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}
 	dir := runs(t)[0]
-	if n := calls(t, log+".research"); n != 1 {
-		t.Errorf("%d research calls with triage's questions, want 1", n)
+	if n := calls(t, log+".research"); n != 5 {
+		t.Errorf("%d research calls with triage's questions, want 5", n)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "research.json")); err != nil {
 		t.Errorf("research.json was not written with triage's questions: %v", err)
@@ -217,7 +240,7 @@ func TestRunFailsAtResearchOnEmptySources(t *testing.T) {
 	triageOn(t, `["business","market","users"]`, `[]`)
 	researchWith(t, finding("business"), `{"text":"Crowded.","sources":[]}`, finding("users"))
 	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
-	if code != 1 || !strings.Contains(errOut, "failed at research: market: no sources") {
+	if code != 1 || !strings.Contains(errOut, "failed at research: users: no sources") {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
 	dir := runs(t)[0]
@@ -227,7 +250,7 @@ func TestRunFailsAtResearchOnEmptySources(t *testing.T) {
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
 	if report.Status != "failed" || len(report.Steps) != 3 || report.Steps[1].Status != "passed" ||
-		report.Steps[2].Name != "research" || report.Steps[2].Status != "failed at research: market: no sources" ||
+		report.Steps[2].Name != "research" || report.Steps[2].Status != "failed at research: users: no sources" ||
 		report.Steps[2].Effort != "medium" {
 		t.Errorf("report.json: %+v", report)
 	}

@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// A triage with no research_dimensions list failed, moderate; the lists it no longer keeps change nothing.
-func TestRunRequiresTriageListsAndDeliversPersistedContext(t *testing.T) {
+// Removed lists cannot change classification; research always asks all five dimensions.
+func TestRunIgnoresRemovedTriageListsAndDeliversPersistedContext(t *testing.T) {
 	const valid = `{"complexity":"simple","epics":2,"reasoning":"One check.",` +
 		`"research_dimensions":[],"context_present":[],"missing_questions":[],"project_type":"other"}`
 	for _, tc := range []struct {
@@ -18,8 +18,11 @@ func TestRunRequiresTriageListsAndDeliversPersistedContext(t *testing.T) {
 		passed         bool // classified, not failed into moderate
 	}{
 		{"all empty arrays", "", "", true},
-		{"research omitted", `"research_dimensions":[],`, "", false},
-		{"research null", `"research_dimensions":[],`, `"research_dimensions":null,`, false},
+		{"research omitted", `"research_dimensions":[],`, "", true},
+		{"invalid complexity", `"complexity":"simple"`, `"complexity":"huge"`, false},
+		{"research invalid", `"research_dimensions":[]`, `"research_dimensions":["legal"]`, true},
+		{"research duplicate", `"research_dimensions":[]`, `"research_dimensions":["users","users"]`, true},
+		{"research null", `"research_dimensions":[],`, `"research_dimensions":null,`, true},
 		{"context omitted", `"context_present":[],`, "", true},
 		{"context null", `"context_present":[],`, `"context_present":null,`, true},
 		{"questions omitted", `"missing_questions":[],`, "", true},
@@ -62,9 +65,15 @@ func TestRunRequiresTriageListsAndDeliversPersistedContext(t *testing.T) {
 			}
 			var triage triageFile
 			decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
+			if n := strings.Count(read(t, calls+".research"), "\n"); n != 5 {
+				t.Errorf("research calls: %d, want five regardless of removed lists", n)
+			}
+			if strings.Contains(read(t, filepath.Join(dir, "triage.json")), "research_dimensions") {
+				t.Error("triage.json still chooses research dimensions")
+			}
 			if tc.passed {
 				if report.Status != "done" || report.Steps[1].Status != "passed" || report.Steps[1].Note != "" ||
-					triage.ResearchDimensions == nil || triage.ContextPresent != nil || triage.MissingQuestions != nil {
+					triage.ResearchDimensions != nil || triage.ContextPresent != nil || triage.MissingQuestions != nil {
 					t.Errorf("empty arrays did not pass: report=%+v triage=%+v", report, triage)
 				}
 				return
@@ -73,7 +82,7 @@ func TestRunRequiresTriageListsAndDeliversPersistedContext(t *testing.T) {
 				report.Steps[1].Note != "classification failed, moderate: invalid output" {
 				t.Errorf("invalid output report: %+v", report)
 			}
-			if triage.Complexity != "moderate" || triage.Epics != 5 || triage.ResearchDimensions == nil {
+			if triage.Complexity != "moderate" || triage.Epics != 5 || triage.ResearchDimensions != nil {
 				t.Errorf("invalid output triage.json: %+v", triage)
 			}
 			for _, name := range []string{"triage.json", "research.json", "analysis.json", "epics.json", "spec.md"} {

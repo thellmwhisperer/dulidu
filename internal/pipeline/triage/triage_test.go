@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestRecordedBriefs(t *testing.T) {
 		}
 		switch name {
 		case "thin":
-			if tr.Complexity != "simple" || len(tr.ResearchDimensions) != 2 {
+			if tr.Complexity != "simple" || tr.Epics != 2 {
 				t.Errorf("thin: %+v", tr)
 			}
 		case "existing":
@@ -114,7 +115,7 @@ func TestFailures(t *testing.T) {
 		"empty":     {"{}", nil, "classification failed, moderate: invalid output"},
 		"malformed": {`{"complexity": "simple",`, nil, "classification failed, moderate: invalid output"},
 		"null":      {"null", nil, "classification failed, moderate: invalid output"},
-		"bad dimension": {`{"complexity":"simple","epics":1,"reasoning":"Small.","research_dimensions":["legal"]}`,
+		"bad complexity": {`{"complexity":"huge","epics":1,"reasoning":"Small."}`,
 			nil, "classification failed, moderate: invalid output"},
 		"agent": {"", errors.New("timed out"), "classification failed, moderate: timed out"},
 	} {
@@ -127,10 +128,32 @@ func TestFailures(t *testing.T) {
 		if rerr != nil {
 			t.Fatal(rerr)
 		}
-		if got.Triage == nil || got.Triage.Complexity != "moderate" || got.Triage.Epics != 5 || len(got.Triage.ResearchDimensions) != 0 ||
+		if got.Triage == nil || got.Triage.Complexity != "moderate" || got.Triage.Epics != 5 ||
 			got.Triage.Reasoning != c.want || got.Report.Status != "done" || got.Report.Steps[1].Status != "passed" ||
 			got.Report.Steps[1].Note != c.want || got.Context != "# Contexto\n" || got.Logs["triage"] == "" {
 			t.Errorf("%s: %+v", name, got)
+		}
+	}
+}
+
+// The removed dimension selector cannot invalidate a classification or survive in triage.json.
+func TestRemovedDimensionsDoNotChangeClassification(t *testing.T) {
+	for _, value := range []string{`["legal"]`, `["users","users"]`, `null`, `[]`, `"ignored"`} {
+		dir, r := start(t, "# Contexto\n")
+		answer := `{"complexity":"simple","epics":1,"reasoning":"Small.","research_dimensions":` + value + `}`
+		if err := Run(dir, r, step, 0, 0, func(prompt string) (string, error) {
+			if strings.Contains(prompt, "research_dimensions") {
+				t.Error("triage prompt still asks for dimensions")
+			}
+			return answer, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if r.Triage.Complexity != "simple" || r.Triage.Epics != 1 || r.Report.Steps[1].Note != "" {
+			t.Errorf("legacy field %s changed classification: %+v", value, r.Triage)
+		}
+		if strings.Contains(read(t, filepath.Join(dir, "triage.json")), "research_dimensions") {
+			t.Error("triage.json still contains research_dimensions")
 		}
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -86,6 +85,9 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(want, "research_dimensions") {
+		t.Error("triage prompt still asks for dimensions")
+	}
 	if got := read(t, calls+".prompt"); got != want {
 		t.Errorf("triage prompt is not contexto.md's:\n%s", got)
 	}
@@ -94,7 +96,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	decodeFile(t, filepath.Join(dir, "triage.json"), &triage)
 	// complex caps 12 at 8, max_epics at 6; the stories cap is max_stories_per_epic's, in the stories prompt.
 	if triage.Epics != 6 || triage.Caps.Epics != 0 || triage.Caps.StoriesPerEpic != 0 || triage.Complexity != "complex" ||
-		!slices.Equal(triage.ResearchDimensions, []string{"market", "users"}) || triage.ProjectType != "" ||
+		triage.ResearchDimensions != nil || triage.ProjectType != "" ||
 		triage.ContextPresent != nil || triage.MissingQuestions != nil || triage.Reasoning != "Many markets." {
 		t.Errorf("triage.json: %+v", triage)
 	}
