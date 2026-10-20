@@ -15,5 +15,5 @@ test_file: "go test -count=1 -run {tests} {dir}"
 test_patterns: ["**/*_test.go"]
 # Globs of the documentation files
 docs_patterns: ["**/*.md", "docs/**"]
-agent_timeout: 60m
+agent_timeout: 24h
 delivery: sh .tmp/cos/no-mistakes-deliver.sh
