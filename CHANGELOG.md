@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/thellmwhisperer/dulidu/compare/v0.1.9...v0.1.10) (2026-10-20)
+
+
+### Bug Fixes
+
+* Stories and tickets like the prototype: size and use cases back, each ticket filled from its own story ([6018c21](https://github.com/thellmwhisperer/dulidu/commit/6018c21b84c361afcae63dbf09555db3f1d70641))
+
 ## [0.1.9](https://github.com/thellmwhisperer/dulidu/compare/v0.1.8...v0.1.9) (2026-10-20)
 
 
