@@ -1,12 +1,22 @@
 package pipeline
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 )
+
+// triageOf is triage.json's text as a Triage.
+func triageOf(text string) *Triage {
+	var tr Triage
+	if err := json.Unmarshal([]byte(text), &tr); err != nil {
+		panic(err)
+	}
+	return &tr
+}
 
 // complete is a fake run with every artefact.
 func complete() Run {
@@ -18,7 +28,7 @@ func complete() Run {
 		}},
 		Input:       &InputContext{Brief: Brief{Text: "A shop for second-hand bikes.\n"}, Files: map[string]string{"notes.md": "Spain first.\n"}},
 		Context:     "# Contexto\n\nSecond-hand bikes.\n",
-		Triage:      &Triage{Complexity: "moderate", Caps: Caps{Epics: 4, StoriesPerEpic: 6}, ResearchDimensions: []string{"market"}, ContextPresent: []string{"brief"}, MissingQuestions: []string{}, ProjectType: "new_product"},
+		Triage:      triageOf(`{"complexity":"moderate","epics":4,"reasoning":"Sellers and buyers.","research_dimensions":["market"]}`),
 		Research:    &Research{Dimensions: []Dimension{{Name: "market", Text: "Crowded.", Sources: []Source{{URL: "https://example.com/market", Title: "Market", Supports: "Crowded."}}}}},
 		Analysis:    &Analysis{Personas: []string{"seller"}, Functionalities: []string{"list a bike"}, Flows: []string{"sell"}, Questions: []string{"fees?"}},
 		Epics:       Epics{{ID: "E1", Title: "Selling", Text: "Sellers list bikes."}},

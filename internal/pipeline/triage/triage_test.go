@@ -36,7 +36,7 @@ func read(t *testing.T, path string) string {
 	return string(b)
 }
 
-// The three recorded briefs, answered by their recorded answers with max_epics 8 and no story limit.
+// The three recorded briefs, answered by their recorded answers with max_epics 8: existing asks 12, complex caps it.
 func TestRecordedBriefs(t *testing.T) {
 	seen := map[string]bool{}
 	for _, name := range []string{"thin", "attachments", "existing"} {
@@ -67,18 +67,18 @@ func TestRecordedBriefs(t *testing.T) {
 		}
 		switch name {
 		case "thin":
-			if len(tr.MissingQuestions) == 0 {
-				t.Error("thin: no missing questions")
+			if tr.Complexity != "simple" || len(tr.ResearchDimensions) != 2 {
+				t.Errorf("thin: %+v", tr)
 			}
 		case "existing":
-			if tr.ProjectType != "existing_codebase" {
-				t.Errorf("existing: project_type %s", tr.ProjectType)
+			if tr.Complexity != "complex" || tr.Reasoning == "" {
+				t.Errorf("existing: %+v", tr)
 			}
 		}
-		clamped := name == "existing"
-		if clamped && (tr.Caps.Epics != 8 || tr.Caps.StoriesPerEpic != 7 || s.Note != "clamped caps.epics from 12 to max_epics 8") ||
-			!clamped && s.Note != "" {
-			t.Errorf("%s: caps %+v, note %q", name, tr.Caps, s.Note)
+		epics := map[string]int{"thin": 2, "attachments": 5, "existing": 8}[name]
+		if tr.Epics != epics || s.Note != "" ||
+			tr.Reasoning == "" {
+			t.Errorf("%s: epics %d, want %d, note %q", name, tr.Epics, epics, s.Note)
 		}
 	}
 	if len(seen) != 3 {
@@ -86,47 +86,50 @@ func TestRecordedBriefs(t *testing.T) {
 	}
 }
 
-func TestBothCapsClamp(t *testing.T) {
+// max_epics clamps complex's 8; max_stories_per_epic goes on to the epics step, not into triage.json.
+func TestMaxEpicsClampsTheComplexityCap(t *testing.T) {
 	dir, r := start(t, "# Contexto\n")
-	answer := `{"complexity":"complex","caps":{"epics":12,"stories_per_epic":20},"research_dimensions":[],` +
-		`"context_present":["brief"],"missing_questions":[],"project_type":"migration"}`
-	if err := Run(dir, r, step, 8, 10, func(string) (string, error) { return answer, nil }); err != nil {
+	answer := `{"complexity":"complex","epics":12,"reasoning":"A migration of three systems.",` +
+		`"research_dimensions":[]}`
+	if err := Run(dir, r, step, 5, 10, func(string) (string, error) { return answer, nil }); err != nil {
 		t.Fatal(err)
 	}
 	got, err := pipeline.Read(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Triage.Caps != (pipeline.Caps{Epics: 8, StoriesPerEpic: 10}) || got.Report.Steps[1].Note !=
-		"clamped caps.epics from 12 to max_epics 8; clamped caps.stories_per_epic from 20 to max_stories_per_epic 10" {
-		t.Errorf("caps %+v, note %q", got.Triage.Caps, got.Report.Steps[1].Note)
+	if got.Triage.Epics != 5 || got.Triage.Complexity != "complex" || got.Report.Steps[1].Note !=
+		"clamped epics from 8 to max_epics 5" || r.Triage.StoriesPerEpic != 10 || got.Triage.StoriesPerEpic != 0 {
+		t.Errorf("triage %+v, note %q", got.Triage, got.Report.Steps[1].Note)
 	}
 }
 
+// A failed triage, an agent error or an invalid answer, is a moderate one and the run goes on.
 func TestFailures(t *testing.T) {
 	for name, c := range map[string]struct {
 		answer string
 		err    error
 		want   string
 	}{
-		"empty":     {"{}", nil, "failed at triage: invalid output"},
-		"malformed": {`{"complexity": "simple",`, nil, "failed at triage: invalid output"},
-		"null":      {"null", nil, "failed at triage: invalid output"},
-		"bad dimension": {`{"complexity":"simple","caps":{"epics":1,"stories_per_epic":1},"research_dimensions":["legal"],` +
-			`"context_present":[],"missing_questions":[],"project_type":"other"}`, nil, "failed at triage: invalid output"},
-		"agent": {"", errors.New("timed out"), "failed at triage: timed out"},
+		"empty":     {"{}", nil, "classification failed, moderate: invalid output"},
+		"malformed": {`{"complexity": "simple",`, nil, "classification failed, moderate: invalid output"},
+		"null":      {"null", nil, "classification failed, moderate: invalid output"},
+		"bad dimension": {`{"complexity":"simple","epics":1,"reasoning":"Small.","research_dimensions":["legal"]}`,
+			nil, "classification failed, moderate: invalid output"},
+		"agent": {"", errors.New("timed out"), "classification failed, moderate: timed out"},
 	} {
 		dir, r := start(t, "# Contexto\n")
 		err := Run(dir, r, step, 0, 0, func(string) (string, error) { return c.answer, c.err })
-		if err == nil || err.Error() != c.want {
+		if err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
 		got, rerr := pipeline.Read(dir)
 		if rerr != nil {
 			t.Fatal(rerr)
 		}
-		if got.Triage != nil || got.Report.Status != "failed" || got.Report.Steps[1].Status != c.want ||
-			got.Context != "# Contexto\n" || got.Logs["triage"] == "" {
+		if got.Triage == nil || got.Triage.Complexity != "moderate" || got.Triage.Epics != 5 || len(got.Triage.ResearchDimensions) != 0 ||
+			got.Triage.Reasoning != c.want || got.Report.Status != "done" || got.Report.Steps[1].Status != "passed" ||
+			got.Report.Steps[1].Note != c.want || got.Context != "# Contexto\n" || got.Logs["triage"] == "" {
 			t.Errorf("%s: %+v", name, got)
 		}
 	}

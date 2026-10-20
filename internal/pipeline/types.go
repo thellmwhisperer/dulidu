@@ -17,21 +17,15 @@ type InputContext struct {
 	Files map[string]string
 }
 
-// Triage is triage.json, the first read of contexto.md: how complex the project is, how much work to plan, the
-// dimensions to research, what context came and the questions to ask before going on.
+// Triage is triage.json, the first read of contexto.md: how complex the project is, the epics that caps, why, and the
+// dimensions to research. StoriesPerEpic is max_stories_per_epic, 0 for none, for the epics step: not triage's to pick,
+// it is not in triage.json.
 type Triage struct {
 	Complexity         string   `json:"complexity"` // simple, moderate or complex
-	Caps               Caps     `json:"caps"`
+	Epics              int      `json:"epics"`
+	Reasoning          string   `json:"reasoning"`
 	ResearchDimensions []string `json:"research_dimensions"` // of business, users, market, technical, project
-	ContextPresent     []string `json:"context_present"`
-	MissingQuestions   []string `json:"missing_questions"`
-	ProjectType        string   `json:"project_type"` // new_product, existing_codebase, migration or other
-}
-
-// Caps is how many epics, and stories in each, triage plans.
-type Caps struct {
-	Epics          int `json:"epics"`
-	StoriesPerEpic int `json:"stories_per_epic"`
+	StoriesPerEpic     int      `json:"-"`
 }
 
 // Research is research.json: one entry per dimension triage switched on, none when it switched on none.

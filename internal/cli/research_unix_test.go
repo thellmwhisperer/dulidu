@@ -52,7 +52,7 @@ const unique = "Only bicycles tagged red-74 can be listed.\n"
 
 func triageOn(t *testing.T, dimensions, questions string) {
 	t.Helper()
-	triageWith(t, `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":`+dimensions+
+	triageWith(t, `{"complexity":"simple","epics":2,"reasoning":"One check.","research_dimensions":`+dimensions+
 		`,"context_present":["brief","rules.md"],"missing_questions":`+questions+`,"project_type":"new_product"}`)
 }
 
@@ -158,15 +158,16 @@ func TestRunResearchesEachEnabledDimensionOnceWithSources(t *testing.T) {
 func TestRunRejectsDuplicateTriageDimensionBeforeResearch(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market","market"]`, `[]`)
+	// A duplicate dimension is an invalid answer, a failed triage: moderate, with no dimension.
 	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
-	if code != 1 || !strings.Contains(errOut, "failed at triage: invalid output") {
+	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
 	if n := calls(t, log+".research"); n != 0 {
 		t.Errorf("%d research calls after duplicate triage dimension", n)
 	}
-	if _, err := os.Stat(filepath.Join(runs(t)[0], "research.json")); err == nil {
-		t.Error("research.json was written after duplicate triage dimension")
+	if got := strings.Join(strings.Fields(read(t, filepath.Join(runs(t)[0], "research.json"))), ""); got != `{"dimensions":[]}` {
+		t.Errorf("research.json after duplicate triage dimension: %s", got)
 	}
 }
 

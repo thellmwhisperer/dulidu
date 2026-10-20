@@ -57,7 +57,7 @@ case "$prompt" in
 esac
 `
 
-// thinTriage is triage's answer on the thin brief: three questions, which never stop the run.
+// thinTriage is triage's answer on the thin brief, with three questions triage.json does not keep and never stop the run.
 const thinTriage = `{"complexity":"simple","caps":{"epics":2,"stories_per_epic":3},"research_dimensions":["users"],` +
 	`"context_present":["brief"],"missing_questions":["What do teams do with the app?","Who are the users?",` +
 	`"How many teams are there?"],"project_type":"new_product"}`
@@ -171,8 +171,8 @@ func TestBinaryRunNeverStopsAtTriage(t *testing.T) {
 	if r.Report.Status != "done" || strings.Join(names, " ") != "input triage research analysis epics export" {
 		t.Errorf("dulidu run: status %s, steps %v, want done through the export", r.Report.Status, names)
 	}
-	if !slices.Equal(r.Triage.MissingQuestions, []string{"Who prints the tags?"}) {
-		t.Errorf("triage.json missing_questions: %q", r.Triage.MissingQuestions)
+	if got := read(t, filepath.Join(dir, "triage.json")); strings.Contains(got, "missing_questions") || !strings.Contains(got, `"epics": 2`) {
+		t.Errorf("triage.json keeps the question or loses the epics:\n%s", got)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
 		t.Error("questions.json was written")
@@ -239,8 +239,8 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 			t.Errorf("step %s: %s", s.Name, s.Status)
 		}
 	}
-	if len(r.Triage.MissingQuestions) != 3 {
-		t.Errorf("triage.json missing_questions: %q", r.Triage.MissingQuestions)
+	if got := read(t, filepath.Join(dir, "triage.json")); strings.Contains(got, "missing_questions") || !strings.Contains(got, `"epics": 3`) {
+		t.Errorf("triage.json keeps the questions or loses the epics:\n%s", got)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
 		t.Error("questions.json was written")
@@ -265,7 +265,7 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 	if !slices.Equal(r.Analysis.Questions, []string{"Which calendar?"}) || !strings.Contains(r.Spec, "Which calendar?") {
 		t.Errorf("open questions are not analysis' list: %q\n%s", r.Analysis.Questions, r.Spec)
 	}
-	for _, q := range r.Triage.MissingQuestions {
+	for _, q := range []string{"What do teams do with the app?", "Who are the users?", "How many teams are there?"} {
 		if strings.Contains(r.Spec, q) {
 			t.Errorf("spec.md has triage's question %q", q)
 		}

@@ -1,37 +1,43 @@
 package pipeline
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
 
 func TestTriageRejectsWhatTheSchemaDoesNot(t *testing.T) {
-	for name, change := range map[string]func(*Triage){
-		"complexity":         func(tr *Triage) { tr.Complexity = "huge" },
-		"zero epics":         func(tr *Triage) { tr.Caps.Epics = 0 },
-		"negative stories":   func(tr *Triage) { tr.Caps.StoriesPerEpic = -1 },
-		"research dimension": func(tr *Triage) { tr.ResearchDimensions = []string{"legal"} },
-		"project type":       func(tr *Triage) { tr.ProjectType = "" },
-		"blank question":     func(tr *Triage) { tr.MissingQuestions = []string{" "} },
-		"blank context":      func(tr *Triage) { tr.ContextPresent = []string{""} },
+	for name, change := range map[string]string{
+		"complexity":         `{"complexity":"huge"}`,
+		"zero epics":         `{"epics":0}`,
+		"negative epics":     `{"epics":-1}`,
+		"research dimension": `{"research_dimensions":["legal"]}`,
+		"no complexity":      `{"complexity":""}`,
+		"duplicate":          `{"research_dimensions":["users","users"]}`,
+		"no dimension list":  `{"research_dimensions":null}`,
 	} {
 		tr := *complete().Triage
-		change(&tr)
+		if err := json.Unmarshal([]byte(change), &tr); err != nil {
+			t.Fatal(err)
+		}
 		if tr.Validate() == nil {
 			t.Errorf("%s: a bad triage validates", name)
 		}
 	}
 	tr := *complete().Triage
-	tr.ResearchDimensions, tr.MissingQuestions = []string{"business", "users", "market", "technical", "project"}, []string{"Who pays?"}
+	tr.ResearchDimensions = []string{"business", "users", "market", "technical", "project"}
+	if err := json.Unmarshal([]byte(`{"reasoning":""}`), &tr); err != nil {
+		t.Fatal(err)
+	}
 	if err := tr.Validate(); err != nil {
-		t.Errorf("a triage with every dimension and a question: %v", err)
+		t.Errorf("a triage with every dimension and no reasoning: %v", err)
 	}
 }
 
 func TestStepNoteRoundTrips(t *testing.T) {
 	want := complete()
-	want.Report.Steps[0].Note = "clamped caps.epics 12 to max_epics 8"
+	want.Report.Steps[0].Note = "clamped epics from 8 to max_epics 2"
 	dir := filepath.Join(t.TempDir(), "run")
 	if err := Write(dir, want); err != nil {
 		t.Fatal(err)

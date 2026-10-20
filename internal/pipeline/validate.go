@@ -48,13 +48,7 @@ func (c InputContext) Validate() error {
 
 func (t Triage) Validate() error {
 	errs := []error{need(slices.Contains([]string{"simple", "moderate", "complex"}, t.Complexity), "triage: bad complexity"),
-		need(t.Caps.Epics > 0 && t.Caps.StoriesPerEpic > 0, "triage: caps not positive"),
-		need(slices.Contains([]string{"new_product", "existing_codebase", "migration", "other"}, t.ProjectType),
-			"triage: bad project type"),
-		need(t.ResearchDimensions != nil && t.ContextPresent != nil && t.MissingQuestions != nil,
-			"triage: missing list"),
-		need(!slices.ContainsFunc(t.ContextPresent, blank) && !slices.ContainsFunc(t.MissingQuestions, blank),
-			"triage: a blank item")}
+		need(t.Epics > 0, "triage: epics not positive"), need(t.ResearchDimensions != nil, "triage: missing list")}
 	seen := map[string]bool{}
 	for _, d := range t.ResearchDimensions {
 		errs = append(errs, need(slices.Contains([]string{"business", "users", "market", "technical", "project"}, d),

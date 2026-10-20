@@ -1,6 +1,7 @@
 package epics
 
 import (
+	"cmp"
 	"errors"
 	"os"
 	"path/filepath"
@@ -24,8 +25,8 @@ func start(t *testing.T) (string, *pipeline.Run) {
 	r := &pipeline.Run{Report: pipeline.Report{Status: "done", Started: at, Steps: []pipeline.Step{
 		{Name: "analysis", Status: "passed", Harness: "claude", Started: at, Finished: at}}},
 		Context: context,
-		Triage: &pipeline.Triage{Complexity: "simple", Caps: pipeline.Caps{Epics: 2, StoriesPerEpic: 2}, ResearchDimensions: []string{},
-			ContextPresent: []string{"brief"}, MissingQuestions: []string{}, ProjectType: "new_product"},
+		Triage: &pipeline.Triage{Complexity: "simple", Epics: 2, ResearchDimensions: []string{},
+			Reasoning: "One kind of user.", StoriesPerEpic: 2},
 		Analysis: &pipeline.Analysis{Personas: []string{"Rosa (seller)", "Tom (buyer)"},
 			Functionalities: []string{"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size", "[must] Pay: Card at pickup"},
 			Flows:           []string{"Listing: Scan the tag → Publish"}, Constraints: []string{"Only bicycles tagged red-74 can be listed"},
@@ -113,7 +114,8 @@ func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 	two := `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "first_test": "t", "functionalities": ["F1"]},
 		{"id": "US2", "title": "B", "description": "Another story", "acceptance": ["b"], "first_test": "t", "functionalities": ["F1"]}]`
 	for name, c := range map[string]struct {
-		caps    pipeline.Caps
+		epics   int
+		stories int // 0 is 2
 		instead map[int]string
 		check   string // the step's status after "failed at epics: "
 		says    string // in Run's error
@@ -127,9 +129,9 @@ func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 			check: "duplicate epic", says: "duplicate epic: E1", calls: 1},
 		"uncovered must": {instead: map[int]string{2: `[{"id": "US2", "title": "B", "description": "No functionality", "acceptance": ["b"], "first_test": "t", "functionalities": []}]`},
 			check: "uncovered must", says: "uncovered must: F3", calls: 3},
-		"too many epics": {caps: pipeline.Caps{Epics: 1, StoriesPerEpic: 2},
+		"too many epics": {epics: 1,
 			check: "over cap", says: "over cap: 2 epics, cap 1", calls: 1},
-		"too many stories": {caps: pipeline.Caps{Epics: 2, StoriesPerEpic: 1}, instead: map[int]string{1: two},
+		"too many stories": {stories: 1, instead: map[int]string{1: two},
 			check: "over cap", says: "over cap: 2 stories in E1, cap 1", calls: 2},
 		"no first test": {instead: map[int]string{1: `[{"id": "US1", "title": "A", "description": "A story", "acceptance": ["a"], "functionalities": ["F1"]}]`},
 			check: "invalid output", says: "lacks id, title, acceptance or first test", calls: 2},
@@ -143,9 +145,10 @@ func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir, r := start(t)
-			if c.caps != (pipeline.Caps{}) {
-				r.Triage.Caps = c.caps
+			if c.epics > 0 {
+				r.Triage.Epics = c.epics
 			}
+			r.Triage.StoriesPerEpic = cmp.Or(c.stories, 2)
 			var asked []string
 			ask := recorded(t, &asked, c.instead)
 			if name == "agent error" {
