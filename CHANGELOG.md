@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/thellmwhisperer/dulidu/compare/v0.1.1...v0.1.2) (2026-10-20)
+
+
+### Features
+
+* Triage reads plain text: a shared reader for the model's answers ([0ebe2d9](https://github.com/thellmwhisperer/dulidu/commit/0ebe2d9632300346f05506e52977fa16faf3e366))
+
 ## [0.1.1](https://github.com/thellmwhisperer/dulidu/compare/v0.1.0...v0.1.1) (2026-10-20)
 
 
