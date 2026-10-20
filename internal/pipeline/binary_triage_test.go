@@ -106,7 +106,7 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 				(triage["reasoning"] == "Many users.") != c.reasoning {
 				t.Errorf("triage.json: %v", triage)
 			}
-			if want := fmt.Sprintf("Generate at most %d epics", int(c.epics)); !strings.Contains(binaryRead(t, filepath.Join(dirs[0], "agent", "epics.log")), want) {
+			if want := fmt.Sprintf("Generate EXACTLY %d epics", int(c.epics)); !strings.Contains(binaryRead(t, filepath.Join(dirs[0], "agent", "epics.log")), want) {
 				t.Errorf("the outlines prompt does not say %q", want)
 			}
 			if r.Research == nil || len(r.Research.Dimensions) != 5 {

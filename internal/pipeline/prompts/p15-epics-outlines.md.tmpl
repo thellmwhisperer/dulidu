@@ -32,6 +32,6 @@ Generate EPIC outlines (no stories yet) for this product. Think about the natura
 ## Key Constraints
 {{.Constraints}}
 {{if .Epics}}
-Generate at most {{.Epics}} epics. Never drop a must functionality to stay within that number: if covering every one takes more epics, return them all.
+Generate EXACTLY {{.Epics}} epics.
 {{end}}
 Respond in plain text only.

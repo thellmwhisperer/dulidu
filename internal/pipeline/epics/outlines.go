@@ -1,11 +1,12 @@
 // Package epics plans the analysis in two phases: one call for the epic outlines and the dependencies between them,
 // then one per epic for its stories. Code checks the caps, the dependencies and that a story delivers every must
-// functionality; nothing is cut to fit, and epics.json is written only when every check holds.
+// functionality; past a cap the first epics or stories are kept, and epics.json is written only when every check holds.
 package epics
 
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -75,9 +76,10 @@ func outlines(answer string) (pipeline.Epics, error) {
 }
 
 // Run plans r.Analysis, within r.Triage.Epics and, when positive, r.Triage.StoriesPerEpic, in dir, the run folder: it
-// adds step to r's report, running, and writes r; then asks ask for the outlines and, once they keep the cap and their dependencies, for each epic's
-// stories. Functionalities are F1, F2... in the analysis' order. When every check holds the epics with their stories
-// are r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
+// adds step to r's report, running, and writes r; then asks ask for the outlines and, once their dependencies hold, for
+// each kept epic's stories. Past a cap it keeps the first, drops dependencies on cut epics and says so in the step's
+// note. Functionalities are F1, F2... in the analysis' order. When every check holds the epics with their stories are
+// r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
 // fail, the step "failed at epics: <check>", and Run's error says that and what broke it.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
 	step.Status, step.Started = "running", time.Now()
@@ -88,13 +90,14 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 	if r.Logs == nil {
 		r.Logs = map[string]string{}
 	}
-	es, err := plan(r, func(prompt string) (string, error) {
+	var notes []string
+	es, err := plan(r, &notes, func(prompt string) (string, error) {
 		answer, err := ask(prompt)
 		r.Logs["epics"] += prompt + "\n\n" + answer + "\n\n"
 		return answer, err
 	})
 	s := &r.Report.Steps[len(r.Report.Steps)-1]
-	s.Finished = time.Now()
+	s.Finished, s.Note = time.Now(), strings.Join(notes, "; ")
 	if err != nil {
 		check, _, _ := strings.Cut(err.Error(), ":")
 		s.Status, r.Report.Status = "failed at epics: "+check, "failed"
@@ -105,8 +108,9 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 	return pipeline.Write(dir, *r)
 }
 
-// plan is phase one, its checks, then phase two; each error starts with the check or call that failed.
-func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Epics, error) {
+// plan is phase one, its checks, then phase two, adding each cut to notes; each error starts with the check or call
+// that failed.
+func plan(r *pipeline.Run, notes *[]string, ask func(prompt string) (string, error)) (pipeline.Epics, error) {
 	list := func(lines []string) string { return "- " + strings.Join(lines, "\n- ") }
 	var all, ids, musts, mustLines []string
 	for i, f := range r.Analysis.Functionalities {
@@ -130,21 +134,20 @@ func plan(r *pipeline.Run, ask func(prompt string) (string, error)) (pipeline.Ep
 	}
 	es, err := outlines(answer)
 	if err == nil {
-		err = overCap(len(es), r.Triage.Epics, "epics")
-	}
-	if err == nil {
 		err = es.Validate() // duplicate id, unknown dependency or cycle
 	}
 	if err != nil {
 		return nil, err
 	}
+	es = trim(es, r.Triage.Epics, "epics", notes)
 	for i := range es {
-		if es[i].Stories, err = askStories(es[i], data, ids, ask); err == nil && r.Triage.StoriesPerEpic > 0 {
-			err = overCap(len(es[i].Stories), r.Triage.StoriesPerEpic, "stories in "+es[i].ID)
-		}
-		if err != nil {
+		es[i].DependsOn = slices.DeleteFunc(es[i].DependsOn, func(id string) bool {
+			return !slices.ContainsFunc(es, func(e pipeline.EpicOutline) bool { return e.ID == id })
+		})
+		if es[i].Stories, err = askStories(es[i], data, ids, ask); err != nil {
 			return nil, err
 		}
+		es[i].Stories = trim(es[i].Stories, r.Triage.StoriesPerEpic, "stories in "+es[i].ID, notes)
 	}
 	return es, uncovered(es, musts)
 }

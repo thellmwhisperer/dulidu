@@ -92,7 +92,7 @@ func TestARecordedSetYieldsEpicsJSON(t *testing.T) {
 			t.Errorf("call %d asked:\n%s\nwant %s:\n%s", i+1, asked[i], tmpl, prompt)
 		}
 	}
-	if !strings.Contains(asked[0], "at most 2 epics") || !strings.Contains(asked[1], "At most 2") {
+	if !strings.Contains(asked[0], "EXACTLY 2 epics") || !strings.Contains(asked[1], "At most 2") {
 		t.Errorf("the caps are not asked as maximums:\n%s\n%s", asked[0], asked[1])
 	}
 	got, err := pipeline.Read(dir)
@@ -120,7 +120,7 @@ A story
 t
 
 ## US2 B
-Functionalities: F1
+Functionalities: F3
 Another story
 ### Acceptance
 - b
@@ -165,10 +165,10 @@ No functionality
 ### First test
 t`},
 			check: "uncovered must", says: "uncovered must: F3", calls: 3},
-		"too many epics": {epics: 1,
-			check: "over cap", says: "over cap: 2 epics, cap 1", calls: 1},
-		"too many stories": {stories: 1, instead: map[int]string{1: two},
-			check: "over cap", says: "over cap: 2 stories in E1, cap 1", calls: 2},
+		"the cut epic held a must": {epics: 1,
+			check: "uncovered must", says: "uncovered must: F3", calls: 2},
+		"the cut story held a must": {epics: 1, stories: 1, instead: map[int]string{1: two},
+			check: "uncovered must", says: "uncovered must: F3", calls: 2},
 		"no first test": {instead: map[int]string{1: `## US1 A
 Functionalities: F1
 A story

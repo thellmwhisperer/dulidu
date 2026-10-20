@@ -9,12 +9,13 @@ import (
 
 // Each check is nil when it holds, else "<check>: <what broke it>". Dependencies are pipeline.Epics.Validate's.
 
-// overCap is nil when n of what fit in limit: more fails the step, nothing is cut.
-func overCap(n, limit int, what string) error {
-	if n <= limit {
-		return nil
+// trim keeps the first limit of s, a positive limit, as the reference prototype's hard cap, noting what it cut.
+func trim[S ~[]E, E any](s S, limit int, what string, notes *[]string) S {
+	if limit <= 0 || len(s) <= limit {
+		return s
 	}
-	return fmt.Errorf("over cap: %d %s, cap %d", n, what, limit)
+	*notes = append(*notes, fmt.Sprintf("kept %d of %d %s", limit, len(s), what))
+	return s[:limit]
 }
 
 // uncovered is nil when a story of es delivers each of musts, functionality ids.
