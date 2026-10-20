@@ -31,7 +31,7 @@ func after(e pipeline.EpicOutline, nums map[string][]int) []int {
 }
 
 // tickets is one tickets/<n>.md per story of r, in ticket order: Type: and the ten sections of the ten-point contract,
-// Acceptance from its first test, and ## Depends on from the epic graph when it waits for any ticket.
+// each filled from the story alone, Acceptance from its first test, Evidence from its use cases, and ## Depends on from the epic graph when it waits for any ticket.
 func tickets(r pipeline.Run, nums map[string][]int) []string {
 	ids := map[string]string{}
 	for _, f := range functionalities(*r.Analysis) {
@@ -54,20 +54,24 @@ func tickets(r pipeline.Run, nums map[string][]int) []string {
 			for i, id := range s.Functionalities {
 				scope[i] = ids[id]
 			}
-			parts := []string{"# " + s.Title + "\n", "Type: feature\n", "## Kind\n", "implement\n",
+			kind := s.Type
+			if kind == "" {
+				kind = "feature"
+			}
+			parts := []string{"# " + s.Title + "\n", "Type: " + kind + "\n", "## Kind\n", kind + "\n",
 				"## Goal\n", strings.TrimSpace(s.Text) + "\n",
-				"## Non-goals\n", list([]string{"Anything beyond this ticket's acceptance: the plan's other tickets deliver it."}),
-				"## Invariants\n", list(r.Analysis.Constraints),
+				"## Non-goals\n", list(s.NonGoals),
+				"## Invariants\n", list(s.Invariants),
 				"## Behavioral contract / States\n", list(s.Acceptance),
 				"## Scope surface\n", list(scope),
 				"## Acceptance\n", "- [ ] " + s.FirstTest + "\n",
-				"## Split triggers\n", list([]string{"The acceptance needs more than one first test to go red: split the ticket."}),
+				"## Split triggers\n", list(s.SplitTriggers),
 				"## Dependencies / Parent\n", list([]string{"Parent: " + e.ID + " " + e.Title + ".", "Story: " + s.ID + ".",
 					"Depends on: " + waits + "."})}
 			if len(refs) > 0 {
 				parts = append(parts, "## Depends on\n", list(refs))
 			}
-			ts = append(ts, doc(append(parts, "## Evidence (fix / ops)\n", list([]string{"Not applicable: a feature."}),
+			ts = append(ts, doc(append(parts, "## Evidence (fix / ops)\n", list(s.UseCases),
 				"## Validation and rollback\n", "Revert the PR.\n")...))
 		}
 	}

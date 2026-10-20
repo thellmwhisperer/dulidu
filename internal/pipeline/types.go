@@ -130,6 +130,11 @@ type Story struct {
 	Acceptance      []string `json:"acceptance"`
 	FirstTest       string   `json:"first_test"`
 	Functionalities []string `json:"functionalities"`
+	Type            string   `json:"type,omitempty"`
+	UseCases        []string `json:"use_cases,omitempty"`
+	Invariants      []string `json:"invariants,omitempty"`
+	NonGoals        []string `json:"non_goals,omitempty"`
+	SplitTriggers   []string `json:"split_triggers,omitempty"`
 }
 
 // Report is report.json: how the run and each of its steps went.

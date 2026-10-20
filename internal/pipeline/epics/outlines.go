@@ -37,8 +37,8 @@ func references(value string) []string {
 	return ids
 }
 
-// description keeps prose, including colon-bearing lines, before the first sub-section, except the named field.
-func description(b text.Block, field string) string {
+// description keeps prose, including colon-bearing lines, before the first sub-section, except the named fields.
+func description(b text.Block, fields ...string) string {
 	var lines []string
 	for _, line := range b.RawLines {
 		line = strings.TrimSpace(line)
@@ -46,7 +46,7 @@ func description(b text.Block, field string) string {
 			break
 		}
 		key, _, ok := strings.Cut(line, ":")
-		if !ok || !strings.EqualFold(key, field) {
+		if !ok || !slices.ContainsFunc(fields, func(f string) bool { return strings.EqualFold(key, f) }) {
 			lines = append(lines, line)
 		}
 	}

@@ -146,6 +146,13 @@ func TestNoProductLeaks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// The stories prompt keeps the prototype's story size, its one line count.
+		if size := "Target ~100-200 lines of production code. Max 300."; step == "p16-epics-stories" {
+			if !strings.Contains(got, size) {
+				t.Errorf("%s lacks the story size %q", step, size)
+			}
+			got = strings.Replace(got, size, "", 1)
+		}
 		if leak := forbidden.FindString(got); leak != "" {
 			t.Errorf("%s: rendered prompt contains %q", step, leak)
 		}

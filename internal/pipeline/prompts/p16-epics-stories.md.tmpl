@@ -5,24 +5,28 @@ Think about the HOW of implementation, not just the WHAT. Think about WHY each s
 STORY REQUIREMENTS:
 1. SELF-CONTAINED: Every story includes all acceptance criteria, technical constraints, library versions, API values, and file references needed. The agent executing this story has ZERO context from other stories.
 2. TDD MANDATORY: Every story specifies what test to write FIRST. Red, Green, Refactor. No exceptions.
-3. SMALL: Completable in one agent session. If a story feels like it needs more, split it.
+3. SMALL: Target ~100-200 lines of production code. Max 300. If a story feels like it needs more, split it.
 4. ORDERED: Stories within an epic have a natural dependency order. Earlier stories create foundations that later stories build on.
 5. CONCRETE: No vague stories like "Implement error handling." Instead: "Handle a payment provider timeout by showing a retry prompt without charging twice."
+6. USE CASES: Concrete scenario with specific values, not generic descriptions.
 
 WHAT NOT TO GENERATE:
 - Separate stories for each linter, formatter or type checker config (that's ONE setup story, not three)
 - Separate stories for each individual error type (ONE comprehensive error handling story per domain)
 
-Respond in plain text: one block per story, with a ## <id> <title> heading (US1, US2...), then a Functionalities: F1, F3 line listing the ids the story delivers, or Functionalities: none when it delivers none. Follow with the description as prose, a ### Acceptance section with a list of criteria, and a ### First test section with prose describing the test to write first, why it fails and what makes it pass. Use an imperative action title and describe who wants the action and why.
+Respond in plain text: one block per story, with a ## <id> <title> heading (US1, US2...), then a Type: feature or Type: fix line, and a Functionalities: F1, F3 line listing the ids the story delivers, or Functionalities: none when it delivers none. Follow with the description as prose, a ### Acceptance section with a list of criteria, and a ### First test section with prose describing the test to write first, why it fails and what makes it pass. Then, each a list and each left out when empty: ### Use cases, ### Invariants with the Key Constraints that bind this story copied as written, ### Non-goals, and ### Split triggers, what would make the story too big for one ticket. Use an imperative action title and describe who wants the action and why.
 
 Example:
 ## US1 Book a free court
+Type: feature
 Functionalities: F1
 As a player I want to book a free court so that it is reserved for me.
 ### Acceptance
 - Given a free court, when I book it, then it is reserved for me.
 ### First test
 Write a test that books a free court and expects a reservation. It fails until booking stores the reservation.
+### Use cases
+- Maria books court 3 for Saturday at 10:00 and sees it reserved under her name.
 
 Generate implementation-ready user stories for this EPIC.
 

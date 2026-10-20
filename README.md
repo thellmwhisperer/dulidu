@@ -70,7 +70,7 @@ Type: feature
 
 ## Kind
 
-implement
+feature
 
 ## Goal
 
@@ -78,11 +78,10 @@ As Ana I want to book a free wheel so that one waits for me
 
 ## Non-goals
 
-- Anything beyond this ticket's acceptance: the plan's other tickets deliver it.
+- None.
 
 ## Invariants
 
-- The kiln fires once a week, on Friday at 6 pm
 - Bookings are free: members pay a monthly fee
 
 ## Behavioral contract / States
@@ -99,7 +98,7 @@ As Ana I want to book a free wheel so that one waits for me
 
 ## Split triggers
 
-- The acceptance needs more than one first test to go red: split the ticket.
+- None.
 
 ## Dependencies / Parent
 
@@ -109,7 +108,7 @@ As Ana I want to book a free wheel so that one waits for me
 
 ## Evidence (fix / ops)
 
-- Not applicable: a feature.
+- Ana books wheel 2 for Tuesday at 19:00 and finds it waiting until 20:00
 
 ## Validation and rollback
 

@@ -29,13 +29,22 @@ func askStories(e pipeline.EpicOutline, data map[string]any, ids []string, notes
 	ss := make([]pipeline.Story, len(blocks))
 	for i, b := range blocks {
 		id, title := heading(b)
-		s := pipeline.Story{ID: id, Epic: e.ID, Title: title, Text: description(b, "Functionalities")}
+		s := pipeline.Story{ID: id, Epic: e.ID, Title: title, Text: description(b, "Functionalities", "Type"),
+			Type: strings.ToLower(b.Field("Type"))}
 		for _, section := range b.Sections {
 			switch strings.ToLower(section.Name) {
 			case "acceptance":
 				s.Acceptance = section.Items
 			case "first test":
 				s.FirstTest = strings.TrimSpace(strings.Join(section.RawLines, "\n"))
+			case "use cases":
+				s.UseCases = section.Items
+			case "invariants":
+				s.Invariants = section.Items
+			case "non-goals":
+				s.NonGoals = section.Items
+			case "split triggers":
+				s.SplitTriggers = section.Items
 			}
 		}
 		if blank(s.ID) || blank(s.Title) {

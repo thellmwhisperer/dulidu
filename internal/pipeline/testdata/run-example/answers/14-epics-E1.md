@@ -1,10 +1,15 @@
 ## US1 Book a free wheel for an hour
+Type: feature
 Functionalities: F1
 As Ana I want to book a free wheel so that one waits for me
 ### Acceptance
 - Given wheel 2 free at 19:00, when Ana books it, then it is hers from 19:00 to 20:00
 ### First test
 Write a test that books a free wheel at 19:00 and expects it held until 20:00.
+### Use cases
+- Ana books wheel 2 for Tuesday at 19:00 and finds it waiting until 20:00
+### Invariants
+- Bookings are free: members pay a monthly fee
 
 ## US2 Refuse a wheel already booked
 Functionalities: F1
