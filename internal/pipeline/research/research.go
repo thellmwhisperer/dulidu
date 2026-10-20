@@ -3,19 +3,22 @@
 package research
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/text"
 )
 
 // templates is each dimension's prompt.
 var templates = map[string]string{"business": "p03-research-business", "users": "p04-research-users",
 	"market": "p05-research-market", "technical": "p06-research-technical", "project": "p07-research-project"}
+
+var source = regexp.MustCompile(`^\[([^]]*)\]\((.*?)\):\s*(.*)$`)
 
 // Run researches r.Context in dir, the run folder: it adds step to r's report, running, with the dimensions in its
 // note, then the harness's web status, asks ask once per dimension in the prototype's order with that dimension's prompt,
@@ -47,8 +50,22 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 			r.Logs["research"] += prompt + "\n\n" + answer + "\n\n"
 		}
 		var d pipeline.Dimension
-		if err == nil && json.Unmarshal([]byte(answer), &d) != nil {
-			err = errors.New("invalid output")
+		if err == nil {
+			blocks := text.Parse(answer)
+			d.Text = blocks[0].Prose
+			for _, block := range blocks[1:] {
+				if !strings.EqualFold(block.Name, "Sources") {
+					continue
+				}
+				for _, item := range block.Items {
+					m := source.FindStringSubmatch(item)
+					if m == nil {
+						err = errors.New("invalid source")
+						break
+					}
+					d.Sources = append(d.Sources, pipeline.Source{Title: m[1], URL: m[2], Supports: m[3]})
+				}
+			}
 		}
 		if err == nil {
 			d.Name = name

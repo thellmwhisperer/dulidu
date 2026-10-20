@@ -44,8 +44,8 @@ type researchFile struct {
 
 // finding is a valid research answer about dimension.
 func finding(dimension string) string {
-	return `{"text":"The ` + dimension + ` finding.","sources":[{"url":"https://example.com/` + dimension +
-		`","title":"On ` + dimension + `","supports":"The ` + dimension + ` finding."}]}`
+	return "The " + dimension + " finding.\n\n## Sources\n" +
+		"- [On " + dimension + "](https://example.com/" + dimension + "): The " + dimension + " finding."
 }
 
 const unique = "Only bicycles tagged red-74 can be listed.\n"
@@ -97,8 +97,8 @@ func TestRunResearchesAllFiveDimensionsOnceWithSources(t *testing.T) {
 		if got != want {
 			t.Errorf("research call %d is not %s on contexto.md:\n%s", i+1, tmpl, got)
 		}
-		if !strings.Contains(got, unique) || strings.Contains(got, "no JSON") {
-			t.Errorf("research call %d lacks contexto.md's attachment or asks for prose:\n%s", i+1, got)
+		if !strings.Contains(got, unique) || strings.Contains(strings.ToLower(got), "json") || !strings.Contains(got, "## Sources") {
+			t.Errorf("research call %d lacks contexto.md's attachment or does not ask for prose and sources:\n%s", i+1, got)
 		}
 	}
 
@@ -239,7 +239,7 @@ func TestRunWithMissingQuestionsResearches(t *testing.T) {
 func TestRunFailsAtResearchOnEmptySources(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["business","market","users"]`, `[]`)
-	researchWith(t, finding("business"), `{"text":"Crowded.","sources":[]}`, finding("users"))
+	researchWith(t, finding("business"), "Crowded.\n\n## Sources\n", finding("users"))
 	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
 	if code != 1 || !strings.Contains(errOut, "failed at research: users: no sources") {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
@@ -266,7 +266,7 @@ func TestRunFailsAtResearchOnEmptySources(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "triage.json")); err != nil {
 		t.Error("triage.json did not survive a failed research")
 	}
-	if !strings.Contains(read(t, filepath.Join(dir, "agent", "research.log")), `"sources":[]`) {
-		t.Error("agent/research.log lacks the failing answer")
+	if !strings.Contains(read(t, filepath.Join(dir, "agent", "research.log")), "Crowded.\n\n## Sources\n") {
+		t.Error("agent/research.log lacks the failing plain-text answer with an empty Sources section")
 	}
 }

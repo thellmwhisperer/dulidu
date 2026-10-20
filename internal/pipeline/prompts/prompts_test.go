@@ -67,13 +67,17 @@ func TestResearchPromptsAskForTextAndSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(got, `Respond with one JSON object and nothing else: {"text": `) ||
-			!strings.Contains(got, `"sources": [{"url": `) || !strings.Contains(got, `"title": `) ||
-			!strings.Contains(got, `"supports": `) || !strings.Contains(got, sample["Input"].(string)) {
+		if !strings.Contains(got, "plain text") || !strings.Contains(got, "prose in the lead block") ||
+			!strings.Contains(got, "## Sources") || !strings.Contains(got, "- [<title>](<url>): <the claim it backs>") ||
+			!strings.Contains(got, "at least one source") || !strings.Contains(got, sample["Input"].(string)) {
 			t.Errorf("%s does not ask for text and sources on its input:\n%s", step, got)
 		}
-		if strings.Contains(got, "no JSON") || strings.Contains(got, "paragraph: no") {
-			t.Errorf("%s still asks for prose only:\n%s", step, got)
+		if strings.Contains(strings.ToLower(got), "json") {
+			t.Errorf("%s still mentions JSON:\n%s", step, got)
+		}
+		if !strings.Contains(got, "Example:\nMembers need reliable bookings.\n\n## Sources\n"+
+			"- [Member survey](https://example.com/survey): Members need reliable bookings.") {
+			t.Errorf("%s lacks a short example with prose, title, URL and claim:\n%s", step, got)
 		}
 	}
 }

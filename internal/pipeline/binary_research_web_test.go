@@ -66,7 +66,9 @@ func TestBinaryResearchWebOtherHarness(t *testing.T) {
 			if name == "cursor" {
 				name = "cursor-agent"
 			}
-			answer := `{"text":"A finding.","sources":[{"url":"https://example.com","title":"Source","supports":"A finding."}]}`
+			// All harnesses deliver the same prose and Sources list to research.
+			answer := "A finding.\n\n## Sources\n" +
+				"- [Source](https://example.com): A finding."
 			text := map[string]string{"type": "text", "text": answer}
 			var event any
 			switch harness {
