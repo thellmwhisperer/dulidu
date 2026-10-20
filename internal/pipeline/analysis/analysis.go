@@ -75,7 +75,7 @@ var lists = []struct {
 	{"flows", "p11-analysis-flows", "Flows", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) ([]string, error) {
 		var err error
 		a.Flows, err = each(bs[1:], func(_ int, b text.Block) (pipeline.Flow, error) {
-			f := pipeline.Flow{Steps: append([]string{}, b.Items...)}
+			f := pipeline.Flow{Steps: b.Items}
 			f.ID, f.Name = idOf(b)
 			return f, need(!blank(f.Name) && len(f.Steps) > 0, "a flow lacks name or steps")
 		})

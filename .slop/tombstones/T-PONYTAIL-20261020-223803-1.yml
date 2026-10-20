@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261020-223803-1
+status: accepted
+category: alien_code
+title: "Joined the prompt data map's \"Constraints\"/\"Epics\" pair back onto one line, which drops the gofmt column padding the change added. Same keys and values."
+created_at: 2026-10-20
+incident:
+  pattern: "Joined the prompt data map's \"Constraints\"/\"Epics\" pair back onto one line, which drops the gofmt column padding the change added. Same keys and values."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: format_churn
+      example: "Joined the prompt data map's \"Constraints\"/\"Epics\" pair back onto one line, which drops the gofmt column padding the change added. Same keys and values."
+      artifact: "internal/pipeline/epics/outlines.go"
+match:
+  family: format_churn
+  artifact: "internal/pipeline/epics/outlines.go"

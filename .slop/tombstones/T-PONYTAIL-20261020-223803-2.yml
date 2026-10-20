@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261020-223803-2
+status: accepted
+category: alien_code
+title: "Removed the defensive copy `append([]string{}, b.Items...)` for flow steps and used `b.Items` directly. An empty step list is still refused by the `len(f.Steps) > 0` check."
+created_at: 2026-10-20
+incident:
+  pattern: "Removed the defensive copy `append([]string{}, b.Items...)` for flow steps and used `b.Items` directly. An empty step list is still refused by the `len(f.Steps) > 0` check."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Removed the defensive copy `append([]string{}, b.Items...)` for flow steps and used `b.Items` directly. An empty step list is still refused by the `len(f.Steps) > 0` check.\nissue_sentence: flows with id, name and steps"
+      artifact: "internal/pipeline/analysis/analysis.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/analysis/analysis.go"
