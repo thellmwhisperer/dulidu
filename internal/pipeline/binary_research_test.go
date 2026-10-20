@@ -24,8 +24,9 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := []string{"business", "users", "market", "technical", "project"}
+	// Triage answers in plain text; research still answers in JSON.
 	answers := []string{filepath.Join(replies, "triage.json")}
-	if err := os.WriteFile(answers[0], []byte(`{"complexity":"simple","epics":2,"reasoning":"One exchange."}`), 0o644); err != nil {
+	if err := os.WriteFile(answers[0], []byte("Complexity: simple\nEpics: 2\n\nOne exchange.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range names {
@@ -124,8 +125,9 @@ func TestBinaryResearchSearchesTheWeb(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := []string{"business", "users", "market", "technical", "project"}
+	// Triage answers in plain text; research still answers in JSON.
 	answers := []string{filepath.Join(replies, "triage.json")}
-	if err := os.WriteFile(answers[0], []byte(`{"complexity":"simple","epics":2,"reasoning":"One exchange."}`), 0o644); err != nil {
+	if err := os.WriteFile(answers[0], []byte("Complexity: simple\nEpics: 2\n\nOne exchange.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range names {

@@ -2,22 +2,23 @@
 package triage
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/text"
 )
 
 // capEpics is the epics each complexity plans at most, the reference prototype's MAX_EPICS.
 var capEpics = map[string]int{"simple": 3, "moderate": 5, "complex": 8}
 
 // Run triages r.Context in dir, the run folder: it adds step to r's report, running, asks ask once with the triage
-// prompt and writes r back with the step passed. A valid answer is r.Triage, its epics capped by its complexity, the
-// whole of that cap when it gives none; an agent error or an invalid answer is a moderate r.Triage, with
+// prompt and writes r back with the step passed. The answer is plain text, read by package text: a valid one is
+// r.Triage, its epics capped by its complexity, the whole of that cap when it gives none; an agent error or an invalid answer is a moderate r.Triage, with
 // "classification failed, moderate: <reason>" as its reasoning and the step's note. A positive maxEpics clamps the
 // epics, the clamp in the note; maxStories is r.Triage.StoriesPerEpic. Run's error is only a failed write.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories int, ask func(prompt string) (string, error)) error {
@@ -35,10 +36,9 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories i
 		r.Logs = map[string]string{}
 	}
 	r.Logs["triage"] = prompt + "\n\n" + answer + "\n\n"
-	var t pipeline.Triage
-	if err == nil && json.Unmarshal([]byte(answer), &t) != nil {
-		err = errors.New("invalid output")
-	}
+	lead := text.Parse(answer)[0]
+	epics, _ := strconv.Atoi(lead.Field("Epics"))
+	t := pipeline.Triage{Complexity: lead.Field("Complexity"), Epics: epics, Reasoning: lead.Prose}
 	if most := capEpics[t.Complexity]; t.Epics <= 0 || t.Epics > most {
 		t.Epics = most
 	}

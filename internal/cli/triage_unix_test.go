@@ -13,7 +13,7 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/prompts"
 )
 
-// triageWith makes the fake claude answer the triage prompt with answer.
+// triageWith makes the fake claude answer the triage prompt with answer, the model's plain text.
 func triageWith(t *testing.T, answer string) {
 	t.Helper()
 	line, err := json.Marshal(map[string]string{"type": "result", "result": answer})
@@ -55,6 +55,7 @@ func decodeFile(t *testing.T, path string, v any) {
 	}
 }
 
+// A plain-text triage of 12 complex epics is capped at 8 and clamped to max_epics 6.
 func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	png := read(t, filepath.Join("..", "pipeline", "input", "testdata", "pattern.png"))
 	calls := runRepo(t, map[string]string{"notes.md": "Spain first.\n", "pattern.png": png})
@@ -63,9 +64,9 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	if err := os.WriteFile("dulidu.yaml", []byte(yml), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	triageWith(t, `{"complexity":"complex","epics":12,"reasoning":"Many markets.",`+
-		`"research_dimensions":["market","users"],"context_present":["brief","notes.md","pattern.png"],`+
-		`"missing_questions":[],"project_type":"new_product"}`)
+	triageWith(t, "Complexity: complex\nEpics: 12\n"+
+		"Research dimensions: market, users\nContext present: brief, notes.md, pattern.png\n"+
+		"Missing questions:\nProject type: new_product\n\nMany markets.\n")
 	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "notes.md", "--attach", "pattern.png"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}
@@ -115,7 +116,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 		t.Error("the input files did not survive triage")
 	}
 	if !strings.Contains(read(t, filepath.Join(dir, "agent", "input.log")), "input/pattern.png") ||
-		!strings.Contains(read(t, filepath.Join(dir, "agent", "triage.log")), `"epics":12`) {
+		!strings.Contains(read(t, filepath.Join(dir, "agent", "triage.log")), "Epics: 12\n") {
 		t.Error("agent logs lack the input description or the triage answer")
 	}
 
@@ -139,8 +140,8 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 
 func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	calls := runRepo(t, map[string]string{})
-	triageWith(t, `{"complexity":"simple","epics":2,"reasoning":"One shop.","research_dimensions":[],`+
-		`"context_present":["brief"],"missing_questions":["Who sells the bikes?"],"project_type":"other"}`)
+	triageWith(t, "Complexity: simple\nEpics: 2\nResearch dimensions:\n"+
+		"Context present: brief\nMissing questions:\n- Who sells the bikes?\nProject type: other\n\nOne shop.\n")
 	if code, out, errOut := dulidu(t, "run", "brief.md"); code != 0 {
 		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
 	}

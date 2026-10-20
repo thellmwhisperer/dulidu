@@ -1,0 +1,4 @@
+Complexity: complex
+Epics: 12
+
+A running invoicing service with 300 customers and its architecture to change.

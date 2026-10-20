@@ -11,8 +11,8 @@ import (
 )
 
 // fakeDescriber is the run's claude. The triage prompt's call it appends to $FAKE_LOG.triage, keeps its prompt in
-// $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid triage. The nth research prompt's call it
-// appends to $FAKE_LOG.research, keeps its prompt in $FAKE_LOG.research.<n> and answers with $FAKE_RESEARCH/<n>'s line,
+// $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid plain-text triage, simple with no epics line, so
+// simple's cap of 3. The nth research prompt's call it appends to $FAKE_LOG.research, keeps its prompt in $FAKE_LOG.research.<n> and answers with $FAKE_RESEARCH/<n>'s line,
 // else a valid dimension. An analysis list's or epics phase's call it appends to $FAKE_LOG.graph, as the list or phase
 // and its arguments, and answers validly, with an empty list for the one named $FAKE_BAD. Every other call is the
 // input step's: it appends its arguments to $FAKE_LOG and describes any image the same.
@@ -24,7 +24,7 @@ if grep -q '^You triage a product brief' "$prompt"; then
   printf '%s\n' "$*" >> "$FAKE_LOG.triage"
   mv "$prompt" "$FAKE_LOG.prompt"
   if [ -n "$FAKE_TRIAGE" ]; then cat "$FAKE_TRIAGE"; exit 0; fi
-  echo '{"type":"result","result":"{\"complexity\":\"simple\",\"caps\":{\"epics\":2,\"stories_per_epic\":3},\"research_dimensions\":[\"business\"],\"context_present\":[\"brief\"],\"missing_questions\":[],\"project_type\":\"new_product\"}"}'
+  printf '%s\n' '{"type":"result","result":"Complexity: simple\nResearch dimensions: business\nContext present: brief\nMissing questions:\nProject type: new_product\n\nA fake triage."}'
   exit 0
 fi
 if grep -q '^Research the following product idea' "$prompt"; then

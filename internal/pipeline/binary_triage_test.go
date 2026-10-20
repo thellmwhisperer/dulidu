@@ -21,14 +21,14 @@ import (
 func TestBinaryTriageCapsByComplexity(t *testing.T) {
 	answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
 	answers = answers[1:] // the brief alone has no image, so the input step asks nothing
-	var example map[string]any
-	if err := json.Unmarshal([]byte(binaryRead(t, answers[0])), &example); err != nil {
-		t.Fatal(err)
+	example := binaryRead(t, answers[0])
+	if !strings.HasPrefix(example, "Complexity: ") {
+		t.Fatalf("the recorded triage answer is not plain text: %q", example)
 	}
-	if _, exists := example["research_dimensions"]; exists {
+	if strings.Contains(strings.ToLower(example), "research") {
 		t.Fatal("recorded triage still chooses research dimensions")
 	}
-	complex, _ := json.Marshal(map[string]any{"complexity": "complex", "epics": 12, "reasoning": "Many users."})
+	complex := "Complexity: complex\nEpics: 12\n\nMany users.\n"
 	for name, c := range map[string]struct {
 		triage    string // "" is a triage that exits 1; research still runs all five dimensions
 		maxEpics  string
@@ -36,11 +36,11 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 		note      string
 		reasoning bool
 	}{
-		"complex":      {string(complex), "", 8, "", true},
+		"complex":      {complex, "", 8, "", true},
 		"agent error":  {"", "", 5, "classification failed, moderate", false},
-		"invalid":      {`{"complexity":"huge","epics":4,"research_dimensions":[]}`, "", 5, "classification failed, moderate", false},
-		"max_epics 2":  {string(complex), "2", 2, "clamped epics from 8 to max_epics 2", true},
-		"no epics yet": {`{"complexity":"simple","research_dimensions":["users","market"]}`, "", 3, "", false},
+		"invalid":      {"Complexity: huge\nEpics: 4\nResearch dimensions:\n", "", 5, "classification failed, moderate", false},
+		"max_epics 2":  {complex, "2", 2, "clamped epics from 8 to max_epics 2", true},
+		"no epics yet": {"Complexity: simple\nResearch dimensions: users, market\n", "", 3, "", false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			bin, repo := binary(t), realTempDir(t)
@@ -52,7 +52,7 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 			}
 			replayed := slices.Clone(answers)
 			if c.triage != "" {
-				replayed[0] = filepath.Join(t.TempDir(), "triage.json")
+				replayed[0] = filepath.Join(t.TempDir(), "triage.txt")
 				if err := os.WriteFile(replayed[0], []byte(c.triage), 0o644); err != nil {
 					t.Fatal(err)
 				}
@@ -119,5 +119,54 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 				t.Errorf("claude was called %d times, want %d", n, len(replayed))
 			}
 		})
+	}
+}
+
+// TestBinaryTriageReadsPlainText runs the built dulidu on the example's brief with a claude that replays the recorded
+// answers, triage's in plain text: the triage note has no "classification failed" and triage.json holds the
+// recorded complexity and epics. The triage prompt asks for that form and never says JSON.
+func TestBinaryTriageReadsPlainText(t *testing.T) {
+	answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
+	answers = answers[1:] // the brief alone has no image, so the input step asks nothing
+	if recorded := binaryRead(t, answers[0]); !strings.HasPrefix(recorded, "Complexity: simple\nEpics: 2\n") {
+		t.Fatalf("the recorded triage answer is not plain text: %q", recorded)
+	}
+	bin, repo := binary(t), realTempDir(t)
+	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(binaryRead(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fakeReplay(t, answers)
+	t.Setenv("HOME", t.TempDir())
+	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
+		cmd := exec.Command(bin, args...)
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("dulidu %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
+	if len(dirs) != 1 {
+		t.Fatalf("run folders: %v", dirs)
+	}
+	r, err := pipeline.Read(dirs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Report.Steps) < 2 || strings.Contains(r.Report.Steps[1].Note, "classification failed") {
+		t.Errorf("report.json: %+v", r.Report)
+	}
+	var triage map[string]any
+	if err := json.Unmarshal([]byte(binaryRead(t, filepath.Join(dirs[0], "triage.json"))), &triage); err != nil {
+		t.Fatal(err)
+	}
+	if triage["complexity"] != "simple" || triage["epics"] != 2.0 {
+		t.Errorf("triage.json: %v", triage)
+	}
+	prompt := strings.SplitN(r.Logs["triage"], "Context:", 2)[0]
+	if strings.Contains(strings.ToLower(prompt), "json") || !strings.Contains(r.Logs["triage"], "Complexity: simple | moderate | complex\nEpics: <number>") {
+		t.Errorf("the triage prompt does not ask for plain text:\n%s", r.Logs["triage"])
 	}
 }

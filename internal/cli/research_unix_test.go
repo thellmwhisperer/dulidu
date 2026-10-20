@@ -50,10 +50,11 @@ func finding(dimension string) string {
 
 const unique = "Only bicycles tagged red-74 can be listed.\n"
 
+// triageOn makes the fake claude triage in plain text, simple with 2 epics, dimensions and questions as lines it ignores.
 func triageOn(t *testing.T, dimensions, questions string) {
 	t.Helper()
-	triageWith(t, `{"complexity":"simple","epics":2,"reasoning":"One check.","research_dimensions":`+dimensions+
-		`,"context_present":["brief","rules.md"],"missing_questions":`+questions+`,"project_type":"new_product"}`)
+	triageWith(t, "Complexity: simple\nEpics: 2\nResearch dimensions: "+dimensions+
+		"\nContext present: brief, rules.md\nMissing questions: "+questions+"\nProject type: new_product\n\nOne check.\n")
 }
 
 func calls(t *testing.T, path string) int {
@@ -130,7 +131,7 @@ func TestRunResearchesAllFiveDimensionsOnceWithSources(t *testing.T) {
 		t.Errorf("report.json: %+v", report)
 	}
 	if !strings.Contains(read(t, filepath.Join(dir, "agent", "research.log")), finding("technical")) ||
-		!strings.Contains(read(t, filepath.Join(dir, "agent", "triage.log")), "research_dimensions") {
+		!strings.Contains(read(t, filepath.Join(dir, "agent", "triage.log")), "Research dimensions: ") {
 		t.Error("agent logs lack the research or triage answers")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "analysis.json")); err != nil {
