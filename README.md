@@ -117,7 +117,7 @@ Revert the PR.
 ```
 
 With a real agent each step calls `claude`, so the label and timings differ. The output above is `sh scripts/readme-check.sh`'s: it runs this
-block's `$` lines in a new repository holding the example, against a fresh build, with a `claude` that replays
+block's `$` lines in a new repository, `clay-corner`, holding the example, against a fresh build, with a `claude` that replays
 the example's recorded answers in `answers/`, offline, and fails unless the run folder's export is
 `docs/example-run/`'s files.
 
@@ -127,7 +127,8 @@ The run folder `.dulidu/runs/<label>/` keeps the inputs in `input/`, `contexto.m
 (`triage.json`, `research.json`, `analysis.json`, `epics.json`) and `report.json`, then the export, written by
 code alone. Clay Corner's export is in [docs/example-run/](docs/example-run/):
 
-- [`spec.md`](docs/example-run/spec.md): research with its sources, personas, functionalities, flows,
+- [`spec.md`](docs/example-run/spec.md): titled with the repository folder's name, research in five named
+  sections with their sources, personas with goals and pain points, a functionality table, flows with arrows,
   constraints, open questions and the epics with their tickets.
 - [`tickets/`](docs/example-run/tickets/): one ticket per story, `<n>.md`, in the ten-point contract.
 - [`plan.json`](docs/example-run/plan.json): each ticket's issue number and the tickets it depends on.

@@ -16,8 +16,8 @@ import (
 func TestBinaryRunAcceptsEmptyAnalysisList(t *testing.T) {
 	bin := binary(t)
 	for name, heading := range map[string]string{
-		"personas": "Personas", "functionalities": "Functionalities", "flows": "Flows",
-		"constraints": "Constraints", "questions": "Open questions",
+		"personas": "Personas", "functionalities": "Functionalities", "flows": "User Flows",
+		"constraints": "Constraints", "questions": "Open Questions",
 	} {
 		t.Run(name, func(t *testing.T) {
 			repo := realTempDir(t)
@@ -79,7 +79,7 @@ func TestBinaryRunAcceptsEmptyAnalysisList(t *testing.T) {
 				t.Errorf("analysis.json %s = %s, want []", name, got)
 			}
 			spec := binaryRead(t, filepath.Join(dirs[0], "spec.md"))
-			if !strings.Contains(spec, "## "+heading+"\n\n- None.\n\n") {
+			if !strings.Contains(spec, "\n### "+heading+"\n\n- None.\n\n") {
 				t.Errorf("spec.md lacks an empty %s section:\n%s", heading, spec)
 			}
 			r, err := pipeline.Read(dirs[0])

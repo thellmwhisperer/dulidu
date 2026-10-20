@@ -55,9 +55,10 @@ func TestARecordedSetMakesFiveListsInOrder(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	research, err := os.ReadFile(filepath.Join(dir, "research.json"))
-	if err != nil {
-		t.Fatal(err)
+	// research.json reaches every call as the prototype's named paragraphs, one per dimension.
+	research := "Market: Bike swaps grow."
+	if strings.Contains(asked[0], `"dimensions"`) {
+		t.Errorf("call 1 still carries research.json as JSON:\n%s", asked[0])
 	}
 	want := pipeline.Analysis{
 		Personas: []pipeline.Persona{{Name: "Rosa", Role: "seller", Goals: []string{"List a red-74 bike"},
@@ -70,18 +71,14 @@ func TestARecordedSetMakesFiveListsInOrder(t *testing.T) {
 		Constraints: []string{"Only bicycles tagged red-74 can be listed"},
 		Questions:   []string{"Who prints the red-74 tags?"},
 	}
-	// Later calls read each list as one line per item, as before the items kept their fields and ids.
-	lines := map[string][]string{
-		"Personas": {"Rosa (seller). Goals: List a red-74 bike. Pain points: Untagged bikes get rejected",
-			"Tom (buyer). Goals: Find a bike"},
+	// No call reads a list asked before it: the five get the same context, the prototype's buildSectionPrompt.
+	earlier := map[string][]string{
+		"Personas":        {"Rosa (seller)", "Goals: List a red-74 bike", "Pain points: Untagged bikes get rejected"},
 		"Functionalities": {"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size"},
 		"Flows":           {"Listing: Scan the tag → Add photos → Publish"},
 		"Constraints":     want.Constraints,
 	}
-	data := map[string]any{"Input": context, "Research": strings.TrimSuffix(string(research), "\n")}
-	for key, items := range lines {
-		data[key] = "- " + strings.Join(items, "\n- ")
-	}
+	data := map[string]any{"Input": context, "Research": research}
 	if len(asked) != 5 {
 		t.Fatalf("%d calls, want 5", len(asked))
 	}
@@ -91,12 +88,17 @@ func TestARecordedSetMakesFiveListsInOrder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if asked[i] != prompt || !strings.Contains(asked[i], "red-74") || !strings.Contains(asked[i], "Bike swaps grow.") {
-			t.Errorf("call %d is not %s on contexto.md, research.json and the lists before it:\n%s", i+1, tmpl, asked[i])
+		if asked[i] != prompt || !strings.Contains(asked[i], "red-74") ||
+			!strings.Contains(asked[i], "## Research Context\n"+research+"\n") {
+			t.Errorf("call %d is not %s on contexto.md and the named research alone:\n%s", i+1, tmpl, asked[i])
 		}
-	}
-	if !strings.Contains(asked[4], "[must] List a bike") || strings.Contains(asked[1], "[must]") {
-		t.Errorf("calls do not carry exactly the lists before them:\n%s", strings.Join(asked, "\n----\n"))
+		for key, items := range earlier {
+			for _, item := range items {
+				if strings.Contains(asked[i], item) {
+					t.Errorf("call %d carries %s %q from an earlier call:\n%s", i+1, key, item, asked[i])
+				}
+			}
+		}
 	}
 	got, err := pipeline.Read(dir)
 	if err != nil {
@@ -250,8 +252,9 @@ func TestFunctionalityDescriptionsPreserveBlockText(t *testing.T) {
 				if calls == 2 {
 					return "## F1 Export\n" + c.body + "\n\n## F2 Search\nPriority: could\nFind records", nil
 				}
-				if calls > 2 && !strings.Contains(prompt, want) {
-					t.Errorf("call %d lost description: %s", calls, prompt)
+				// Later calls no longer read the functionalities: the description lives in analysis.json alone.
+				if calls > 2 && strings.Contains(prompt, c.want) {
+					t.Errorf("call %d carries the functionality's description: %s", calls, prompt)
 				}
 				return recorded(t, names[calls-1]), nil
 			}); err != nil {

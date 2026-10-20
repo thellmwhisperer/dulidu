@@ -1,8 +1,8 @@
-# Spec
+# bikeswap
 
 ## Research
 
-### users
+### Users & Personas
 
 Second-hand bike buyers want to see a bike before they pay for it.
 
@@ -10,26 +10,49 @@ Sources:
 
 - [Bike buyers survey](https://example.com/bike-buyers): buyers want to see a bike before they pay
 
-## Personas
+## Analysis
 
-- Rosa (seller)
-- Tom (buyer)
+### Personas
 
-## Functionalities
+#### Rosa: seller
 
-- F1 [must] List a bike: Only red-74 bikes
-- F2 [could] Search: Find bikes by size
-- F3 [must] Pay: Card at pickup
+**Goals:**
 
-## Flows
+- None.
 
-- Listing: Scan the tag → Publish
+**Pain Points:**
 
-## Constraints
+- None.
+
+#### Tom: buyer
+
+**Goals:**
+
+- None.
+
+**Pain Points:**
+
+- None.
+
+### Functionalities
+
+| ID | Priority | Name | Description |
+|----|----------|------|-------------|
+| F1 | must | List a bike | Only red-74 bikes |
+| F2 | could | Search | Find bikes by size |
+| F3 | must | Pay | Card at pickup |
+
+### User Flows
+
+#### Listing
+
+Scan the tag → Publish
+
+### Constraints
 
 - Only bicycles tagged red-74 can be listed
 
-## Open questions
+### Open Questions
 
 - Who prints the red-74 tags?
 

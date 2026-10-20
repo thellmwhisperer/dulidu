@@ -1,9 +1,8 @@
-// Package analysis takes contexto.md and research.json apart in five calls, one per list, each fed the lists before
-// it, and writes the five to analysis.json.
+// Package analysis takes contexto.md and research.json apart in five calls, one per list, each on the same context,
+// and writes the five to analysis.json.
 package analysis
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -25,13 +24,13 @@ func idOf(b text.Block) (string, string) {
 	return strings.TrimRight(lead, ".: \t"), strings.TrimPrefix(b.Name, lead)
 }
 
-// lists is each list in the order it is asked: its prompt, the key later prompts read it by and how its answer's
-// blocks go into a, as the lines later prompts read, adding to notes what code changed.
+// lists is each list in the order it is asked: its prompt and how its answer's blocks go into a, adding to notes
+// what code changed.
 var lists = []struct {
-	name, template, key string
-	parse               func(a *pipeline.Analysis, blocks []text.Block, notes *[]string) ([]string, error)
+	name, template string
+	parse          func(a *pipeline.Analysis, blocks []text.Block, notes *[]string) error
 }{
-	{"personas", "p09-analysis-personas", "Personas", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) ([]string, error) {
+	{"personas", "p09-analysis-personas", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) error {
 		var err error
 		a.Personas, err = each(bs[1:], func(_ int, b text.Block) (pipeline.Persona, error) {
 			p := pipeline.Persona{Name: b.Name, Role: b.Field("role"), Goals: []string{}, PainPoints: []string{}}
@@ -45,9 +44,9 @@ var lists = []struct {
 			}
 			return p, need(!blank(p.Name) && !blank(p.Role), "a persona lacks name or role")
 		})
-		return pipeline.Lines(a.Personas), err
+		return err
 	}},
-	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(a *pipeline.Analysis, bs []text.Block, notes *[]string) ([]string, error) {
+	{"functionalities", "p10-analysis-functionalities", func(a *pipeline.Analysis, bs []text.Block, notes *[]string) error {
 		used := map[string]bool{}
 		for _, b := range bs[1:] {
 			id, _ := idOf(b)
@@ -78,24 +77,24 @@ var lists = []struct {
 				need(slices.Contains([]string{"must", "should", "could"}, f.Priority),
 					"functionality "+f.Name+": priority not must, should or could"))
 		})
-		return pipeline.Lines(a.Functionalities), err
+		return err
 	}},
-	{"flows", "p11-analysis-flows", "Flows", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) ([]string, error) {
+	{"flows", "p11-analysis-flows", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) error {
 		var err error
 		a.Flows, err = each(bs[1:], func(_ int, b text.Block) (pipeline.Flow, error) {
 			f := pipeline.Flow{Steps: b.Items}
 			f.ID, f.Name = idOf(b)
 			return f, need(!blank(f.Name) && len(f.Steps) > 0, "a flow lacks name or steps")
 		})
-		return pipeline.Lines(a.Flows), err
+		return err
 	}},
-	{"constraints", "p12-analysis-constraints", "Constraints", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) ([]string, error) {
+	{"constraints", "p12-analysis-constraints", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) error {
 		a.Constraints = items(bs)
-		return a.Constraints, nil
+		return nil
 	}},
-	{"questions", "p13-analysis-questions", "Questions", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) ([]string, error) {
+	{"questions", "p13-analysis-questions", func(a *pipeline.Analysis, bs []text.Block, _ *[]string) error {
 		a.Questions = items(bs)
-		return a.Questions, nil
+		return nil
 	}},
 }
 
@@ -127,7 +126,8 @@ func each[T any](blocks []text.Block, item func(int, text.Block) (T, error)) ([]
 }
 
 // Run analyses r.Context and r.Research in dir, the run folder: it adds step to r's report, running, and writes r;
-// then asks ask once per list, in lists' order, with its prompt on contexto.md, research.json and the lists before it.
+// then asks ask once per list, in lists' order, with its prompt on contexto.md and each research dimension's text as
+// a named paragraph, "Business: ...".
 // When parsing every answer yields valid items, possibly none, the five are r.Analysis and the step passed. At the first
 // parsing or agent error, no later list is asked, r gets no analysis, the step and r fail, and Run's error names the list.
 // A functionality without an id gets the first unused F<n> from its position onward; the step's note says so.
@@ -140,29 +140,32 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 	if r.Logs == nil {
 		r.Logs = map[string]string{}
 	}
-	research, _ := json.MarshalIndent(r.Research, "", "  ") // as Write puts research.json
-	data := map[string]any{"Input": r.Context, "Research": string(research)}
+	var research []string
+	if r.Research != nil {
+		for _, d := range r.Research.Dimensions {
+			research = append(research, strings.ToUpper(d.Name[:1])+d.Name[1:]+": "+strings.TrimSpace(d.Text))
+		}
+	}
+	data := map[string]any{"Input": r.Context, "Research": strings.Join(research, "\n")}
 	var a pipeline.Analysis
 	var notes []string
 	var failed string
 	var err error
 	for _, l := range lists {
 		var prompt, answer string
-		var lines []string
 		prompt, err = prompts.Render(l.template, data)
 		if err == nil {
 			answer, err = ask(prompt)
 			r.Logs["analysis"] += prompt + "\n\n" + answer + "\n\n"
 		}
 		if err == nil {
-			lines, err = l.parse(&a, text.Parse(answer), &notes)
+			err = l.parse(&a, text.Parse(answer), &notes)
 		}
 		if err != nil {
 			failed = "failed at analysis: " + l.name
 			err = fmt.Errorf("%s: %w", failed, err)
 			break
 		}
-		data[l.key] = "- " + strings.Join(lines, "\n- ")
 	}
 	s := &r.Report.Steps[len(r.Report.Steps)-1]
 	s.Finished, s.Note = time.Now(), strings.Join(notes, "; ")

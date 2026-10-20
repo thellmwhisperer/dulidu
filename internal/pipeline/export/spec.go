@@ -3,6 +3,7 @@
 package export
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -20,7 +21,12 @@ func Write(dir string, r *pipeline.Run) error {
 		return errors.New("export: no analysis or epics")
 	}
 	nums := numbers(r.Epics)
-	r.Spec, r.Plan, r.DesignBrief = spec(*r, nums), plan(r.Epics, nums), design(*r.Analysis)
+	abs, err := filepath.Abs(dir) // <repo>/.dulidu/runs/<label>
+	if err != nil {
+		return err
+	}
+	project := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(abs))))
+	r.Spec, r.Plan, r.DesignBrief = spec(*r, nums, project), plan(r.Epics, nums), design(*r.Analysis)
 	if err := pipeline.Write(dir, *r); err != nil {
 		return err
 	}
@@ -68,10 +74,18 @@ func functionalities(a pipeline.Analysis) []string {
 	return fs
 }
 
-// spec is spec.md: research with its sources, the analysis' lists and the epics with their tickets.
-func spec(r pipeline.Run, nums map[string][]int) string {
+// sections is the title spec.md gives each research dimension, as the prototype's report.
+var sections = map[string]string{"business": "Business Context", "users": "Users & Personas",
+	"market": "Market & Competition", "technical": "Technical Landscape", "project": "Project Scope"}
+
+// cell is s fit for a Markdown table cell.
+func cell(s string) string { return strings.ReplaceAll(s, "|", `\|`) }
+
+// spec is spec.md, as the prototype's report: the project's name, research with its sources, the analysis' personas,
+// functionality table, flows, constraints and questions, and the epics with their tickets.
+func spec(r pipeline.Run, nums map[string][]int, project string) string {
 	a := r.Analysis
-	parts := []string{"# Spec\n", "## Research\n"}
+	parts := []string{"# " + project + "\n", "## Research\n"}
 	var dims []pipeline.Dimension
 	if r.Research != nil {
 		dims = r.Research.Dimensions
@@ -84,11 +98,30 @@ func spec(r pipeline.Run, nums map[string][]int) string {
 		for i, s := range d.Sources {
 			sources[i] = fmt.Sprintf("[%s](%s): %s", s.Title, s.URL, s.Supports)
 		}
-		parts = append(parts, "### "+d.Name+"\n", strings.TrimSpace(d.Text)+"\n", "Sources:\n", list(sources))
+		parts = append(parts, "### "+cmp.Or(sections[d.Name], d.Name)+"\n", strings.TrimSpace(d.Text)+"\n", "Sources:\n", list(sources))
 	}
-	parts = append(parts, "## Personas\n", list(pipeline.Lines(a.Personas)), "## Functionalities\n", list(functionalities(*a)),
-		"## Flows\n", list(pipeline.Lines(a.Flows)), "## Constraints\n", list(a.Constraints), "## Open questions\n", list(a.Questions),
-		"## Epics\n")
+	parts = append(parts, "## Analysis\n", "### Personas\n")
+	if len(a.Personas) == 0 {
+		parts = append(parts, list(nil))
+	}
+	for _, p := range a.Personas {
+		parts = append(parts, "#### "+p.Name+": "+p.Role+"\n", "**Goals:**\n", list(p.Goals), "**Pain Points:**\n", list(p.PainPoints))
+	}
+	table := "| ID | Priority | Name | Description |\n|----|----------|------|-------------|\n"
+	for _, f := range a.Functionalities {
+		table += "| " + cell(f.ID) + " | " + f.Priority + " | " + cell(f.Name) + " | " + cell(f.Description) + " |\n"
+	}
+	if len(a.Functionalities) == 0 {
+		table = list(nil)
+	}
+	parts = append(parts, "### Functionalities\n", table, "### User Flows\n")
+	if len(a.Flows) == 0 {
+		parts = append(parts, list(nil))
+	}
+	for _, fl := range a.Flows {
+		parts = append(parts, "#### "+fl.Name+"\n", strings.Join(fl.Steps, " → ")+"\n")
+	}
+	parts = append(parts, "### Constraints\n", list(a.Constraints), "### Open Questions\n", list(a.Questions), "## Epics\n")
 	for _, e := range r.Epics {
 		deps := "none"
 		if len(e.DependsOn) > 0 {
