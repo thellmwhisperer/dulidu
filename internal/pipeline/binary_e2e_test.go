@@ -43,7 +43,6 @@ func binaryLines(path string) int {
 func binary(t *testing.T) string {
 	t.Helper()
 	builtOnce.Do(func() {
-		// ponytail: the folder outlives the process, TestMain is resume_test.go's to clean it.
 		dir, err := os.MkdirTemp("", "dulidu-bin-")
 		if err != nil {
 			buildErr = err
