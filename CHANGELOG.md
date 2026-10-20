@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.6](https://github.com/thellmwhisperer/dulidu/compare/v0.1.5...v0.1.6) (2026-10-20)
+
+
+### Bug Fixes
+
+* A video over the frame budget keeps its first part, with a note, instead of stopping the run ([1fe7d44](https://github.com/thellmwhisperer/dulidu/commit/1fe7d44a000aca0f1366cacf3b871a79c2ebde1b))
+* Analysis lists may be empty, and the analysis-failure test fails by the agent instead ([07ebf5c](https://github.com/thellmwhisperer/dulidu/commit/07ebf5ccced849d85bb4b6f3bb11038ed69d1bc3))
+* Epic dependencies: drop an unknown one or the edge that closes a cycle, with a note ([d8c46cc](https://github.com/thellmwhisperer/dulidu/commit/d8c46cce456dbe433fbcdf66386005272e7aa414))
+* Epics trim to the cap instead of failing: first N epics, first N stories per epic ([c413c6e](https://github.com/thellmwhisperer/dulidu/commit/c413c6e6faafc26eca0855a31a84405e4f2f17cb))
+* Plain-text reader: a list item wrapped over several lines keeps all of it ([f2d1f6b](https://github.com/thellmwhisperer/dulidu/commit/f2d1f6b9d2382c35f7277a84f4551ffacd7219fd))
+* **release:** authenticate the answers job's GitHub API lookup ([c743512](https://github.com/thellmwhisperer/dulidu/commit/c743512d549423c767634abe178116d82010d879)), closes [#83](https://github.com/thellmwhisperer/dulidu/issues/83)
+* Stories need only id and title; an unknown functionality id is dropped with a note ([84ae904](https://github.com/thellmwhisperer/dulidu/commit/84ae9045626a414af9523dac9fdf3a7398bc45bf))
+* Uncovered must functionalities: a note in the epics step, not a failure ([673dd1e](https://github.com/thellmwhisperer/dulidu/commit/673dd1e5244fab0611be659aab9e63f1f22d5ee9))
+* Unreadable attachments leave a note in contexto.md instead of stopping the run ([b5eb044](https://github.com/thellmwhisperer/dulidu/commit/b5eb04494d4d4d2700fdf5c172f95ef6bc2a6899))
+
 ## [0.1.5](https://github.com/thellmwhisperer/dulidu/compare/v0.1.4...v0.1.5) (2026-10-20)
 
 
