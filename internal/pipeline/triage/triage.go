@@ -17,9 +17,9 @@ var capEpics = map[string]int{"simple": 3, "moderate": 5, "complex": 8}
 
 // Run triages r.Context in dir, the run folder: it adds step to r's report, running, asks ask once with the triage
 // prompt and writes r back with the step passed. A valid answer is r.Triage, its epics capped by its complexity, the
-// whole of that cap when it gives none; an agent error or an invalid answer is a moderate r.Triage with no research
-// dimension, "classification failed, moderate: <reason>" its reasoning and the step's note. A positive maxEpics clamps
-// the epics, the clamp in the note; maxStories is r.Triage.StoriesPerEpic. Run's error is only a failed write.
+// whole of that cap when it gives none; an agent error or an invalid answer is a moderate r.Triage, with
+// "classification failed, moderate: <reason>" as its reasoning and the step's note. A positive maxEpics clamps the
+// epics, the clamp in the note; maxStories is r.Triage.StoriesPerEpic. Run's error is only a failed write.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories int, ask func(prompt string) (string, error)) error {
 	prompt, err := prompts.Render("triage", map[string]any{"Context": r.Context})
 	if err != nil {
@@ -47,8 +47,7 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, maxEpics, maxStories i
 	}
 	var notes []string
 	if err != nil {
-		t = pipeline.Triage{Complexity: "moderate", Epics: capEpics["moderate"], Reasoning: "classification failed, moderate: " + err.Error(),
-			ResearchDimensions: []string{}}
+		t = pipeline.Triage{Complexity: "moderate", Epics: capEpics["moderate"], Reasoning: "classification failed, moderate: " + err.Error()}
 		notes = append(notes, t.Reasoning)
 	}
 	if maxEpics > 0 && t.Epics > maxEpics {

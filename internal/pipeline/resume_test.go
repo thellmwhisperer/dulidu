@@ -248,9 +248,9 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 	if n := lines(log + ".triage"); n != 1 {
 		t.Errorf("triage ran %d times, want once", n)
 	}
-	if lines(log+".research") != 1 || strings.Contains(read(t, log+".research.prompt"), "## Answers") ||
-		r.Research == nil || len(r.Research.Dimensions) != 1 {
-		t.Errorf("research did not run once on contexto.md: %+v", r.Research)
+	if lines(log+".research") != 5 || strings.Contains(read(t, log+".research.prompt"), "## Answers") ||
+		r.Research == nil || len(r.Research.Dimensions) != 5 {
+		t.Errorf("research did not ask all five dimensions on contexto.md: %+v", r.Research)
 	}
 	if strings.Contains(r.Context, "## Answers") {
 		t.Errorf("contexto.md has answers:\n%s", r.Context)
@@ -275,7 +275,7 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 	if code == 0 || !strings.Contains(errOut, "unknown flag: --resume") {
 		t.Errorf("dulidu run --resume: exit %d, stderr %q", code, errOut)
 	}
-	if lines(log+".triage") != 1 || lines(log+".research") != 1 || read(t, filepath.Join(dir, "contexto.md")) != r.Context {
+	if lines(log+".triage") != 1 || lines(log+".research") != 5 || read(t, filepath.Join(dir, "contexto.md")) != r.Context {
 		t.Error("dulidu run --resume ran a step or changed contexto.md")
 	}
 }

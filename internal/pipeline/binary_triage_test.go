@@ -25,10 +25,12 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 	if err := json.Unmarshal([]byte(binaryRead(t, answers[0])), &example); err != nil {
 		t.Fatal(err)
 	}
-	complex, _ := json.Marshal(map[string]any{"complexity": "complex", "epics": 12, "reasoning": "Many users.",
-		"research_dimensions": example["research_dimensions"]})
+	if _, exists := example["research_dimensions"]; exists {
+		t.Fatal("recorded triage still chooses research dimensions")
+	}
+	complex, _ := json.Marshal(map[string]any{"complexity": "complex", "epics": 12, "reasoning": "Many users."})
 	for name, c := range map[string]struct {
-		triage    string // "" is a triage that exits 1, with no research after it
+		triage    string // "" is a triage that exits 1; research still runs all five dimensions
 		maxEpics  string
 		epics     float64
 		note      string
@@ -54,9 +56,6 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 				if err := os.WriteFile(replayed[0], []byte(c.triage), 0o644); err != nil {
 					t.Fatal(err)
 				}
-			}
-			if c.triage == "" || strings.Contains(c.triage, `"research_dimensions":[]`) {
-				replayed = slices.Delete(replayed, 1, 3) // no dimension, no research
 			}
 			replay := fakeReplay(t, replayed)
 			if c.triage == "" {
@@ -103,12 +102,18 @@ func TestBinaryTriageCapsByComplexity(t *testing.T) {
 				keys = append(keys, k)
 			}
 			slices.Sort(keys)
-			if !slices.Equal(keys, []string{"complexity", "epics", "reasoning", "research_dimensions"}) || triage["epics"] != c.epics ||
+			if !slices.Equal(keys, []string{"complexity", "epics", "reasoning"}) || triage["epics"] != c.epics ||
 				(triage["reasoning"] == "Many users.") != c.reasoning {
 				t.Errorf("triage.json: %v", triage)
 			}
 			if want := fmt.Sprintf("Generate at most %d epics", int(c.epics)); !strings.Contains(binaryRead(t, filepath.Join(dirs[0], "agent", "epics.log")), want) {
 				t.Errorf("the outlines prompt does not say %q", want)
+			}
+			if r.Research == nil || len(r.Research.Dimensions) != 5 {
+				t.Errorf("research must ask five dimensions even after failed triage: %+v", r.Research)
+			}
+			if strings.Contains(strings.SplitN(r.Logs["triage"], "Context:", 2)[0], "research_dimensions") {
+				t.Error("triage prompt still asks for research dimensions")
 			}
 			if n := binaryLines(filepath.Join(replay, "calls")); n != len(replayed) {
 				t.Errorf("claude was called %d times, want %d", n, len(replayed))

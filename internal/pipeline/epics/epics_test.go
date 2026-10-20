@@ -25,7 +25,7 @@ func start(t *testing.T) (string, *pipeline.Run) {
 	r := &pipeline.Run{Report: pipeline.Report{Status: "done", Started: at, Steps: []pipeline.Step{
 		{Name: "analysis", Status: "passed", Harness: "claude", Started: at, Finished: at}}},
 		Context: context,
-		Triage: &pipeline.Triage{Complexity: "simple", Epics: 2, ResearchDimensions: []string{},
+		Triage: &pipeline.Triage{Complexity: "simple", Epics: 2, // Triage no longer chooses research dimensions.
 			Reasoning: "One kind of user.", StoriesPerEpic: 2},
 		Analysis: &pipeline.Analysis{Personas: []string{"Rosa (seller)", "Tom (buyer)"},
 			Functionalities: []string{"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size", "[must] Pay: Card at pickup"},
