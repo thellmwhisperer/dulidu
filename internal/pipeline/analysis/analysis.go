@@ -67,8 +67,7 @@ var lists = []struct {
 			}
 			f.Description = strings.Join(lines, " ")
 			if f.ID == "" {
-				f.ID = fmt.Sprintf("F%d", i+1)
-				for n := i + 2; used[f.ID]; n++ {
+				for n := i + 1; f.ID == "" || used[f.ID]; n++ {
 					f.ID = fmt.Sprintf("F%d", n)
 				}
 				used[f.ID] = true
