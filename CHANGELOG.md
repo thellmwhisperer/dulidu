@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/thellmwhisperer/dulidu/compare/v0.1.10...v0.1.11) (2026-10-20)
+
+
+### Bug Fixes
+
+* Cleanup: dulidu.yaml keys nobody reads, doctor without Go and with pdftotext, tolerant reading of fenced answers ([4a1a4bc](https://github.com/thellmwhisperer/dulidu/commit/4a1a4bc4fadabfd251df00d3f8d64e1ad8a1ca28))
+
 ## [0.1.10](https://github.com/thellmwhisperer/dulidu/compare/v0.1.9...v0.1.10) (2026-10-20)
 
 
