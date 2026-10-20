@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/thellmwhisperer/dulidu/compare/v0.1.3...v0.1.4) (2026-10-20)
+
+
+### Features
+
+* Analysis reads plain text: one form per list ([59b41eb](https://github.com/thellmwhisperer/dulidu/commit/59b41ebdc103f1498a3b8f0b706a3ed38734c01b))
+
 ## [0.1.3](https://github.com/thellmwhisperer/dulidu/compare/v0.1.2...v0.1.3) (2026-10-20)
 
 
