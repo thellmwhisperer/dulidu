@@ -86,22 +86,18 @@ func TestRunFailsAtAnalysisWritingNothingLater(t *testing.T) {
 	}
 }
 
-func TestResumeReportsExportFailure(t *testing.T) {
+func TestRunReportsExportFailure(t *testing.T) {
 	runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market"]`, `["Who sells the bikes?"]`)
-	if code, out, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md"); code != 0 {
-		t.Fatalf("dulidu run: exit %d\n%s%s", code, out, errOut)
-	}
-	dir := runs(t)[0]
+	// The run runs as in the background, in a folder whose tickets/1.md is a folder the export cannot write.
+	dir := filepath.Join(".dulidu", "runs", "20261017-010000-1")
 	if err := os.MkdirAll(filepath.Join(dir, "tickets", "1.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile("answers.md", []byte("Bike owners.\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	code, _, errOut := dulidu(t, "run", "--resume", filepath.Base(dir), "--answers", "answers.md")
+	t.Setenv(runEnv, dir)
+	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
 	if code != 1 || !strings.Contains(errOut, "failed at export:") {
-		t.Fatalf("resume: exit %d, stderr %q", code, errOut)
+		t.Fatalf("dulidu run: exit %d, stderr %q", code, errOut)
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
@@ -109,5 +105,14 @@ func TestResumeReportsExportFailure(t *testing.T) {
 	if report.Status != "failed" || len(report.Steps) != 6 || last.Name != "export" ||
 		!strings.HasPrefix(last.Status, "failed at export:") {
 		t.Errorf("report.json: %+v", report)
+	}
+	// Triage's question stopped nothing: every step before the export wrote its file, and none is a question.
+	for _, name := range []string{"research.json", "analysis.json", "epics.json"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("%s before the export: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "questions.json")); err == nil {
+		t.Error("questions.json was written")
 	}
 }
