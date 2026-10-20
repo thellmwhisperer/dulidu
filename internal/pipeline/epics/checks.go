@@ -19,7 +19,6 @@ func trim[S ~[]E, E any](s S, limit int, what string, notes *[]string) S {
 	return s[:limit]
 }
 
-// uncovered notes the musts, functionality ids, that no story of es delivers, as the prototype did not check them.
 func uncovered(es pipeline.Epics, musts []string, notes *[]string) {
 	missing := slices.DeleteFunc(slices.Clone(musts), func(id string) bool {
 		return slices.ContainsFunc(es, func(e pipeline.EpicOutline) bool {

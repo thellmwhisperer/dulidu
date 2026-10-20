@@ -1,7 +1,5 @@
 // Package epics plans the analysis in two phases: one call for the epic outlines and the dependencies between them,
-// then one per epic for its stories. Code checks the caps, the dependencies and that a story delivers every must
-// functionality; past a cap the first epics or stories are kept, an uncovered must is a note, and epics.json is written
-// only when every check holds.
+// then one per epic for its stories. It enforces epic and story caps and checks dependencies before writing epics.json.
 package epics
 
 import (
@@ -105,8 +103,7 @@ func dropBadDependencies(es pipeline.Epics, notes *[]string) error {
 // Run plans r.Analysis, within r.Triage.Epics and, when positive, r.Triage.StoriesPerEpic, in dir, the run folder: it
 // adds step to r's report, running, and writes r; then asks ask for the outlines and, once their dependencies hold, for
 // each kept epic's stories. Past a cap it keeps the first, drops dependencies on cut epics and says so in the step's
-// note. Unknown dependencies and edges closing a cycle are dropped with a note, and must functionalities no story
-// names are noted as "uncovered must: F2, F5". Functionalities are F1, F2... in the
+// note. Unknown dependencies and edges closing a cycle are dropped with a note. Functionalities are F1, F2... in the
 // analysis' order. When every check holds the epics with their stories are
 // r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
 // fail, the step "failed at epics: <check>", and Run's error says that and what broke it.
