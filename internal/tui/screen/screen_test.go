@@ -282,8 +282,8 @@ func TestTFoldsAndUnfoldsToolCalls(t *testing.T) {
 	m := New("lumpa", 120, 40)
 	m.Load(Snap{Label: "lumpa", Report: runningReport(at), Log: log, Now: at.Add(time.Minute)})
 	s := plain(m.View())
-	for _, want := range []string{"∴ Plan the fix.", "✎ Writing the red tests first.", "· 3 tools: Edit, Bash ×2",
-		"✎ Red on behaviour. Now the fix.", "✗ failed Bash go build ./...", "1 tool: Read · view.go"} {
+	for _, want := range []string{"∴ Plan the fix.", "✎ Writing the red tests first.", "· 3 tools: → Edit, → Bash ×2",
+		"✎ Red on behaviour. Now the fix.", "✗ failed Bash go build ./...", "1 tool: → Read · view.go"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("missing %q:\n%s", want, s)
 		}
@@ -331,7 +331,7 @@ func TestResearchSubRowsAndClaudeTools(t *testing.T) {
 	}
 	s := plain(render("lumpa", r, nil, log, 120, 40, at.Add(time.Minute)))
 	if !strings.Contains(s, "market") || !strings.Contains(s, "users") || !strings.Contains(s, "∴ Look up the market.") ||
-		!strings.Contains(s, "✎ Reading the brief.") || !strings.Contains(s, "1 tool: Read") {
+		!strings.Contains(s, "✎ Reading the brief.") || !strings.Contains(s, "1 tool: → Read") {
 		t.Fatalf("research rows or agent lines:\n%s", s)
 	}
 }

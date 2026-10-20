@@ -78,6 +78,10 @@ func appendLine(out []*activity, byID map[string]*activity, e lineEvent) []*acti
 		return appendDirect(out, byID, e)
 	}
 	switch {
+	case e.Type == "result":
+		if e.Result != "" {
+			out = append(out, &activity{says: e.Result})
+		}
 	case e.Method == "session/update":
 		return appendACP(out, byID, e.Params.Update)
 	case e.Type == "assistant" || e.Type == "message_end" || e.Type == "message":
@@ -92,12 +96,12 @@ func appendLine(out []*activity, byID map[string]*activity, e lineEvent) []*acti
 				out = append(out, &activity{says: text})
 			}
 		}
+	case e.Part.Tool != "" || e.Part.Name != "":
+		return appendTool(out, byID, "", cmpOr(e.Part.Tool, e.Part.Name), "", detailOf(e.Part.State.Input), e.Part.State.Status, "")
 	case e.Type == "tool_use" || e.Type == "toolCall":
 		out = appendTool(out, byID, e.ID, cmpOr(e.Name, e.Tool), "", cmpOr(e.Detail, detailOf(e.Input)), "running", "")
 	case e.Type == "item.completed" || e.Type == "item.started" || e.Type == "item.updated":
 		return appendItem(out, byID, e.Item, e.Type != "item.completed")
-	case e.Part.Tool != "" || e.Part.Name != "":
-		return appendTool(out, byID, "", cmpOr(e.Part.Tool, e.Part.Name), "", detailOf(e.Part.State.Input), e.Part.State.Status, "")
 	}
 	return out
 }

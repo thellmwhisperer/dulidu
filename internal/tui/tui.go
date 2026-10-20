@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -150,9 +151,9 @@ func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
 		if r.Status == "waiting_answers" {
 			questions, _ = Questions(dir)
 		}
-		log := tail(dir)
-		if r.Status == "failed" {
-			log = rawLines(dir) // stderr belongs only in a failed step's log
+		log := rawLines(dir)
+		if r.Status != "failed" {
+			log = slices.DeleteFunc(log, func(line string) bool { return !json.Valid([]byte(line)) })
 		}
 		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: log, Now: now}
 		have = true
@@ -182,69 +183,4 @@ func rawLines(dir string) []string {
 		}
 	}
 	return lines
-}
-
-// tail is the readable lines of the end of dir's agent output.
-func tail(dir string) []string {
-	f, err := os.Open(filepath.Join(dir, Output))
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = f.Close() }()
-	if info, err := f.Stat(); err == nil && info.Size() > 64<<10 {
-		_, _ = f.Seek(-64<<10, io.SeekEnd) // ponytail: the last 64 KiB fill any screen
-	}
-	b, _ := io.ReadAll(f)
-	var lines []string
-	for _, line := range strings.Split(string(b), "\n") {
-		if !json.Valid([]byte(line)) {
-			continue // stderr and incomplete stream events are not agent speech
-		}
-		for _, text := range strings.Split(readable(line), "\n") {
-			if text = strings.TrimSpace(text); text != "" && !json.Valid([]byte(text)) {
-				lines = append(lines, text)
-			}
-		}
-	}
-	return lines
-}
-
-// readable is what a person reads in one line of agent output: an event's text or the tool it calls, the line
-// itself when it is no JSON, "" when it says nothing to read.
-func readable(line string) string {
-	line = strings.TrimSpace(line)
-	if !json.Valid([]byte(line)) {
-		return line
-	}
-	var e struct {
-		Type    string
-		Result  string
-		Message struct {
-			Content []struct{ Type, Text, Name string }
-		}
-		Part struct{ Text string } // opencode's
-		Item struct{ Text string } // codex's
-	}
-	_ = json.Unmarshal([]byte(line), &e) // a field of another type is left empty, the rest is read
-	var texts []string
-	if e.Type == "result" {
-		texts = append(texts, e.Result)
-	}
-	if e.Type == "assistant" || e.Type == "message_end" {
-		for _, c := range e.Message.Content {
-			switch c.Type {
-			case "text":
-				texts = append(texts, c.Text)
-			case "tool_use", "toolCall":
-				texts = append(texts, "→ "+c.Name)
-			}
-		}
-	}
-	if e.Type == "text" {
-		texts = append(texts, e.Part.Text)
-	}
-	if e.Type == "item.completed" {
-		texts = append(texts, e.Item.Text)
-	}
-	return strings.TrimSpace(strings.Join(texts, "\n"))
 }

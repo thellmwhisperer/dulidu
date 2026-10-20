@@ -2,6 +2,7 @@ package screen
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -506,11 +507,17 @@ func agentTextRows(prefix, text string, width int) []string {
 		}
 		return r
 	}, ansi.Strip(text))
+	if json.Valid([]byte(text)) {
+		return nil
+	}
 	w := max(1, width-6)
 	var rows []string
 	var codeMarker byte
 	codeLength := 0
 	for _, line := range strings.Split(text, "\n") {
+		if json.Valid([]byte(line)) {
+			continue
+		}
 		var wrapped []string
 		marker, length, info, isFence := fence(line)
 		if codeLength > 0 {
@@ -610,7 +617,7 @@ func (m *Model) appendToolGroup(out []paneLine, calls []*activity, base int) []p
 	}
 	parts := make([]string, len(names))
 	for i, tool := range names {
-		parts[i] = tool
+		parts[i] = "→ " + tool
 		if counts[tool] > 1 {
 			parts[i] += fmt.Sprintf(" ×%d", counts[tool])
 		}

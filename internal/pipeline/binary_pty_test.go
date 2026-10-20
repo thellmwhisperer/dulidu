@@ -61,8 +61,22 @@ if [ "$((n))" = 1 ]; then
     printf '{"type":"assistant","message":{"content":[{"type":"text","text":"History %02d"}]}}\n' "$i"
     i=$((i+1))
   done
+  python3 - <<'EVENTS'
+import json
+print(json.dumps({"type": "result", "result": "Long event survived.\n" + json.dumps({"private": "x" * 70000})}))
+EVENTS
+  printf '%s\n' '{"type":"message_end","message":{"content":[{"type":"text","text":"Pi is reading.\n{\"private\":true}"},{"type":"toolCall","id":"pi-read","name":"read","arguments":{"path":"pi.md"}}]}}'
+  printf '%s\n' '{"type":"text","part":{"text":"OpenCode is reading.\n{\"private\":true}"}}'
+  printf '%s\n' '{"type":"tool_use","part":{"tool":"glob","state":{"input":{"pattern":"*.md"},"status":"running"}}}'
+  printf '%s\n' '{"type":"item.completed","item":{"type":"agent_message","text":"Codex is reading.\n{\"private\":true}"}}'
+  printf '%s\n' '{"type":"item.started","item":{"id":"codex-call","type":"command_execution","command":"pwd"}}'
+  printf '%s\n' '{"type":"item.completed","item":{"id":"codex-call","type":"command_execution","command":"pwd","exit_code":0,"aggregated_output":"project"}}'
+  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"agent_message_chunk","content":{"text":"Hermes is reading.\n{\"private\":true}"}}}}'
+  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"agent_thought_chunk","content":{"text":"Checking the brief.\n{\"private\":true}"}}}}'
+  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call","toolCallId":"hermes-call","title":"Inspect","rawInput":{"path":"hermes.md"}}}}'
+  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call_update","toolCallId":"hermes-call","status":"completed"}}}'
   printf '%s\n' '{"type":"result","result":"A readable final result."}'
-  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the brief now.\n{\"private\":true}"},{"type":"tool_use","name":"Read"}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the brief now.\n{\"private\":true}"},{"type":"tool_use","id":"claude-read","name":"Read","input":{"file_path":"brief.md"}}]}}'
   echo 'stderr must stay out of Agent' >&2
   read release < "$FAKE_REPLAY/gate"
   test -f "$FAKE_REPLAY/released" || exit 1
@@ -150,7 +164,16 @@ try:
     frame_until('prose, tool and final result before release', lambda s:
         all(word in s for word in ['Pipeline', 'Input', 'Triage', 'Research', 'Analysis',
                                   'Epics', 'Export', 'Reading the brief now.',
-                                  '→ Read', 'A readable final result.']))
+                                  '→ Read', 'A readable final result.', 'Long event survived.',
+                                  'Pi is reading.', 'OpenCode is reading.', 'Codex is reading.',
+                                  'Hermes is reading.', 'Checking the brief.',
+                                  '→ read', '→ glob', '→ bash', '→ Inspect']))
+    os.write(master, b't')
+    frame_until('t unfolds tool arguments and completed calls', lambda s:
+        all(word in s for word in ['running read pi.md', 'running glob *.md',
+                                  'ok bash pwd', 'ok Inspect hermes.md', 'running Read brief.md']))
+    os.write(master, b't')
+    frame_until('t folds tool details again', lambda s: '→ Read' in s and 'running Read brief.md' not in s)
     assert not os.path.exists(replay + '/released'), 'agent was not held'
     os.write(master, b'\t')
     frame_until('tab focuses Pipeline', lambda s: 'Pipeline*' in s)
@@ -170,6 +193,10 @@ try:
     frame_until('wheel down scrolls', lambda s: '→ Read' in s)
     os.write(master, b'\x1b[5~\x1b[6~')
     frame_until('page down returns to end', lambda s: '→ Read' in s)
+    os.write(master, b'\x1b[H')
+    frame_until('home retains history before the large event', lambda s: 'History 00' in s)
+    os.write(master, b'\x1b[F')
+    frame_until('end returns to the latest tool', lambda s: '→ Read' in s)
     assert p.poll() is None, 'a navigation key left the view'
     if sys.argv[3] == 'finished':
         release()
