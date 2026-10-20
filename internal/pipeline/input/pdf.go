@@ -1,15 +1,16 @@
 package input
 
 import (
-	"errors"
 	"os/exec"
 	"strings"
 )
 
-// pdf is the text of the PDF at path, by pdftotext. Without pdftotext the run stops: its text is not lost silently.
-func pdf(path string) (string, error) {
+// pdf is the text of the PDF at path, by pdftotext. Without pdftotext, or without text, s gets a note instead: its
+// text is not lost silently.
+func (s *section) pdf(path string) (string, error) {
 	if _, err := exec.LookPath("pdftotext"); err != nil {
-		return "", errors.New("pdftotext is not installed: brew install poppler, or apt install poppler-utils")
+		s.add("Not read: pdftotext is not installed: brew install poppler, or apt install poppler-utils.")
+		return "", nil
 	}
 	text, err := tool("pdftotext", "-enc", "UTF-8", path, "-")
 	if err != nil {
@@ -17,7 +18,8 @@ func pdf(path string) (string, error) {
 	}
 	text = strings.ReplaceAll(text, "\f", "\n")
 	if strings.TrimSpace(text) == "" {
-		return "", errors.New("pdftotext extracted no text from PDF")
+		s.add("Not read: pdftotext extracted no text from the PDF.")
+		return "", nil
 	}
 	return text, nil
 }

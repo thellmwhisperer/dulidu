@@ -37,15 +37,9 @@ type section struct {
 
 func (s *section) add(text ...string) { s.body = append(s.body, text...) }
 
-// Load is the run's input: the brief at brief and the files at paths by name. It refuses an unsupported extension
-// before reading anything, and two files with one name.
+// Load is the run's input: the brief at brief and the files at paths by name. It refuses two files with one name.
 func Load(brief string, paths []string) (pipeline.InputContext, error) {
 	in := pipeline.InputContext{Files: map[string]string{}}
-	for _, p := range paths {
-		if kinds[strings.ToLower(filepath.Ext(p))] == "" {
-			return in, fmt.Errorf("unsupported attachment: %s", p)
-		}
-	}
 	b, err := os.ReadFile(brief)
 	if err != nil {
 		return in, err
@@ -72,7 +66,8 @@ func Package(dir string, in pipeline.InputContext, ask Ask) (string, error) {
 
 // PackageEvery is contexto.md for in, whose files are already in dir/input: first everything code can do, the same
 // bytes every time, a video's frame every seconds under dir/input/frames/<video>/, then one ask per image and per
-// video's contact sheet. A video without a required multimedia tool gets a note in its section instead.
+// video's contact sheet. A file of an unsupported extension, a PDF without pdftotext or without text, and a video
+// without a required multimedia tool get a note in their section instead.
 func PackageEvery(dir string, in pipeline.InputContext, seconds int, ask Ask) (string, error) {
 	files := []*section{{name: "brief.md", kind: "brief", size: len(in.Brief.Text), body: []string{in.Brief.Text}}}
 	for _, name := range slices.Sorted(maps.Keys(in.Files)) {
@@ -83,8 +78,10 @@ func PackageEvery(dir string, in pipeline.InputContext, seconds int, ask Ask) (s
 		switch s.kind {
 		case "text":
 			text = in.Files[name]
+		case "":
+			s.add("Not read: dulidu does not read this type of file.")
 		case "pdf":
-			text, err = pdf(path)
+			text, err = s.pdf(path)
 		case "docx":
 			text, err = docx(path)
 		case "video":

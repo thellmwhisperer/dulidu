@@ -11,17 +11,22 @@ import (
 	"testing"
 )
 
-func TestRunRejectsAnAudioOnlyAttachmentBeforeAnyAgentCall(t *testing.T) {
-	calls := runRepo(t, map[string]string{"talk.mp3": "mp3", "shot.png": "png"})
-	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "shot.png", "--attach", "talk.mp3")
-	if code != 1 || !strings.Contains(errOut, "unsupported attachment: talk.mp3") {
+func TestRunNotesAnAudioOnlyAttachmentWithoutDescribingIt(t *testing.T) {
+	calls := runRepo(t, map[string]string{"talk.mp3": "mp3"})
+	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "talk.mp3")
+	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
 	if _, err := os.Stat(calls); err == nil {
-		t.Error("the agent was called")
+		t.Error("the agent was asked to describe it")
 	}
-	if dirs := runs(t); len(dirs) != 0 {
-		t.Errorf("a run folder was written: %v", dirs)
+	dirs := runs(t)
+	if len(dirs) != 1 || read(t, filepath.Join(dirs[0], "input", "talk.mp3")) != "mp3" {
+		t.Fatalf("want one run folder with input/talk.mp3, got %v", dirs)
+	}
+	if context := read(t, filepath.Join(dirs[0], "contexto.md")); !strings.HasSuffix(context,
+		"## talk.mp3\n\nNot read: dulidu does not read this type of file.\n") {
+		t.Errorf("want talk.mp3 noted as not read:\n%s", context)
 	}
 }
 
