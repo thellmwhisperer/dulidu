@@ -20,7 +20,6 @@ DULIDU_PREFIX=$HOME/.local/bin sh ./install.sh
 ```
 
 From a clone, `go build -o dulidu ./cmd/dulidu` and put the binary in your PATH. macOS and Linux only.
-A run with a pdf needs `pdftotext` and one with images or videos `ffprobe`; `dulidu doctor` says what is missing.
 
 ## First run
 
