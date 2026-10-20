@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/thellmwhisperer/dulidu/compare/v0.1.8...v0.1.9) (2026-10-20)
+
+
+### Bug Fixes
+
+* **tui:** show readable agent output in terminal views ([#117](https://github.com/thellmwhisperer/dulidu/issues/117)) ([9cbdbf7](https://github.com/thellmwhisperer/dulidu/commit/9cbdbf701f1cb6f96f388a300fc6e90d3807c968))
+
 ## [0.1.8](https://github.com/thellmwhisperer/dulidu/compare/v0.1.7...v0.1.8) (2026-10-20)
 
 
