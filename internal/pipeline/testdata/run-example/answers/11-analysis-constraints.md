@@ -1,0 +1,2 @@
+- The kiln fires once a week, on Friday at 6 pm
+- Bookings are free: members pay a monthly fee

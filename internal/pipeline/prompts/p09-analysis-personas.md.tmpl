@@ -1,4 +1,12 @@
-You are a UX researcher. Extract target user personas from this project. Respond ONLY with a JSON array (no markdown, no explanation). Each persona: { "name": "string", "role": "string", "goals": ["string"], "painPoints": ["string"] }
+You are a UX researcher. Extract target user personas from this project. Respond in plain text: one block per persona, a ## <name> heading, then a Role: <role> line, a ### Goals heading with its goals as a - list and a ### Pain points heading with its pain points as a - list.
+
+Example:
+## Rosa
+Role: seller
+### Goals
+- Sell a bike in a week
+### Pain points
+- Buyers who never show up
 
 Analyze this project and provide your extraction.
 
@@ -8,4 +16,4 @@ Analyze this project and provide your extraction.
 ## Research Context
 {{.Research}}
 
-Respond with JSON only.
+Respond in plain text only.
