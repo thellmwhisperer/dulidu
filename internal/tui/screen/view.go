@@ -137,10 +137,6 @@ func (m *Model) footer() string {
 	if m.agentShows() {
 		keys += "  " + lipgloss.NewStyle().Bold(true).Render("t") + " " + paint(dim, "tools")
 	}
-	if m.questionsShow() {
-		hint := "dulidu run --resume " + m.label + " --answers answers.md"
-		keys += "\n  " + paint(dim, hint)
-	}
 	return gap + keys
 }
 

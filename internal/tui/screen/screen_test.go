@@ -74,11 +74,17 @@ func TestWaitingAnswersShowsEveryQuestionComplete(t *testing.T) {
 		!strings.Contains(s, "past the usual closing time?") || strings.Contains(s, "…") {
 		t.Fatalf("a question was cut:\n%s", s)
 	}
-	if !strings.Contains(s, "dulidu run --resume lumpa --answers answers.md") || !strings.Contains(s, "q detach") {
+	if strings.Contains(s, "--resume") || strings.Contains(s, "--answers") || !strings.Contains(s, "q detach") {
 		t.Fatalf("footer:\n%s", s)
 	}
 	if strings.Contains(s, "t tools") {
 		t.Fatalf("t tools without the Agent box:\n%s", s)
+	}
+	for _, size := range [][2]int{{80, 24}, {40, 8}} {
+		s := plain(render("lumpa", r, []string{"Who pays?", long}, nil, size[0], size[1], at.Add(2*time.Minute)))
+		if strings.Contains(s, "--resume") || strings.Contains(s, "--answers") || !strings.Contains(s, "q detach") {
+			t.Fatalf("%dx%d legacy run footer offers removed flags or loses detach:\n%s", size[0], size[1], s)
+		}
 	}
 }
 
