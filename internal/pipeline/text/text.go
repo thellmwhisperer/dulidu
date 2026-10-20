@@ -53,6 +53,9 @@ func Parse(answer string) []Block {
 	prose := false
 	for i, raw := range lines {
 		line := strings.TrimSpace(raw)
+		if item.MatchString(line) {
+			break
+		}
 		start := strings.HasPrefix(line, "## ")
 		if m := field.FindStringSubmatch(line); m != nil {
 			switch strings.ToLower(m[1]) {
