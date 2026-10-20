@@ -48,7 +48,7 @@ type Source struct {
 	Supports string `json:"supports"` // the claim of the text it backs
 }
 
-// Analysis is the brief taken apart, with the ids the model gave its functionalities and flows.
+// Analysis is the brief taken apart, retaining model ids for functionalities and flows.
 type Analysis struct {
 	Personas        []Persona       `json:"personas"`
 	Functionalities []Functionality `json:"functionalities"`
