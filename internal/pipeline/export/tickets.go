@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -54,10 +55,7 @@ func tickets(r pipeline.Run, nums map[string][]int) []string {
 			for i, id := range s.Functionalities {
 				scope[i] = ids[id]
 			}
-			kind := s.Type
-			if kind == "" {
-				kind = "feature"
-			}
+			kind := cmp.Or(s.Type, "feature")
 			parts := []string{"# " + s.Title + "\n", "Type: " + kind + "\n", "## Kind\n", kind + "\n",
 				"## Goal\n", strings.TrimSpace(s.Text) + "\n",
 				"## Non-goals\n", list(s.NonGoals),

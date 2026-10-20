@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261020-235250-1
+status: accepted
+category: alien_code
+title: "Replaced the four-line `kind := s.Type; if kind == \"\" { kind = \"feature\" }` default with `cmp.Or(s.Type, \"feature\")` from the standard library. The output is the same."
+created_at: 2026-10-20
+incident:
+  pattern: "Replaced the four-line `kind := s.Type; if kind == \"\" { kind = \"feature\" }` default with `cmp.Or(s.Type, \"feature\")` from the standard library. The output is the same."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Replaced the four-line `kind := s.Type; if kind == \"\" { kind = \"feature\" }` default with `cmp.Or(s.Type, \"feature\")` from the standard library. The output is the same.\nissue_sentence: `Type:` the story's, `feature` when empty."
+      artifact: "internal/pipeline/export/tickets.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/export/tickets.go"
