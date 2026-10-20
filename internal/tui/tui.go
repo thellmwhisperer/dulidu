@@ -112,20 +112,24 @@ func Follow(dir string, w io.Writer) error {
 	}
 }
 
-// Watch draws the run in dir on w, a terminal of size's columns and rows, until q comes from keys or ctx ends;
-// a run that died before writing any report ends it too, once grace has passed. The run itself goes on.
+// Watch draws the run in dir on w until q, ctx ends, or an observed live run ends.
+// An already finished run stays open for inspection. A run with no report ends
+// the view once grace has passed. Leaving the view never stops the run.
 func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
 	return screen.Poll(ctx, w, keys, size, watchLoad(dir))
 }
 
-// watchLoad is dir's report, the questions it waits for and its agent lines. A run that died before writing any
-// report fails it, once grace has passed; a report being written is skipped.
+// watchLoad is dir's report, questions and agent prose. It returns the final frame
+// with io.EOF when a live run ends. Missing reports fail after grace; writes are skipped.
 func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
 	var last screen.Snap
 	have := false
+	wasAlive := false
 	stuck := time.Time{} // since a run not running last left its report unreadable
 	return func(now time.Time) (screen.Snap, error) {
 		alive := running(dir)
+		ended := wasAlive && !alive
+		wasAlive = wasAlive || alive
 		r, err := Report(dir)
 		if err != nil {
 			if alive {
@@ -146,8 +150,15 @@ func watchLoad(dir string) func(time.Time) (screen.Snap, error) {
 		if r.Status == "waiting_answers" {
 			questions, _ = Questions(dir)
 		}
-		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: rawLines(dir), Now: now}
+		log := tail(dir)
+		if r.Status == "failed" {
+			log = rawLines(dir) // stderr belongs only in a failed step's log
+		}
+		last = screen.Snap{Label: filepath.Base(dir), Report: r, Questions: questions, Log: log, Now: now}
 		have = true
+		if ended {
+			return last, io.EOF
+		}
 		return last, nil
 	}
 }
@@ -186,8 +197,13 @@ func tail(dir string) []string {
 	b, _ := io.ReadAll(f)
 	var lines []string
 	for _, line := range strings.Split(string(b), "\n") {
-		if text := readable(line); text != "" {
-			lines = append(lines, strings.Split(text, "\n")...)
+		if !json.Valid([]byte(line)) {
+			continue // stderr and incomplete stream events are not agent speech
+		}
+		for _, text := range strings.Split(readable(line), "\n") {
+			if text = strings.TrimSpace(text); text != "" && !json.Valid([]byte(text)) {
+				lines = append(lines, text)
+			}
 		}
 	}
 	return lines
@@ -202,6 +218,7 @@ func readable(line string) string {
 	}
 	var e struct {
 		Type    string
+		Result  string
 		Message struct {
 			Content []struct{ Type, Text, Name string }
 		}
@@ -210,6 +227,9 @@ func readable(line string) string {
 	}
 	_ = json.Unmarshal([]byte(line), &e) // a field of another type is left empty, the rest is read
 	var texts []string
+	if e.Type == "result" {
+		texts = append(texts, e.Result)
+	}
 	if e.Type == "assistant" || e.Type == "message_end" {
 		for _, c := range e.Message.Content {
 			switch c.Type {

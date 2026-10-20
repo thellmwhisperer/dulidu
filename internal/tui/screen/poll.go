@@ -16,6 +16,7 @@ import (
 const tick = 100 * time.Millisecond
 
 // Poll draws load's snapshots on w until q, ctx ends, or load returns an error. keys are the terminal's.
+// io.EOF from load draws its final snapshot and exits successfully.
 func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, int), load func(time.Time) (Snap, error)) error {
 	if ctx.Err() != nil {
 		return nil
@@ -34,7 +35,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 			return nil
 		}
 		snap, err := load(time.Now())
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
 		if size != nil {
@@ -44,6 +45,9 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 		m.Load(snap)
 		if err := redraw(w, m.View()); err != nil {
 			return err
+		}
+		if err == io.EOF {
+			return nil
 		}
 		timer := time.NewTimer(tick)
 		for {

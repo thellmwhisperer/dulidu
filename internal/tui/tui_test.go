@@ -61,9 +61,13 @@ func TestTailReadsTheAgentsTextAndTools(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, Output), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	want := "Reading the brief.|Then triage.|→ Read|codex says|dulidu: failed at research"
+	want := "Reading the brief.|Then triage.|→ Read|codex says"
 	if got := strings.Join(tail(dir), "|"); got != want {
 		t.Errorf("tail: %q, want %q", got, want)
+	}
+	// Keep diagnostics on disk for the failed-step log, outside the agent prose.
+	if got := strings.Join(rawLines(dir), "|"); !strings.Contains(got, "dulidu: failed at research") {
+		t.Errorf("raw diagnostic was lost: %s", got)
 	}
 }
 
