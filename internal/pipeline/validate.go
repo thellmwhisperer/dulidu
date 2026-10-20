@@ -76,9 +76,12 @@ func (r Research) Validate() error {
 }
 
 func (a Analysis) Validate() error {
-	return errors.Join(need(a.Personas != nil && !slices.ContainsFunc(a.Personas, blank), "analysis: no personas"),
-		need(a.Functionalities != nil && !slices.ContainsFunc(a.Functionalities, blank), "analysis: no functionalities"),
-		need(a.Flows != nil && !slices.ContainsFunc(a.Flows, blank), "analysis: no flows"))
+	return errors.Join(
+		need(a.Personas != nil && !slices.ContainsFunc(a.Personas, func(p Persona) bool { return blank(p.Name) }),
+			"analysis: no personas"),
+		need(a.Functionalities != nil && !slices.ContainsFunc(a.Functionalities,
+			func(f Functionality) bool { return blank(f.ID) || blank(f.Name) }), "analysis: no functionalities"),
+		need(a.Flows != nil && !slices.ContainsFunc(a.Flows, func(f Flow) bool { return blank(f.Name) }), "analysis: no flows"))
 }
 
 func (e EpicOutline) Validate() error {

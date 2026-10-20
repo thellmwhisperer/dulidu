@@ -6,21 +6,27 @@ import (
 )
 
 func TestAnalysisAllowsEmptyListsButRejectsBlankItems(t *testing.T) {
-	a := Analysis{Personas: []string{}, Functionalities: []string{}, Flows: []string{},
+	empty := Analysis{Personas: []Persona{}, Functionalities: []Functionality{}, Flows: []Flow{},
 		Constraints: []string{}, Questions: []string{}}
-	if err := a.Validate(); err != nil {
+	if err := empty.Validate(); err != nil {
 		t.Fatalf("empty lists: %v", err)
 	}
-	for name, list := range map[string]*[]string{
-		"personas": &a.Personas, "functionalities": &a.Functionalities, "flows": &a.Flows,
+	for name, invalid := range map[string]func(a *Analysis){
+		"personas":            func(a *Analysis) { a.Personas = nil },
+		"personas blank item": func(a *Analysis) { a.Personas = []Persona{{Name: "Rosa"}, {Name: " \t"}} },
+		"functionalities":     func(a *Analysis) { a.Functionalities = nil },
+		"functionalities blank": func(a *Analysis) {
+			a.Functionalities = []Functionality{{ID: "F1", Name: "List"}, {ID: "F2", Name: " \t"}}
+		},
+		"functionalities without id": func(a *Analysis) { a.Functionalities = []Functionality{{Name: "List"}} },
+		"flows":                      func(a *Analysis) { a.Flows = nil },
+		"flows blank item":           func(a *Analysis) { a.Flows = []Flow{{Name: "Sell"}, {Name: " \t"}} },
 	} {
-		for _, invalid := range [][]string{nil, {"valid item", " \t"}} {
-			*list = invalid
-			if a.Validate() == nil {
-				t.Errorf("%s accepts %v", name, invalid)
-			}
+		a := empty
+		invalid(&a)
+		if a.Validate() == nil {
+			t.Errorf("%s accepts %+v", name, a)
 		}
-		*list = []string{}
 	}
 }
 

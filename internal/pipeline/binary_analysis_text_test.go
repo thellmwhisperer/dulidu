@@ -16,8 +16,8 @@ import (
 )
 
 // TestBinaryAnalysisReadsPlainText runs the built dulidu on the example with a claude that replays the recorded
-// answers, the five analysis ones plain text: analysis passes and analysis.json holds the one-line items the JSON
-// answers made. Each analysis prompt names its form, with an example, and never says JSON.
+// answers, the five analysis ones plain text: analysis passes and analysis.json holds the items, with their ids, that
+// read as the one-line items the JSON answers made. Each analysis prompt names its form, with an example, and never says JSON.
 func TestBinaryAnalysisReadsPlainText(t *testing.T) {
 	bin := binary(t)
 	repo := realTempDir(t)
@@ -55,19 +55,27 @@ func TestBinaryAnalysisReadsPlainText(t *testing.T) {
 	if err := json.Unmarshal([]byte(binaryRead(t, filepath.Join(dirs[0], "analysis.json"))), &stored); err != nil {
 		t.Fatalf("analysis.json must remain JSON: %v", err)
 	}
-	want := pipeline.Analysis{
-		Personas: []string{"Ana (member). Goals: Throw on a wheel after work. Pain points: Every wheel taken when she arrives",
+	want := map[string][]string{
+		"personas": {"Ana (member). Goals: Throw on a wheel after work. Pain points: Every wheel taken when she arrives",
 			"Luis (studio manager). Goals: Fill Friday's kiln. Pain points: Pieces dropped off after the firing is loaded"},
-		Functionalities: []string{"[must] Book a wheel: One hour, one member per wheel",
-			"[must] Drop off for the kiln: Pieces in before Friday 6 pm make that week's firing",
-			"[could] Waiting list: Told when a wheel frees up"},
-		Flows: []string{"Booking: Pick a free hour → Pick a wheel → Confirm",
-			"Firing: Drop a piece off → Kiln fires on Friday → Collect"},
-		Constraints: []string{"The kiln fires once a week, on Friday at 6 pm", "Bookings are free: members pay a monthly fee"},
-		Questions:   []string{"How many wheels does the studio have?"},
+		"functionalities": {"F1 [must] Book a wheel: One hour, one member per wheel",
+			"F2 [must] Drop off for the kiln: Pieces in before Friday 6 pm make that week's firing",
+			"F3 [could] Waiting list: Told when a wheel frees up"},
+		"flows": {"FL1 Booking: Pick a free hour → Pick a wheel → Confirm",
+			"FL2 Firing: Drop a piece off → Kiln fires on Friday → Collect"},
+		"constraints": {"The kiln fires once a week, on Friday at 6 pm", "Bookings are free: members pay a monthly fee"},
+		"questions":   {"How many wheels does the studio have?"},
 	}
-	if !reflect.DeepEqual(stored, want) {
-		t.Errorf("analysis.json: %+v, want %+v", stored, want)
+	got := map[string][]string{"personas": pipeline.Lines(stored.Personas), "constraints": stored.Constraints,
+		"questions": stored.Questions}
+	for _, f := range stored.Functionalities {
+		got["functionalities"] = append(got["functionalities"], f.ID+" "+f.String())
+	}
+	for _, f := range stored.Flows {
+		got["flows"] = append(got["flows"], f.ID+" "+f.String())
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("analysis.json: %+v, want %+v", got, want)
 	}
 	r, err := pipeline.Read(dirs[0])
 	if err != nil {

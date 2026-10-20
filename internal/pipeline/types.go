@@ -3,6 +3,8 @@ package pipeline
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -46,13 +48,65 @@ type Source struct {
 	Supports string `json:"supports"` // the claim of the text it backs
 }
 
-// Analysis is the brief taken apart.
+// Analysis is the brief taken apart, with the ids the model gave its functionalities and flows.
 type Analysis struct {
-	Personas        []string `json:"personas"`
-	Functionalities []string `json:"functionalities"`
-	Flows           []string `json:"flows"`
-	Constraints     []string `json:"constraints"`
-	Questions       []string `json:"questions"`
+	Personas        []Persona       `json:"personas"`
+	Functionalities []Functionality `json:"functionalities"`
+	Flows           []Flow          `json:"flows"`
+	Constraints     []string        `json:"constraints"`
+	Questions       []string        `json:"questions"`
+}
+
+// Persona is one user the analysis names.
+type Persona struct {
+	Name       string   `json:"name"`
+	Role       string   `json:"role"`
+	Goals      []string `json:"goals"`
+	PainPoints []string `json:"pain_points"`
+}
+
+// Functionality is one thing the product does; Priority is must, should or could.
+type Functionality struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Priority    string `json:"priority"`
+}
+
+// Flow is one path a persona takes through the product, step by step.
+type Flow struct {
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Steps []string `json:"steps"`
+}
+
+// String is p in one line: "Name (role). Goals: a; b. Pain points: c", each list only when it has items.
+func (p Persona) String() string {
+	s := p.Name + " (" + p.Role + ")"
+	if len(p.Goals) > 0 {
+		s += ". Goals: " + strings.Join(p.Goals, "; ")
+	}
+	if len(p.PainPoints) > 0 {
+		s += ". Pain points: " + strings.Join(p.PainPoints, "; ")
+	}
+	return s
+}
+
+// String is f in one line, without its id: "[must] Name: description".
+func (f Functionality) String() string {
+	return "[" + f.Priority + "] " + f.Name + ": " + f.Description
+}
+
+// String is fl in one line, without its id: "Name: step → step".
+func (fl Flow) String() string { return fl.Name + ": " + strings.Join(fl.Steps, " → ") }
+
+// Lines is each of xs in one line.
+func Lines[T fmt.Stringer](xs []T) []string {
+	lines := make([]string, len(xs))
+	for i, x := range xs {
+		lines[i] = x.String()
+	}
+	return lines
 }
 
 // EpicOutline is one epic: its outline, the epics it depends on by id, and its stories once they are asked.
