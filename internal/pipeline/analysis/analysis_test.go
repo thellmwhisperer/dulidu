@@ -130,22 +130,15 @@ func TestFailures(t *testing.T) {
 		err          error
 		want         string
 	}{
-		"flows object":          {"flows", `{}`, nil, "flows: empty"},
-		"no priority":           {"functionalities", "## F1 List\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
-		"bad priority":          {"functionalities", "## F1 List\nPriority: won't\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
-		"no description":        {"functionalities", "## F1 List\nPriority: must", nil, "functionalities: a functionality lacks name or description"},
-		"empty questions":       {"questions", "", nil, "questions: empty"},
-		"null constraints":      {"constraints", "Nothing limits it.", nil, "constraints: empty"},
-		"constraints in blocks": {"constraints", "## Budget\n- Under $50k", nil, "constraints: empty"},
-		"persona without role":  {"personas", "## Rosa", nil, "personas: a persona lacks name or role"},
-		"role under goals":      {"personas", "## Rosa\n### Goals\nRole: seller\n- Sell", nil, "personas: a persona lacks name or role"},
-		"blank role":            {"personas", "## Rosa\nRole: \n### Goals\n- Sell", nil, "personas: a persona lacks name or role"},
-		"second without role":   {"personas", "## Rosa\nRole: seller\n\n## Tom\n### Pain points\n- Prices", nil, "personas: a persona lacks name or role"},
-		"lead persona":          {"personas", "Role: seller\n### Goals\n- Sell", nil, "personas: empty"},
-		"flow without steps":    {"flows", "## FL1 Listing\nScan, photo, publish.", nil, "flows: a flow lacks name or steps"},
-		"prose":                 {"personas", "Rosa sells bikes.", nil, "personas: empty"},
-		"json":                  {"personas", `[{"name":"Rosa","role":"seller"}]`, nil, "personas: empty"},
-		"agent":                 {"flows", "", errors.New("timed out"), "flows: timed out"},
+		"no priority":          {"functionalities", "## F1 List\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
+		"bad priority":         {"functionalities", "## F1 List\nPriority: won't\nA bike", nil, "functionalities: functionality List: priority not must, should or could"},
+		"no description":       {"functionalities", "## F1 List\nPriority: must", nil, "functionalities: a functionality lacks name or description"},
+		"persona without role": {"personas", "## Rosa", nil, "personas: a persona lacks name or role"},
+		"role under goals":     {"personas", "## Rosa\n### Goals\nRole: seller\n- Sell", nil, "personas: a persona lacks name or role"},
+		"blank role":           {"personas", "## Rosa\nRole: \n### Goals\n- Sell", nil, "personas: a persona lacks name or role"},
+		"second without role":  {"personas", "## Rosa\nRole: seller\n\n## Tom\n### Pain points\n- Prices", nil, "personas: a persona lacks name or role"},
+		"flow without steps":   {"flows", "## FL1 Listing\nScan, photo, publish.", nil, "flows: a flow lacks name or steps"},
+		"agent":                {"flows", "", errors.New("timed out"), "flows: timed out"},
 	} {
 		dir, r := start(t)
 		calls := 0
@@ -170,6 +163,53 @@ func TestFailures(t *testing.T) {
 			got.Research == nil || got.Context != context || got.Logs["analysis"] == "" {
 			t.Errorf("%s: %+v", name, got)
 		}
+	}
+}
+
+// Answers without items in the requested list now produce an empty list, rather than failing the run.
+func TestEmptyListAnswers(t *testing.T) {
+	for name, c := range map[string]struct{ list, answer string }{
+		"flows object":          {"flows", `{}`},
+		"flows list":            {"flows", `[]`},
+		"empty questions":       {"questions", ""},
+		"null constraints":      {"constraints", "Nothing limits it."},
+		"constraints in blocks": {"constraints", "## Budget\n- Under $50k"},
+		"lead persona":          {"personas", "Role: seller\n### Goals\n- Sell"},
+		"prose":                 {"personas", "Rosa sells bikes."},
+		"json":                  {"personas", `[{"name":"Rosa","role":"seller"}]`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, r := start(t)
+			calls := 0
+			if err := Run(dir, r, step, func(string) (string, error) {
+				calls++
+				if names[calls-1] == c.list {
+					return c.answer, nil
+				}
+				return recorded(t, names[calls-1]), nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			got, err := pipeline.Read(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if calls != 5 || got.Analysis == nil || got.Report.Status != "done" || got.Report.Steps[2].Status != "passed" ||
+				got.Research == nil || got.Context != context || got.Logs["analysis"] == "" {
+				t.Fatalf("%d calls, run %+v", calls, got)
+			}
+			lists := map[string][]string{"personas": got.Analysis.Personas, "functionalities": got.Analysis.Functionalities,
+				"flows": got.Analysis.Flows, "constraints": got.Analysis.Constraints, "questions": got.Analysis.Questions}
+			for list, items := range lists {
+				if list == c.list {
+					if items == nil || len(items) != 0 {
+						t.Errorf("%s = %v, want an empty list", list, items)
+					}
+				} else if len(items) == 0 {
+					t.Errorf("%s lost its recorded items", list)
+				}
+			}
+		})
 	}
 }
 

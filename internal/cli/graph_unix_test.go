@@ -64,10 +64,13 @@ func TestRunGoesThroughTheWholeGraph(t *testing.T) {
 func TestRunFailsAtAnalysisWritingNothingLater(t *testing.T) {
 	log := runRepo(t, map[string]string{"rules.md": unique})
 	triageOn(t, `["market"]`, `[]`)
-	t.Setenv("FAKE_BAD", "flows")
+	t.Setenv("FAKE_FAIL", "flows")
 	code, _, errOut := dulidu(t, "run", "brief.md", "--attach", "rules.md")
 	if code != 1 || !strings.Contains(errOut, "failed at analysis: flows") {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	if !strings.Contains(errOut, "fake agent failed") {
+		t.Fatalf("analysis did not report the agent's failure: %q", errOut)
 	}
 	dir := runs(t)[0]
 	if got := read(t, log+".graph"); strings.Count(got, "\n") != 3 || strings.Contains(got, "constraints") {
