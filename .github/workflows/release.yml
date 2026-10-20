@@ -1,26 +1,147 @@
-name: Release
+name: release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Version tag
-        required: true
-        type: string
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
 
 jobs:
-  release:
+  # AUTO_MERGE_TOKEN, not GITHUB_TOKEN: a release PR opened with GITHUB_TOKEN
+  # starts no workflow, so its checks never report.
+  release-please:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          ref: ${{ github.ref }}
-      - uses: actions/setup-go@v5
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.AUTO_MERGE_TOKEN }}
+
+  build-and-upload:
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - run: make release TAG="$RELEASE_TAG"
+
+      - name: Build archive
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          COMMIT="$(git rev-parse --short=7 HEAD)"
+          CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+            go build -ldflags "-X github.com/thellmwhisperer/dulidu/internal/buildinfo.Version=${TAG} -X github.com/thellmwhisperer/dulidu/internal/buildinfo.Commit=${COMMIT} -X github.com/thellmwhisperer/dulidu/internal/buildinfo.Date=${DATE}" \
+            -o dist/dulidu ./cmd/dulidu
+          ARCHIVE="dist/dulidu-${TAG}-${GOOS}-${GOARCH}.tar.gz"
+          tar -C dist -czf "$ARCHIVE" dulidu
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Upload release asset
+        env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release upload "$TAG" "$ARCHIVE" --clobber
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: archive-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ env.ARCHIVE }}
+
+  checksums:
+    runs-on: ubuntu-latest
+    needs: [release-please, build-and-upload]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: cd dist && sha256sum dulidu-* > ../checksums.txt
+
+      - name: Upload checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release upload "$TAG" checksums.txt --clobber
+
+  # Never --latest=true: marking a release latest is a person's decision.
+  finalize:
+    runs-on: ubuntu-latest
+    needs:
+      - release-please
+      - build-and-upload
+      - checksums
+    if: |
+      !cancelled() &&
+      needs.release-please.result == 'success' &&
+      needs.build-and-upload.result == 'success' &&
+      needs.checksums.result == 'success' &&
+      needs.release-please.outputs.release_created == 'true'
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release edit "$TAG" --draft=false --prerelease=false
+
+  # The real artefact: the release just published, installed by install.sh, must answer its own tag.
+  answers:
+    needs: [release-please, finalize]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Install the release and ask its version
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          DULIDU_PREFIX: ${{ runner.temp }}/bin
+        run: |
+          set -euo pipefail
+          sh install.sh --version "$TAG"
+          version="$("$DULIDU_PREFIX/dulidu" --version)"
+          set -- $version
+          [ "$1" = dulidu ] && [ "$2" = "$TAG" ]

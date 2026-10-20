@@ -183,4 +183,4 @@ PDF extraction requires `pdftotext` (`brew install poppler`, `apt install popple
 
 `update` leaves development builds untouched. Before building, `release` checks that an existing tag on `origin` points to the current commit. Publication uses `origin` even if `GH_REPO` is set.
 
-Develop with `make test lint`; `sh scripts/readme-check.sh` replays the first run and `sh scripts/leak-scan.sh README.md docs/` checks the docs for paths, addresses and tokens. `make dist TAG=vX.Y.Z` builds assets without publishing, and `make release TAG=vX.Y.Z` publishes them. macOS and Linux only.
+Develop with `make test lint`; `sh scripts/readme-check.sh` replays the first run and `sh scripts/leak-scan.sh README.md docs/` checks the docs for paths, addresses and tokens. `make dist TAG=vX.Y.Z` builds assets without publishing, and `make release TAG=vX.Y.Z` publishes them. On main, release-please keeps a release PR open; merging it tags the next version and publishes its assets and `checksums.txt`. macOS and Linux only.
