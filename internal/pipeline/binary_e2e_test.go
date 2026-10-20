@@ -225,3 +225,96 @@ func TestBinarySpecLikeThePrototype(t *testing.T) {
 		t.Errorf("the open-questions prompt is not the brief and the named research alone:\n%s", questions)
 	}
 }
+
+// TestBinaryTicketsCarryTheirStory runs the built dulidu, piped, on stories US1 (a feature with two use cases and
+// one invariant) and US2 (a fix with no invariants and one non-goal), and an analysis with three constraints: each
+// ticket is filled from its own story, the two share no line but headings, empty lists and the rollback, and the
+// stories prompt asks for the prototype's size.
+func TestBinaryTicketsCarryTheirStory(t *testing.T) {
+	bin := binary(t)
+	repo := realTempDir(t)
+	t.Setenv("HOME", t.TempDir())
+	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(binaryRead(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	scratch := t.TempDir()
+	answer := func(name, body string) string {
+		path := filepath.Join(scratch, name)
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	constraints := []string{"The kiln fires once a week, on Friday at 6 pm", "Bookings are free: members pay a monthly fee",
+		"A member books at most two hours a week"}
+	recorded := func(name string) string { return filepath.Join(binaryExample, "answers", name) }
+	var answers []string
+	for _, name := range []string{"02-triage.md", "03-research-business.md", "04-research-users.md", "05-research-market.md",
+		"06-research-technical.md", "07-research-project.md", "08-analysis-personas.md", "09-analysis-functionalities.md",
+		"10-analysis-flows.md"} {
+		answers = append(answers, recorded(name))
+	}
+	answers = append(answers,
+		answer("constraints.md", "- "+strings.Join(constraints, "\n- ")+"\n"),
+		recorded("12-analysis-questions.md"), recorded("13-epics-outlines.md"),
+		answer("stories-E1.md", "## US1 Book a free wheel for an hour\nType: feature\nFunctionalities: F1\n"+
+			"As Ana I want to book a free wheel so that one waits for me\n"+
+			"### Acceptance\n- Given wheel 2 free at 19:00, when Ana books it, then it is hers from 19:00 to 20:00\n"+
+			"### First test\nWrite a test that books a free wheel at 19:00 and expects it held until 20:00.\n"+
+			"### Use cases\n- Ana books wheel 2 at 19:00 on Tuesday and finds it waiting\n"+
+			"- Luis books wheel 1 at 10:00 on Saturday before his class\n"+
+			"### Invariants\n- "+constraints[1]+"\n"),
+		answer("stories-E2.md", "## US2 Fire pieces dropped at 17:59 on Friday\nType: fix\nFunctionalities: F2\n"+
+			"As Ana I want a piece dropped at 17:59 on Friday fired that week, not the next\n"+
+			"### Acceptance\n- Given a piece dropped off on Friday at 17:59, when the kiln fires, then the piece is in that firing\n"+
+			"### First test\nWrite a test that drops a piece off at 17:59 on Friday and expects it in that week's firing.\n"+
+			"### Non-goals\n- Moving the firing day\n"))
+	replay := fakeReplay(t, answers)
+	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
+		cmd := exec.Command(bin, args...)
+		cmd.Dir, cmd.Stdin = repo, strings.NewReader("")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("dulidu %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
+	if len(dirs) != 1 {
+		t.Fatalf("run folders: %v", dirs)
+	}
+	one := binaryRead(t, filepath.Join(dirs[0], "tickets", "1.md"))
+	two := binaryRead(t, filepath.Join(dirs[0], "tickets", "2.md"))
+	shared := map[string]bool{}
+	for _, line := range strings.Split(one, "\n") {
+		shared[line] = true
+	}
+	for _, line := range strings.Split(two, "\n") {
+		if shared[line] && line != "" && line != "- None." && line != "Revert the PR." && !strings.HasPrefix(line, "#") {
+			t.Errorf("tickets 1 and 2 share the line %q:\n%s\n%s", line, one, two)
+		}
+	}
+	if !regexp.MustCompile(`(?m)^Type: fix$`).MatchString(two) {
+		t.Errorf("ticket 2 is not a fix:\n%s", two)
+	}
+	section := func(ticket, name string) string {
+		_, s, _ := strings.Cut(ticket, "\n## "+name+"\n")
+		s, _, _ = strings.Cut(s, "\n## ")
+		return s
+	}
+	if got, want := strings.TrimSpace(section(one, "Invariants")), "- "+constraints[1]; got != want {
+		t.Errorf("ticket 1's invariants are %q, want %q", got, want)
+	}
+	evidence := section(one, "Evidence (fix / ops)")
+	for _, want := range []string{"- Ana books wheel 2 at 19:00 on Tuesday and finds it waiting\n",
+		"- Luis books wheel 1 at 10:00 on Saturday before his class\n"} {
+		if !strings.Contains(evidence, want) {
+			t.Errorf("ticket 1's evidence lacks %q:\n%s", want, one)
+		}
+	}
+	// The stories call for E1 is the fourteenth: triage, five research dimensions, five lists, the outlines.
+	if prompt := binaryRead(t, filepath.Join(replay, "prompt-14")); !strings.Contains(prompt, "100-200 lines") {
+		t.Errorf("the stories prompt does not ask for the story's size:\n%s", prompt)
+	}
+}
