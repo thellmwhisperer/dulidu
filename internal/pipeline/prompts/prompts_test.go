@@ -82,20 +82,29 @@ func TestResearchPromptsAskForTextAndSources(t *testing.T) {
 	}
 }
 
-func TestAnalysisPromptsCarryTheListsSoFar(t *testing.T) {
-	for i, step := range []string{"p09-analysis-personas", "p10-analysis-functionalities", "p11-analysis-flows",
+// The five analysis prompts carry the same context, as the prototype's buildSectionPrompt: the brief and the named
+// research, and none of the lists asked before them.
+func TestAnalysisPromptsCarryTheSameContext(t *testing.T) {
+	var context string
+	for _, step := range []string{"p09-analysis-personas", "p10-analysis-functionalities", "p11-analysis-flows",
 		"p12-analysis-constraints", "p13-analysis-questions"} {
 		got, err := Render(step, sample)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(got, sample["Input"].(string)) || !strings.Contains(got, sample["Research"].(string)) {
-			t.Errorf("%s lacks contexto.md or research.json:\n%s", step, got)
+			t.Errorf("%s lacks contexto.md or the research:\n%s", step, got)
 		}
-		for j, key := range []string{"Personas", "Functionalities", "Flows", "Constraints"} {
-			if has := strings.Contains(got, sample[key].(string)); has != (j < i) {
-				t.Errorf("%s carries %s: %v, want %v:\n%s", step, key, has, j < i, got)
+		for _, key := range []string{"Personas", "Functionalities", "Flows", "Constraints"} {
+			if strings.Contains(got, sample[key].(string)) {
+				t.Errorf("%s carries %s:\n%s", step, key, got)
 			}
+		}
+		_, own, _ := strings.Cut(got, "Analyze this project and provide your extraction.")
+		if context == "" {
+			context = own
+		} else if own != context {
+			t.Errorf("%s's context differs from p09's:\n%s", step, own)
 		}
 	}
 }

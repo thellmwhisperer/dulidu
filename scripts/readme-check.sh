@@ -1,14 +1,14 @@
 #!/bin/sh
 # readme-check.sh runs the $ lines of README.md's first-run block, printing each and its output, in a new git
-# repository holding the recorded example's brief and attachments, against a fresh build, with a claude that
-# replays the example's recorded answers in order: no network. It fails unless the run folder's spec.md, tickets/,
+# repository named clay-corner holding the recorded example's brief and attachments, against a fresh build, with a
+# claude that replays the example's recorded answers in order: no network. It fails unless the run folder's spec.md, tickets/,
 # plan.json and brief-diseno.md are exactly docs/example-run/'s files.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 example=$root/internal/pipeline/testdata/run-example
 tmp=$(mktemp -d /tmp/dulidu-readme.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
-mkdir "$tmp/bin" "$tmp/home" "$tmp/work"
+mkdir "$tmp/bin" "$tmp/home" "$tmp/clay-corner"
 (cd "$root" && go build -o "$tmp/bin/dulidu" ./cmd/dulidu)
 cat > "$tmp/bin/claude" <<'EOF'
 #!/bin/sh
@@ -22,8 +22,8 @@ awk 'BEGIN { printf "{\"type\":\"result\",\"result\":\"" }
 END { print "\"}" }' "$f"
 EOF
 chmod +x "$tmp/bin/claude"
-cp "$example/brief.md" "$example/one.pdf" "$example/one.png" "$tmp/work"
-git -C "$tmp/work" init -q
+cp "$example/brief.md" "$example/one.pdf" "$example/one.png" "$tmp/clay-corner"
+git -C "$tmp/clay-corner" init -q
 export PATH="$tmp/bin:$PATH" HOME="$tmp/home" REPLAY_ANSWERS="$example/answers" REPLAY_COUNT="$tmp/count"
 
 awk '/^## First run/ { on = 1 } on && /^```/ { if (++fence == 2) exit; next } on && fence == 1 && sub(/^\$ /, "")' \
@@ -31,11 +31,11 @@ awk '/^## First run/ { on = 1 } on && /^```/ { if (++fence == 2) exit; next } on
 [ -s "$tmp/commands" ] || { echo "readme-check: no \$ lines in README.md's first-run block" >&2; exit 1; }
 while IFS= read -r c; do
   printf '$ %s\n' "$c"
-  (cd "$tmp/work" && sh -c "$c") < /dev/null > "$tmp/out" 2>&1 || { cat "$tmp/out"; echo "readme-check: failed: $c" >&2; exit 1; }
+  (cd "$tmp/clay-corner" && sh -c "$c") < /dev/null > "$tmp/out" 2>&1 || { cat "$tmp/out"; echo "readme-check: failed: $c" >&2; exit 1; }
   cat "$tmp/out"
 done < "$tmp/commands"
 
-set -- "$tmp"/work/.dulidu/runs/*
+set -- "$tmp"/clay-corner/.dulidu/runs/*
 [ $# -eq 1 ] && [ -d "$1" ] || { echo "readme-check: want one run folder, got $*" >&2; exit 1; }
 (cd "$1" && find spec.md tickets plan.json brief-diseno.md -type f | sort) > "$tmp/got"
 (cd "$root/docs/example-run" && find . -type f | sed 's|^\./||' | sort) > "$tmp/want"

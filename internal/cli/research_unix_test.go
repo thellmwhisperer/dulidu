@@ -204,8 +204,9 @@ func TestRunWithNoDimensionsAsksAllFiveDimensions(t *testing.T) {
 		if research.Dimensions[i].Name != name || len(research.Dimensions[i].Sources) == 0 {
 			t.Errorf("dimension %d: %+v", i, research.Dimensions[i])
 		}
-		if !strings.Contains(read(t, filepath.Join(dir, "spec.md")), "### "+name+"\n") {
-			t.Errorf("spec.md lacks research section %s", name)
+		title := []string{"Business Context", "Users & Personas", "Market & Competition", "Technical Landscape", "Project Scope"}[i]
+		if !strings.Contains(read(t, filepath.Join(dir, "spec.md")), "### "+title+"\n") {
+			t.Errorf("spec.md lacks research section %s, %s", name, title)
 		}
 	}
 	var report reportFile

@@ -72,7 +72,7 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 	if !found {
 		t.Fatalf("spec.md lacks research: %s", r.Spec)
 	}
-	researchSpec, _, _ = strings.Cut(researchSpec, "## Personas\n")
+	researchSpec, _, _ = strings.Cut(researchSpec, "## Analysis\n")
 	if strings.Count(researchSpec, "### ") != 5 || strings.Contains(researchSpec, "- None") {
 		t.Errorf("spec.md needs five research sections:\n%s", researchSpec)
 	}
@@ -93,7 +93,8 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 			t.Errorf("research call %d must ask %s exactly once in order", i+1, name)
 		}
 		_, log, _ = strings.Cut(log, binaryRead(t, answers[i+1])+"\n\n")
-		if !strings.Contains(researchSpec, "### "+name+"\n\nFinding for "+name+".") {
+		title := []string{"Business Context", "Users & Personas", "Market & Competition", "Technical Landscape", "Project Scope"}[i]
+		if !strings.Contains(researchSpec, "### "+title+"\n\nFinding for "+name+".") {
 			t.Errorf("spec.md lacks the %s finding:\n%s", name, researchSpec)
 		}
 	}

@@ -45,10 +45,10 @@ func recorded() pipeline.Run {
 		}}
 }
 
-// The recorded run's folder, exported by testdata/export.go, has every file of testdata/golden byte for byte, and no
-// other ticket.
+// The recorded run's folder, in a repository folder named bikeswap and exported by testdata/export.go, has every file
+// of testdata/golden byte for byte, spec.md titled bikeswap, and no other ticket.
 func TestExportMatchesGolden(t *testing.T) {
-	dir := t.TempDir()
+	dir := filepath.Join(t.TempDir(), "bikeswap", ".dulidu", "runs", "20261016-120000")
 	if err := pipeline.Write(dir, recorded()); err != nil {
 		t.Fatal(err)
 	}
