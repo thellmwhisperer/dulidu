@@ -131,7 +131,7 @@ func each[T any](blocks []text.Block, item func(int, text.Block) (T, error)) ([]
 // then asks ask once per list, in lists' order, with its prompt on contexto.md, research.json and the lists before it.
 // When parsing every answer yields valid items, possibly none, the five are r.Analysis and the step passed. At the first
 // parsing or agent error, no later list is asked, r gets no analysis, the step and r fail, and Run's error names the list.
-// A functionality without an id gets F<n>, n its position, and the step's note says so.
+// A functionality without an id gets the first unused F<n> from its position onward; the step's note says so.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
 	step.Status, step.Started = "running", time.Now()
 	r.Report.Status, r.Report.Steps = "running", append(r.Report.Steps, step)
