@@ -44,7 +44,9 @@ func attach(cmd *cobra.Command, dir string) error {
 		return err
 	}
 	defer func() { _, _ = stty(strings.TrimSpace(saved)) }()
-	if _, err := stty("-icanon", "-echo"); err != nil {
+	// A zero-byte terminal read looks like EOF to Go and ends the key reader.
+	// Set the read minimum too: canonical mode can leave min/time at any value.
+	if _, err := stty("-icanon", "-echo", "min", "1", "time", "0"); err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
