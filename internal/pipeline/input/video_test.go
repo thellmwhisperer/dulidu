@@ -123,13 +123,13 @@ func TestPackageTranscribesRealSpeech(t *testing.T) {
 	}
 }
 
-func TestPackageRefusesAVideoOver30MinutesBeforeAnyFrame(t *testing.T) {
+func TestPackageReadsStartOfAVideoOver30MinutesAlongsideOtherAttachments(t *testing.T) {
 	calls := filepath.Join(t.TempDir(), "calls")
 	fakeBin(t, true, map[string]string{
 		"ffprobe": `case "$*" in *long.mp4*) d=1860.5 ;; *) d=3 ;; esac
 echo '{"streams":[{"codec_type":"video","width":64,"height":48},{"codec_type":"audio"}],"format":{"duration":"'$d'"}}'` + "\n",
-		"ffmpeg":      logged(calls),
-		"whisper-cli": logged(calls),
+		"ffmpeg":      logged(calls) + `for a; do f=$a; done; : > "$(printf "$f" 1)"`,
+		"whisper-cli": logged(calls) + "echo 'The beginning of the video.'\n",
 	})
 	dir := t.TempDir() // the fake ffprobe reads none of them
 	for _, name := range []string{"a.png", "a.mp4", "long.mp4"} {
@@ -138,11 +138,20 @@ echo '{"streams":[{"codec_type":"video","width":64,"height":48},{"codec_type":"a
 		}
 	}
 	_, context, asked, err := pack(t, load(t, filepath.Join(dir, "a.png"), filepath.Join(dir, "a.mp4"), filepath.Join(dir, "long.mp4")))
-	if err == nil || !strings.Contains(err.Error(), "long.mp4") || !strings.Contains(err.Error(), "over 1800 s") || context != "" {
-		t.Fatalf("want a refusal of a video over 1800 s, got %v", err)
+	if err != nil {
+		t.Fatalf("want the run to retain the start of the long video, got %v", err)
 	}
-	if _, err := os.Stat(calls); err == nil || len(asked) > 0 {
-		t.Errorf("frames, transcript or a description before the refusal: %d asks, %s", len(asked), read(t, calls))
+	_, section, _ := strings.Cut(context, "## long.mp4\n")
+	if strings.Count(context, "Read first 1800 s of 1860.5 s.") != 1 ||
+		!strings.Contains(section, "\nRead first 1800 s of 1860.5 s.\n") ||
+		!strings.Contains(section, "### Transcript\n\nThe beginning of the video.") {
+		t.Errorf("long video lacks its duration note or transcript:\n%s", context)
+	}
+	if len(asked) != 3 || strings.Count(context, "### Description\n\nA fake description.") != 3 {
+		t.Errorf("want descriptions of both videos and the image, got %d asks:\n%s", len(asked), context)
+	}
+	if got := read(t, calls); strings.Count(got, "whisper-cli") != 2 || strings.Count(got, "-t 1800") != 4 {
+		t.Errorf("want bounded frames and audio for both videos, got %s", got)
 	}
 }
 

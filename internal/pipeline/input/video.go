@@ -12,11 +12,11 @@ import (
 	"strings"
 )
 
-// maxVideo is the longest video input reads, in seconds: a longer one needs its own frame budget.
+// maxVideo is the longest video input reads, in seconds: only the start of a longer one is read.
 const maxVideo = 1800
 
 // probeVideo gives s, a video at path, its duration and whether it has sound, then marks it for frames. A video
-// over maxVideo is an error, before any frame.
+// over maxVideo gets a note saying how much of its start is read.
 func (s *section) probeVideo(path string) error {
 	if note := missing("ffmpeg", "ffprobe"); note != "" {
 		s.add(note)
@@ -40,7 +40,7 @@ func (s *section) probeVideo(path string) error {
 		return fmt.Errorf("ffprobe returned no duration: %w", err)
 	}
 	if d > maxVideo {
-		return fmt.Errorf("video of %.0f s is over %d s: a longer video needs its own frame budget", d, maxVideo)
+		s.add(fmt.Sprintf("Read first %d s of %g s.", maxVideo, d))
 	}
 	for _, st := range p.Streams {
 		s.audio = s.audio || st.CodecType == "audio"
@@ -59,7 +59,7 @@ func (s *section) frames(dir string, seconds int) error {
 	}
 	every := fmt.Sprintf("select='isnan(prev_selected_t)+gte(t-prev_selected_t,%d)'", seconds)
 	pattern := filepath.Join(strings.ReplaceAll(out, "%", "%%"), "%03d.jpg")
-	if _, err := tool("ffmpeg", "-v", "error", "-i", video, "-vf", every, "-fps_mode", "vfr", "-q:v", "2", pattern); err != nil {
+	if _, err := tool("ffmpeg", "-v", "error", "-t", strconv.Itoa(maxVideo), "-i", video, "-vf", every, "-fps_mode", "vfr", "-q:v", "2", pattern); err != nil {
 		return err
 	}
 	entries, err := os.ReadDir(out)
@@ -116,7 +116,7 @@ func transcribe(video string) (string, error) {
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
 	wav := filepath.Join(tmp, "audio.wav")
-	if _, err := tool("ffmpeg", "-v", "error", "-i", video, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav); err != nil {
+	if _, err := tool("ffmpeg", "-v", "error", "-t", strconv.Itoa(maxVideo), "-i", video, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav); err != nil {
 		return "", err
 	}
 	model := cmp.Or(os.Getenv("WHISPER_MODEL"), "models/ggml-base.en.bin")
