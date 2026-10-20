@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.8](https://github.com/thellmwhisperer/dulidu/compare/v0.1.7...v0.1.8) (2026-10-20)
+
+
+### Bug Fixes
+
+* Analysis and spec.md like the prototype: objects with ids, same context per list, named research sections ([e2a54f3](https://github.com/thellmwhisperer/dulidu/commit/e2a54f3cda8664208f90753ec71fa49d75e0cf06))
+* Analysis keeps the model's objects and ids; epics and tickets use those ids ([31f42ba](https://github.com/thellmwhisperer/dulidu/commit/31f42ba1b16cf707dcd3d2ac443e5f96fd45dc99))
+* dulidu runs still lists run folders written before the analysis objects ([24a3a98](https://github.com/thellmwhisperer/dulidu/commit/24a3a98692c886451c1facdd6ff34e4d95f472b3))
+
 ## [0.1.7](https://github.com/thellmwhisperer/dulidu/compare/v0.1.6...v0.1.7) (2026-10-20)
 
 
