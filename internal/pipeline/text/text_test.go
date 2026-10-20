@@ -58,3 +58,27 @@ func TestParseWholeFenceAndLeadProse(t *testing.T) {
 		t.Errorf("list-only form = %q", got)
 	}
 }
+
+func TestParsePreservesListBeforeHeadingOrField(t *testing.T) {
+	for _, marker := range []string{"-", "1."} {
+		for _, heading := range []bool{true, false} {
+			first := marker + " Launch in one city first"
+			answer := first + "\n## Notes\nDetails"
+			want := []Block{
+				{RawLines: []string{first}, Items: []string{"Launch in one city first"}},
+				{Name: "Notes", RawLines: []string{"Details"}, Prose: "Details"},
+			}
+			if !heading {
+				answer = first + "\nPriority: must"
+				want = []Block{{
+					RawLines: []string{first, "Priority: must"},
+					Items:    []string{"Launch in one city first"},
+					Fields:   map[string]string{"priority": "must"},
+				}}
+			}
+			if got := Parse(answer); !reflect.DeepEqual(got, want) {
+				t.Errorf("Parse(%q) = %+v, want %+v", answer, got, want)
+			}
+		}
+	}
+}
