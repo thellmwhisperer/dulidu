@@ -1,0 +1,12 @@
+{
+  "bootstrap-sha": "c40d4e05f51073f559772c52a8a697eb3b35cea6",
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": true,
+      "force-tag-creation": true
+    }
+  }
+}
