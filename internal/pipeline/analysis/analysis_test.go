@@ -60,16 +60,28 @@ func TestARecordedSetMakesFiveListsInOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := pipeline.Analysis{
-		Personas: []string{"Rosa (seller). Goals: List a red-74 bike. Pain points: Untagged bikes get rejected",
-			"Tom (buyer). Goals: Find a bike"},
-		Functionalities: []string{"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size"},
-		Flows:           []string{"Listing: Scan the tag → Add photos → Publish"},
-		Constraints:     []string{"Only bicycles tagged red-74 can be listed"},
-		Questions:       []string{"Who prints the red-74 tags?"},
+		Personas: []pipeline.Persona{{Name: "Rosa", Role: "seller", Goals: []string{"List a red-74 bike"},
+			PainPoints: []string{"Untagged bikes get rejected"}},
+			{Name: "Tom", Role: "buyer", Goals: []string{"Find a bike"}, PainPoints: []string{}}},
+		Functionalities: []pipeline.Functionality{
+			{ID: "F1", Name: "List a bike", Description: "Only red-74 bikes", Priority: "must"},
+			{ID: "F2", Name: "Search", Description: "Find bikes by size", Priority: "could"}},
+		Flows:       []pipeline.Flow{{ID: "FL1", Name: "Listing", Steps: []string{"Scan the tag", "Add photos", "Publish"}}},
+		Constraints: []string{"Only bicycles tagged red-74 can be listed"},
+		Questions:   []string{"Who prints the red-74 tags?"},
 	}
-	data := map[string]any{"Input": context, "Research": strings.TrimSuffix(string(research), "\n"),
-		"Personas": "- " + strings.Join(want.Personas, "\n- "), "Functionalities": "- " + strings.Join(want.Functionalities, "\n- "),
-		"Flows": "- " + strings.Join(want.Flows, "\n- "), "Constraints": "- " + strings.Join(want.Constraints, "\n- ")}
+	// Later calls read each list as one line per item, as before the items kept their fields and ids.
+	lines := map[string][]string{
+		"Personas": {"Rosa (seller). Goals: List a red-74 bike. Pain points: Untagged bikes get rejected",
+			"Tom (buyer). Goals: Find a bike"},
+		"Functionalities": {"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size"},
+		"Flows":           {"Listing: Scan the tag → Add photos → Publish"},
+		"Constraints":     want.Constraints,
+	}
+	data := map[string]any{"Input": context, "Research": strings.TrimSuffix(string(research), "\n")}
+	for key, items := range lines {
+		data[key] = "- " + strings.Join(items, "\n- ")
+	}
 	if len(asked) != 5 {
 		t.Fatalf("%d calls, want 5", len(asked))
 	}
@@ -119,7 +131,9 @@ func TestPersonaEmptyNestedListsAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if calls != 5 || got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Personas, []string{"Rosa (seller)"}) {
+	if calls != 5 || got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Personas,
+		[]pipeline.Persona{{Name: "Rosa", Role: "seller", Goals: []string{}, PainPoints: []string{}}}) ||
+		!slices.Equal(pipeline.Lines(got.Analysis.Personas), []string{"Rosa (seller)"}) {
 		t.Errorf("empty persona lists: %d calls, analysis %+v", calls, got.Analysis)
 	}
 }
@@ -198,11 +212,15 @@ func TestEmptyListAnswers(t *testing.T) {
 				got.Research == nil || got.Context != context || got.Logs["analysis"] == "" {
 				t.Fatalf("%d calls, run %+v", calls, got)
 			}
-			lists := map[string][]string{"personas": got.Analysis.Personas, "functionalities": got.Analysis.Functionalities,
-				"flows": got.Analysis.Flows, "constraints": got.Analysis.Constraints, "questions": got.Analysis.Questions}
+			lists := map[string][]string{"personas": pipeline.Lines(got.Analysis.Personas),
+				"functionalities": pipeline.Lines(got.Analysis.Functionalities), "flows": pipeline.Lines(got.Analysis.Flows),
+				"constraints": got.Analysis.Constraints, "questions": got.Analysis.Questions}
+			stored := map[string]bool{"personas": got.Analysis.Personas != nil,
+				"functionalities": got.Analysis.Functionalities != nil, "flows": got.Analysis.Flows != nil,
+				"constraints": got.Analysis.Constraints != nil, "questions": got.Analysis.Questions != nil}
 			for list, items := range lists {
 				if list == c.list {
-					if items == nil || len(items) != 0 {
+					if !stored[list] || len(items) != 0 {
 						t.Errorf("%s = %v, want an empty list", list, items)
 					}
 				} else if len(items) == 0 {
@@ -243,10 +261,38 @@ func TestFunctionalityDescriptionsPreserveBlockText(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Functionalities,
-				[]string{want, "[could] Search: Find records"}) {
+			if got.Analysis == nil || !reflect.DeepEqual(pipeline.Lines(got.Analysis.Functionalities),
+				[]string{want, "[could] Search: Find records"}) || got.Analysis.Functionalities[0].Description != c.want {
 				t.Fatalf("analysis.json lost description: %+v", got.Analysis)
 			}
 		})
+	}
+}
+
+// A functionality the model wrote without an id gets F<n> by its position, and the analysis step's note says so;
+// the ids the model wrote stay.
+func TestFunctionalityWithoutIDGetsItsPosition(t *testing.T) {
+	dir, r := start(t)
+	calls := 0
+	if err := Run(dir, r, step, func(string) (string, error) {
+		calls++
+		if calls == 2 {
+			return "## F7 List a bike\nPriority: must\nOnly red-74 bikes\n\n## Search\nPriority: could\nFind bikes by size", nil
+		}
+		return recorded(t, names[calls-1]), nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := pipeline.Read(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []pipeline.Functionality{{ID: "F7", Name: "List a bike", Description: "Only red-74 bikes", Priority: "must"},
+		{ID: "F2", Name: "Search", Description: "Find bikes by size", Priority: "could"}}
+	if got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Functionalities, want) {
+		t.Fatalf("functionalities: %+v", got.Analysis)
+	}
+	if s := got.Report.Steps[2]; s.Status != "passed" || !strings.Contains(s.Note, "Search") || !strings.Contains(s.Note, "F2") {
+		t.Errorf("analysis step %+v does not note the id it gave Search", s)
 	}
 }

@@ -103,8 +103,8 @@ func dropBadDependencies(es pipeline.Epics, notes *[]string) error {
 // Run plans r.Analysis, within r.Triage.Epics and, when positive, r.Triage.StoriesPerEpic, in dir, the run folder: it
 // adds step to r's report, running, and writes r; then asks ask for the outlines and, once their dependencies hold, for
 // each kept epic's stories. Past a cap it keeps the first, drops dependencies on cut epics and says so in the step's
-// note. Unknown dependencies and edges closing a cycle are dropped with a note. Functionalities are F1, F2... in the
-// analysis' order. When every check holds the epics with their stories are
+// note. Unknown dependencies and edges closing a cycle are dropped with a note. Functionalities go by the ids the
+// analysis gave them. When every check holds the epics with their stories are
 // r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
 // fail, the step "failed at epics: <check>", and Run's error says that and what broke it.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
@@ -139,17 +139,17 @@ func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string
 func plan(r *pipeline.Run, notes *[]string, ask func(prompt string) (string, error)) (pipeline.Epics, error) {
 	list := func(lines []string) string { return "- " + strings.Join(lines, "\n- ") }
 	var all, ids, musts, mustLines []string
-	for i, f := range r.Analysis.Functionalities {
-		id := fmt.Sprintf("F%d", i+1)
-		all = append(all, id+" "+f)
-		ids = append(ids, id)
-		if rest, ok := strings.CutPrefix(f, "[must] "); ok {
-			musts, mustLines = append(musts, id), append(mustLines, id+" "+rest)
+	for _, f := range r.Analysis.Functionalities {
+		all = append(all, "["+f.Priority+"] "+f.ID+" "+f.Name+": "+f.Description)
+		ids = append(ids, f.ID)
+		if f.Priority == "must" {
+			musts, mustLines = append(musts, f.ID), append(mustLines, f.ID+" "+f.Name+": "+f.Description)
 		}
 	}
-	data := map[string]any{"Input": r.Context, "Personas": list(r.Analysis.Personas), "Functionalities": list(all),
-		"MustFunctionalities": list(mustLines), "Flows": list(r.Analysis.Flows), "Constraints": list(r.Analysis.Constraints),
-		"Epics": r.Triage.Epics, "Stories": r.Triage.StoriesPerEpic}
+	data := map[string]any{"Input": r.Context, "Personas": list(pipeline.Lines(r.Analysis.Personas)),
+		"Functionalities": list(all), "MustFunctionalities": list(mustLines), "Flows": list(pipeline.Lines(r.Analysis.Flows)),
+		"Constraints": list(r.Analysis.Constraints),
+		"Epics":       r.Triage.Epics, "Stories": r.Triage.StoriesPerEpic}
 	prompt, err := prompts.Render("p15-epics-outlines", data)
 	var answer string
 	if err == nil {

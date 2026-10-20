@@ -28,10 +28,14 @@ func start(t *testing.T) (string, *pipeline.Run) {
 		Context: context,
 		Triage: &pipeline.Triage{Complexity: "simple", Epics: 2, // Triage no longer chooses research dimensions.
 			Reasoning: "One kind of user.", StoriesPerEpic: 2},
-		Analysis: &pipeline.Analysis{Personas: []string{"Rosa (seller)", "Tom (buyer)"},
-			Functionalities: []string{"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size", "[must] Pay: Card at pickup"},
-			Flows:           []string{"Listing: Scan the tag → Publish"}, Constraints: []string{"Only bicycles tagged red-74 can be listed"},
-			Questions: []string{"Who prints the red-74 tags?"}}}
+		Analysis: &pipeline.Analysis{Personas: []pipeline.Persona{{Name: "Rosa", Role: "seller"}, {Name: "Tom", Role: "buyer"}},
+			Functionalities: []pipeline.Functionality{
+				{ID: "F1", Name: "List a bike", Description: "Only red-74 bikes", Priority: "must"},
+				{ID: "F2", Name: "Search", Description: "Find bikes by size", Priority: "could"},
+				{ID: "F3", Name: "Pay", Description: "Card at pickup", Priority: "must"}},
+			Flows:       []pipeline.Flow{{ID: "FL1", Name: "Listing", Steps: []string{"Scan the tag", "Publish"}}},
+			Constraints: []string{"Only bicycles tagged red-74 can be listed"},
+			Questions:   []string{"Who prints the red-74 tags?"}}}
 	dir := t.TempDir()
 	if err := pipeline.Write(dir, *r); err != nil {
 		t.Fatal(err)
@@ -62,7 +66,7 @@ func TestARecordedSetYieldsEpicsJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := map[string]any{"Input": context, "Personas": "- Rosa (seller)\n- Tom (buyer)",
-		"Functionalities":     "- F1 [must] List a bike: Only red-74 bikes\n- F2 [could] Search: Find bikes by size\n- F3 [must] Pay: Card at pickup",
+		"Functionalities":     "- [must] F1 List a bike: Only red-74 bikes\n- [could] F2 Search: Find bikes by size\n- [must] F3 Pay: Card at pickup",
 		"MustFunctionalities": "- F1 List a bike: Only red-74 bikes\n- F3 Pay: Card at pickup",
 		"Flows":               "- Listing: Scan the tag → Publish", "Constraints": "- Only bicycles tagged red-74 can be listed",
 		"Epics": 2, "Stories": 2}

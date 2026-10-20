@@ -19,10 +19,14 @@ func recorded() pipeline.Run {
 		Research: &pipeline.Research{Dimensions: []pipeline.Dimension{{Name: "users",
 			Text:    "Second-hand bike buyers want to see a bike before they pay for it.",
 			Sources: []pipeline.Source{{URL: "https://example.com/bike-buyers", Title: "Bike buyers survey", Supports: "buyers want to see a bike before they pay"}}}}},
-		Analysis: &pipeline.Analysis{Personas: []string{"Rosa (seller)", "Tom (buyer)"},
-			Functionalities: []string{"[must] List a bike: Only red-74 bikes", "[could] Search: Find bikes by size", "[must] Pay: Card at pickup"},
-			Flows:           []string{"Listing: Scan the tag → Publish"}, Constraints: []string{"Only bicycles tagged red-74 can be listed"},
-			Questions: []string{"Who prints the red-74 tags?"}},
+		Analysis: &pipeline.Analysis{Personas: []pipeline.Persona{{Name: "Rosa", Role: "seller"}, {Name: "Tom", Role: "buyer"}},
+			Functionalities: []pipeline.Functionality{
+				{ID: "F1", Name: "List a bike", Description: "Only red-74 bikes", Priority: "must"},
+				{ID: "F2", Name: "Search", Description: "Find bikes by size", Priority: "could"},
+				{ID: "F3", Name: "Pay", Description: "Card at pickup", Priority: "must"}},
+			Flows:       []pipeline.Flow{{ID: "FL1", Name: "Listing", Steps: []string{"Scan the tag", "Publish"}}},
+			Constraints: []string{"Only bicycles tagged red-74 can be listed"},
+			Questions:   []string{"Who prints the red-74 tags?"}},
 		Epics: pipeline.Epics{
 			{ID: "E1", Title: "List a red-74 bike end-to-end", Text: "A seller lists a tagged bike.", DependsOn: []string{},
 				Stories: []pipeline.Story{{ID: "US1", Epic: "E1", Title: "Reject a bike without a red-74 tag",

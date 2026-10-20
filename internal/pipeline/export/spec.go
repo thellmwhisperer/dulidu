@@ -59,11 +59,11 @@ func list(items []string) string {
 	return "- " + strings.Join(items, "\n- ") + "\n"
 }
 
-// functionalities is a's functionalities with their ids, F1, F2... in order, as the epics step numbers them.
+// functionalities is a's functionalities, each led by its id.
 func functionalities(a pipeline.Analysis) []string {
 	fs := make([]string, len(a.Functionalities))
 	for i, f := range a.Functionalities {
-		fs[i] = fmt.Sprintf("F%d %s", i+1, f)
+		fs[i] = f.ID + " " + f.String()
 	}
 	return fs
 }
@@ -86,8 +86,8 @@ func spec(r pipeline.Run, nums map[string][]int) string {
 		}
 		parts = append(parts, "### "+d.Name+"\n", strings.TrimSpace(d.Text)+"\n", "Sources:\n", list(sources))
 	}
-	parts = append(parts, "## Personas\n", list(a.Personas), "## Functionalities\n", list(functionalities(*a)),
-		"## Flows\n", list(a.Flows), "## Constraints\n", list(a.Constraints), "## Open questions\n", list(a.Questions),
+	parts = append(parts, "## Personas\n", list(pipeline.Lines(a.Personas)), "## Functionalities\n", list(functionalities(*a)),
+		"## Flows\n", list(pipeline.Lines(a.Flows)), "## Constraints\n", list(a.Constraints), "## Open questions\n", list(a.Questions),
 		"## Epics\n")
 	for _, e := range r.Epics {
 		deps := "none"
