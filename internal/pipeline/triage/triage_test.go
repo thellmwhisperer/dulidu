@@ -115,6 +115,8 @@ func TestFailures(t *testing.T) {
 		"empty":     {"{}", nil, "classification failed, moderate: invalid output"},
 		"malformed": {`{"complexity": "simple",`, nil, "classification failed, moderate: invalid output"},
 		"null":      {"null", nil, "classification failed, moderate: invalid output"},
+		"fractional epics": {"Complexity: simple\nEpics: 2.5", nil,
+			"classification failed, moderate: invalid output"},
 		"bad complexity": {`{"complexity":"huge","epics":1,"reasoning":"Small."}`,
 			nil, "classification failed, moderate: invalid output"},
 		"agent": {"", errors.New("timed out"), "classification failed, moderate: timed out"},
