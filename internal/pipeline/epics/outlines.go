@@ -75,10 +75,37 @@ func outlines(answer string) (pipeline.Epics, error) {
 	return es, nil
 }
 
+// dropBadDependencies adds edges in outline order, recording each rejected edge in notes.
+func dropBadDependencies(es pipeline.Epics, notes *[]string) error {
+	dependencies := make([][]string, len(es))
+	for i := range es {
+		dependencies[i], es[i].DependsOn = es[i].DependsOn, es[i].DependsOn[:0:0]
+	}
+	if err := es.Validate(); err != nil { // Duplicate ids still fail before any repair.
+		return err
+	}
+	// ponytail: validate each edge for these small epic graphs; use incremental reachability if they grow large.
+	for i := range es {
+		for _, id := range dependencies[i] {
+			es[i].DependsOn = append(es[i].DependsOn, id)
+			if err := es.Validate(); err != nil {
+				es[i].DependsOn = es[i].DependsOn[:len(es[i].DependsOn)-1]
+				note := "dropped dependency " + es[i].ID + " on " + id
+				if strings.HasPrefix(err.Error(), "cycle:") {
+					note += ": cycle"
+				}
+				*notes = append(*notes, note)
+			}
+		}
+	}
+	return nil
+}
+
 // Run plans r.Analysis, within r.Triage.Epics and, when positive, r.Triage.StoriesPerEpic, in dir, the run folder: it
 // adds step to r's report, running, and writes r; then asks ask for the outlines and, once their dependencies hold, for
 // each kept epic's stories. Past a cap it keeps the first, drops dependencies on cut epics and says so in the step's
-// note. Functionalities are F1, F2... in the analysis' order. When every check holds the epics with their stories are
+// note. Unknown dependencies and edges closing a cycle are dropped with a note. Functionalities are F1, F2... in the
+// analysis' order. When every check holds the epics with their stories are
 // r.Epics and the step passed; at the first that fails nothing more is asked, r gets no epics, the step and r
 // fail, the step "failed at epics: <check>", and Run's error says that and what broke it.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
@@ -134,7 +161,7 @@ func plan(r *pipeline.Run, notes *[]string, ask func(prompt string) (string, err
 	}
 	es, err := outlines(answer)
 	if err == nil {
-		err = es.Validate() // duplicate id, unknown dependency or cycle
+		err = dropBadDependencies(es, notes)
 	}
 	if err != nil {
 		return nil, err

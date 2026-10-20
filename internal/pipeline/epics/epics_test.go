@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -110,6 +111,67 @@ func TestARecordedSetYieldsEpicsJSON(t *testing.T) {
 	}
 }
 
+func TestBadDependenciesAreDroppedWithNotes(t *testing.T) {
+	for name, c := range map[string]struct {
+		outlines string
+		depends  [][]string
+		note     string
+	}{
+		"unknown dependency": {outlines: `## E1 A
+Depends on: E9`, depends: [][]string{nil}, note: "dropped dependency E1 on E9"},
+		"cycle": {outlines: `## E1 A
+Depends on: E2
+
+## E2 B
+Depends on: E1`, depends: [][]string{{"E2"}, nil}, note: "dropped dependency E2 on E1: cycle"},
+		"self dependency": {outlines: `## E1 A
+Depends on: E1`, depends: [][]string{nil}, note: "dropped dependency E1 on E1: cycle"},
+		"longer cycle keeps later valid edge": {outlines: `## E1 A
+Depends on: E2
+
+## E2 B
+Depends on: E3
+
+## E3 C
+Depends on: E1, E4
+
+## E4 D
+Depends on: none`, depends: [][]string{{"E2"}, {"E3"}, {"E4"}, nil}, note: "dropped dependency E3 on E1: cycle"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, r := start(t)
+			r.Triage.Epics = len(c.depends)
+			story, err := os.ReadFile(filepath.Join("testdata", "stories-E1.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			instead := map[int]string{0: c.outlines}
+			for i := range c.depends {
+				instead[i+1] = strings.ReplaceAll(string(story), "Functionalities: F1", "Functionalities: F1, F3")
+			}
+			var asked []string
+			if err := Run(dir, r, step, recorded(t, &asked, instead)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := pipeline.Read(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(asked) != len(c.depends)+1 || len(got.Epics) != len(c.depends) {
+				t.Fatalf("calls %d, epics %+v", len(asked), got.Epics)
+			}
+			for i, want := range c.depends {
+				if !slices.Equal(got.Epics[i].DependsOn, want) {
+					t.Errorf("epic %s depends on %v, want %v", got.Epics[i].ID, got.Epics[i].DependsOn, want)
+				}
+			}
+			if s := got.Report.Steps[1]; s.Status != "passed" || s.Note != c.note || got.Report.Status != "done" {
+				t.Errorf("report: %+v, want note %q", got.Report, c.note)
+			}
+		})
+	}
+}
+
 func TestAFailingCheckStopsWithNoEpics(t *testing.T) {
 	two := `## US1 A
 Functionalities: F1
@@ -142,15 +204,6 @@ t`
 			check: "stories", says: "E1 has no story blocks", calls: 2},
 		"no acceptance": {instead: map[int]string{1: "## US1 A\nFunctionalities: F1\nA story\n### First test\nt"},
 			check: "stories", says: "lacks id, title, acceptance or first test", calls: 2},
-		"unknown dependency": {instead: map[int]string{0: `## E1 A
-Depends on: E9`},
-			check: "unknown dependency", says: "unknown dependency: E1 on E9", calls: 1},
-		"cycle": {instead: map[int]string{0: `## E1 A
-Depends on: E2
-
-## E2 B
-Depends on: E1`},
-			check: "cycle", says: "cycle: E1", calls: 1},
 		"duplicate epic": {instead: map[int]string{0: `## E1 A
 Depends on: E1
 
