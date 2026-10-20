@@ -96,9 +96,8 @@ func each(blocks []text.Block, line func(text.Block) (string, error)) ([]string,
 
 // Run analyses r.Context and r.Research in dir, the run folder: it adds step to r's report, running, and writes r;
 // then asks ask once per list, in lists' order, with its prompt on contexto.md, research.json and the lists before it.
-// When every answer is a list of valid items, possibly empty, the five are r.Analysis and the step passed; at the first
-// that is not, no later one is asked, r gets no analysis, the step and r fail, the step "failed at analysis: <list>",
-// and Run's error says that and why.
+// When parsing every answer yields valid items, possibly none, the five are r.Analysis and the step passed. At the first
+// parsing or agent error, no later list is asked, r gets no analysis, the step and r fail, and Run's error names the list.
 func Run(dir string, r *pipeline.Run, step pipeline.Step, ask func(prompt string) (string, error)) error {
 	step.Status, step.Started = "running", time.Now()
 	r.Report.Status, r.Report.Steps = "running", append(r.Report.Steps, step)
