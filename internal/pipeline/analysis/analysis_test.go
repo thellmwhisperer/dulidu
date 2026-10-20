@@ -172,3 +172,41 @@ func TestFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestFunctionalityDescriptionsPreserveBlockText(t *testing.T) {
+	for name, c := range map[string]struct {
+		body, want string
+	}{
+		"colon in prose": {"Priority: must\nExport account records.\nAccess: administrators only\nKeep the audit trail.",
+			"Export account records. Access: administrators only Keep the audit trail."},
+		"only colon prose": {"Priority: must\nAccess: administrators only", "Access: administrators only"},
+		"lists and sections": {"Priority: must\nExport account records.\n- Include IDs\n### Access\n1. Administrators only",
+			"Export account records. - Include IDs ### Access 1. Administrators only"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, r := start(t)
+			calls := 0
+			want := "[must] Export: " + c.want
+			if err := Run(dir, r, step, func(prompt string) (string, error) {
+				calls++
+				if calls == 2 {
+					return "## F1 Export\n" + c.body + "\n\n## F2 Search\nPriority: could\nFind records", nil
+				}
+				if calls > 2 && !strings.Contains(prompt, want) {
+					t.Errorf("call %d lost description: %s", calls, prompt)
+				}
+				return recorded(t, names[calls-1]), nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			got, err := pipeline.Read(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Functionalities,
+				[]string{want, "[could] Search: Find records"}) {
+				t.Fatalf("analysis.json lost description: %+v", got.Analysis)
+			}
+		})
+	}
+}
