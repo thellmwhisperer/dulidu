@@ -22,7 +22,7 @@ import (
 
 // Agent is the agent CLI dulidu runs: its harness, its model and effort, passed through untouched, and how long
 // it may take, 0 for agentTimeout. Log, when set, gets each line it writes as it writes it. Web gives claude
-// WebSearch and WebFetch.
+// WebSearch and WebFetch, and codex --search.
 type Agent struct {
 	Harness, Model, Effort string
 	Timeout                time.Duration
@@ -82,6 +82,9 @@ func (a Agent) argv(dir, final, prompt string) (argv []string, stdin string) {
 		return with(with(argv, a.Model, "--model", a.Model), a.Effort, "--effort", a.Effort), prompt
 	case "codex":
 		argv = []string{"codex", "exec", "--json", "-C", dir, "--sandbox", "workspace-write", "-o", final}
+		if a.Web {
+			argv = slices.Insert(argv, 1, "--search")
+		}
 		argv = with(argv, a.Model, "-c", "model="+strconv.Quote(a.Model))
 		argv = with(argv, a.Effort, "-c", "model_reasoning_effort="+strconv.Quote(a.Effort))
 	case "opencode":

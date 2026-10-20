@@ -1,10 +1,43 @@
 package run
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestResearchWebArgvKeepsOtherStepsUnchanged(t *testing.T) {
+	for harness, base := range map[string][]string{
+		"codex":    {"codex", "exec", "--json", "-C", "/d", "--sandbox", "workspace-write", "-o", "/f", "-c", `model="m"`, "-c", `model_reasoning_effort="high"`, "hi"},
+		"opencode": {"opencode", "run", "--pure", "--format", "json", "--dir", "/d", "-m", "m", "--variant", "high", "hi"},
+		"pi":       {"pi", "-p", "--mode", "json", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-session", "--model", "m", "--thinking", "high", "hi"},
+		"cursor":   {"cursor-agent", "-p", "--output-format", "stream-json", "--trust", "--force", "--workspace", "/d", "--model", "m", "hi"},
+		"hermes":   {"hermes", "--ignore-rules", "acp"},
+	} {
+		for _, web := range []bool{false, true} {
+			a := Agent{Harness: harness, Model: "m", Effort: "high", Web: web}
+			if harness == "cursor" {
+				a.Effort = ""
+			}
+			if harness == "hermes" {
+				a.Model, a.Effort = "", ""
+			}
+			want := base
+			if web && harness == "codex" {
+				want = append([]string{"codex", "--search"}, base[1:]...)
+			}
+			wantStdin := ""
+			if harness == "hermes" {
+				wantStdin = "hi"
+			}
+			args, stdin := a.argv("/d", "/f", "hi")
+			if !slices.Equal(args, want) || stdin != wantStdin {
+				t.Errorf("%s web=%v: argv %q, stdin %q; want %q, %q", harness, web, args, stdin, want, wantStdin)
+			}
+		}
+	}
+}
 
 func TestArgvPassesModelAndEffortUntouched(t *testing.T) {
 	for harness, want := range map[string]string{
