@@ -48,6 +48,11 @@ var lists = []struct {
 		return pipeline.Lines(a.Personas), err
 	}},
 	{"functionalities", "p10-analysis-functionalities", "Functionalities", func(a *pipeline.Analysis, bs []text.Block, notes *[]string) ([]string, error) {
+		used := map[string]bool{}
+		for _, b := range bs[1:] {
+			id, _ := idOf(b)
+			used[id] = true
+		}
 		var err error
 		a.Functionalities, err = each(bs[1:], func(i int, b text.Block) (pipeline.Functionality, error) {
 			f := pipeline.Functionality{Priority: b.Field("priority")}
@@ -63,6 +68,10 @@ var lists = []struct {
 			f.Description = strings.Join(lines, " ")
 			if f.ID == "" {
 				f.ID = fmt.Sprintf("F%d", i+1)
+				for n := i + 2; used[f.ID]; n++ {
+					f.ID = fmt.Sprintf("F%d", n)
+				}
+				used[f.ID] = true
 				*notes = append(*notes, "functionality "+f.Name+" had no id: "+f.ID)
 			}
 			return f, errors.Join(

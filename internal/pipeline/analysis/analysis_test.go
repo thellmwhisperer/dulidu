@@ -296,3 +296,37 @@ func TestFunctionalityWithoutIDGetsItsPosition(t *testing.T) {
 		t.Errorf("analysis step %+v does not note the id it gave Search", s)
 	}
 }
+
+func TestFunctionalityFallbackAvoidsModelAndAssignedIDs(t *testing.T) {
+	dir, r := start(t)
+	calls := 0
+	if err := Run(dir, r, step, func(string) (string, error) {
+		calls++
+		if calls == 2 {
+			return "## F2 Pay\nPriority: must\nPay for a bike\n\n" +
+				"## Search\nPriority: could\nFind bikes by size\n\n" +
+				"## Browse\nPriority: should\nBrowse bikes\n\n" +
+				"## F3 Save\nPriority: could\nSave a bike", nil
+		}
+		return recorded(t, names[calls-1]), nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := pipeline.Read(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []pipeline.Functionality{
+		{ID: "F2", Name: "Pay", Description: "Pay for a bike", Priority: "must"},
+		{ID: "F4", Name: "Search", Description: "Find bikes by size", Priority: "could"},
+		{ID: "F5", Name: "Browse", Description: "Browse bikes", Priority: "should"},
+		{ID: "F3", Name: "Save", Description: "Save a bike", Priority: "could"},
+	}
+	if got.Analysis == nil || !reflect.DeepEqual(got.Analysis.Functionalities, want) {
+		t.Fatalf("functionalities: %+v, want %+v", got.Analysis, want)
+	}
+	if s := got.Report.Steps[2]; s.Status != "passed" ||
+		s.Note != "functionality Search had no id: F4; functionality Browse had no id: F5" {
+		t.Errorf("analysis step does not record the assigned ids: %+v", s)
+	}
+}
