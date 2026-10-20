@@ -78,9 +78,6 @@ func functionalities(a pipeline.Analysis) []string {
 var sections = map[string]string{"business": "Business Context", "users": "Users & Personas",
 	"market": "Market & Competition", "technical": "Technical Landscape", "project": "Project Scope"}
 
-// cell is s fit for a Markdown table cell.
-func cell(s string) string { return strings.ReplaceAll(s, "|", `\|`) }
-
 // spec is spec.md, as the prototype's report: the project's name, research with its sources, the analysis' personas,
 // functionality table, flows, constraints and questions, and the epics with their tickets.
 func spec(r pipeline.Run, nums map[string][]int, project string) string {
@@ -109,7 +106,7 @@ func spec(r pipeline.Run, nums map[string][]int, project string) string {
 	}
 	table := "| ID | Priority | Name | Description |\n|----|----------|------|-------------|\n"
 	for _, f := range a.Functionalities {
-		table += "| " + cell(f.ID) + " | " + f.Priority + " | " + cell(f.Name) + " | " + cell(f.Description) + " |\n"
+		table += "| " + f.ID + " | " + f.Priority + " | " + f.Name + " | " + f.Description + " |\n"
 	}
 	if len(a.Functionalities) == 0 {
 		table = list(nil)
