@@ -2,16 +2,16 @@ schema: 1
 id: T-PONYTAIL-20261020-232129-1
 status: accepted
 category: alien_code
-title: "Deleted the `cell` helper, which escaped `|` in table cells. The functionality table row now joins f.ID, f.Priority, f.Name and f.Description directly. No input, test or golden contains a pipe, and the issue doesn't ask for escaping."
+title: "Deleting the `cell` helper let `|` in functionality names and descriptions split the spec.md table row."
 created_at: 2026-10-20
 incident:
-  pattern: "Deleted the `cell` helper, which escaped `|` in table cells. The functionality table row now joins f.ID, f.Priority, f.Name and f.Description directly. No input, test or golden contains a pipe, and the issue doesn't ask for escaping."
+  pattern: "Deleting the `cell` helper let `|` in functionality names and descriptions split the spec.md table row."
   what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
-  root_cause: "The coding agent wrote more than the issue needed."
+  root_cause: "The simplification treated table escaping as optional, overlooking issue 52's four-column table contract."
   rule_established: "Escape pipes in functionality Name and Description at the spec.md table boundary, as required by issue 52 contract 4; preserve analysis.json unchanged."
   evidence:
     - family: speculative_hardening
-      example: "Deleted the `cell` helper, which escaped `|` in table cells. The functionality table row now joins f.ID, f.Priority, f.Name and f.Description directly. No input, test or golden contains a pipe, and the issue doesn't ask for escaping.\nissue_sentence: `### Functionalities` as a table `| ID | Priority | Name | Description |`"
+      example: "Deleting the `cell` helper let `|` in functionality names and descriptions split the spec.md table row.\nissue_sentence: `### Functionalities` as a table `| ID | Priority | Name | Description |`"
       artifact: "internal/pipeline/export/spec.go"
 match:
   family: speculative_hardening
