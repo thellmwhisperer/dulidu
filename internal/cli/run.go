@@ -2,8 +2,10 @@ package cli
 
 import (
 	"cmp"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,13 +32,14 @@ import (
 // contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md, then
 // research.json, analysis.json, epics.json and screens.json, each its step, then the export: spec.md, tickets/, plan.json and
 // brief-diseno.md. The first step to fail stops the run. It prints contexto.md's path. On a terminal it runs in the
-// background instead, and attaches to it.
+// background instead, and attaches to it. With --follow it stays in the foreground and streams JSON events.
 func runCmd() *cobra.Command {
 	var attach []string
+	var follow bool
 	c := &cobra.Command{Use: "run <brief.md> [--attach <path>...]",
 		Short: "Package a brief and its attachments into contexto.md and take it to spec, tickets, plan and design brief",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (runErr error) {
 			in, err := input.Load(args[0], attach)
 			if err != nil {
 				return err
@@ -63,15 +66,23 @@ func runCmd() *cobra.Command {
 			runs := filepath.Join(root, ".dulidu", "runs")
 			var dir string
 			var a agent.Agent
+			var r pipeline.Run
+			var agentLog io.Writer
+			events := runEvents{}
+			if follow {
+				events.out = json.NewEncoder(cmd.OutOrStdout())
+			}
 			// ask runs a, the current step's agent, in dir.
 			ask := func(prompt string) (string, error) { return a.Run(dir, prompt, func(string) error { return nil }) }
 			background := os.Getenv(runEnv)
 			live := os.Stderr // a background run's stdout and stderr are its agent output, locked already
 			// next makes a the named step's agent, set by s, and is the step as report.json records it.
 			next := func(name string, s config.Step) pipeline.Step {
+				events.finish(r)
+				events.start(name)
 				step := c.Step(name)
 				step.Harness, step.Effort = cmp.Or(step.Harness, "claude"), s.Effort
-				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit, Log: live,
+				a = agent.Agent{Harness: step.Harness, Model: s.Model, Effort: s.Effort, Timeout: limit, Log: agentLog,
 					Web: name == "research"}
 				return step
 			}
@@ -83,7 +94,7 @@ func runCmd() *cobra.Command {
 					return err
 				}
 			}
-			if background == "" && terminal(cmd.OutOrStdout()) {
+			if !follow && background == "" && terminal(cmd.OutOrStdout()) {
 				return detach(cmd, dir)
 			}
 			if background == "" {
@@ -92,14 +103,31 @@ func runCmd() *cobra.Command {
 				}
 				defer func() { _ = live.Close() }()
 			}
+			agentLog = live
+			if follow {
+				agentLog = io.MultiWriter(live, &events)
+			}
 			now := time.Now()
 			step := c.Step("input")
 			step.Harness, step.Effort, step.Status, step.Started = cmp.Or(step.Harness, "claude"), c.Steps.Input.Effort, "running", now
-			r := pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
+			r = pipeline.Run{Report: pipeline.Report{Status: "running", Started: now, Steps: []pipeline.Step{step}}, Input: &in}
+			events.start("input")
+			defer func() {
+				events.finish(r)
+				status, code := r.Report.Status, 0
+				if runErr != nil {
+					status, code = "failed", 1
+				}
+				events.emit("run_end", "run", struct {
+					Status   string `json:"status"`
+					ExitCode int    `json:"exit_code"`
+				}{status, code})
+				runErr = errors.Join(runErr, events.err)
+			}()
 			if err := pipeline.Write(dir, r); err != nil {
 				return err
 			}
-			a = agent.Agent{Harness: step.Harness, Model: c.Steps.Input.Model, Effort: c.Steps.Input.Effort, Timeout: limit, Log: live}
+			a = agent.Agent{Harness: step.Harness, Model: c.Steps.Input.Model, Effort: c.Steps.Input.Effort, Timeout: limit, Log: agentLog}
 			var log strings.Builder
 			seconds := cmp.Or(c.VideoFrameSeconds, input.FrameSeconds)
 			r.Context, err = input.PackageEvery(dir, in, seconds, func(prompt string) (string, error) {
@@ -137,6 +165,8 @@ func runCmd() *cobra.Command {
 				err = design.Run(dir, &r, next("design", c.Steps.Design), ask)
 			}
 			if err == nil {
+				events.finish(r)
+				events.start("export")
 				r.Report.Status = "running"
 				r.Report.Steps = append(r.Report.Steps, pipeline.Step{Name: "export", Status: "running", Started: time.Now()})
 				err = export.Write(dir, &r)
@@ -152,9 +182,13 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if follow {
+				return nil
+			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), filepath.Join(dir, "contexto.md"))
 			return err
 		}}
+	c.Flags().BoolVar(&follow, "follow", false, "Stream every run event as JSON on stdout until the run ends")
 	c.Flags().StringArrayVar(&attach, "attach", nil, "a file that comes with the brief: pdf, docx, md, txt, json, png, jpg, webp, heic, mp4, mov or webm")
 	return c
 }
