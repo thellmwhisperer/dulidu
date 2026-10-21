@@ -40,7 +40,7 @@ func binaryLines(path string) int {
 	return strings.Count(string(b), "\n")
 }
 
-// binary is ./cmd/dulidu built with go build, once per test process.
+// binary is ./cmd/dulidu built with go build, once per test process; TestMain removes it.
 func binary(t *testing.T) string {
 	t.Helper()
 	coverage := os.Getenv("GOCOVERDIR")
