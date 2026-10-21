@@ -31,8 +31,7 @@ import (
 // runCmd is dulidu run: a new run folder in .dulidu/runs with the brief and its attachments in input/ and
 // contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md, then
 // research.json, analysis.json, epics.json and screens.json, each its step, then the export: spec.md, tickets/, plan.json and
-// brief-diseno.md. The first step to fail stops the run. It prints contexto.md's path. On a terminal it runs in the
-// background instead, and attaches to it. With --follow it stays in the foreground and streams JSON events.
+// brief-diseno.md. The first step to fail stops the run.
 func runCmd() *cobra.Command {
 	var attach []string
 	var follow bool

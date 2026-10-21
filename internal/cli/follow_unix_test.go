@@ -120,6 +120,7 @@ fi`, 1)
 			var message, tool, diagnostic, released, question, ended bool
 			agentEvents := 0
 			for line := range lines {
+				t.Logf("dulidu stdout: %s", line)
 				var e struct {
 					Type, Step string
 					TS         time.Time
@@ -153,6 +154,7 @@ fi`, 1)
 						if active != "research" || last.Name != "research" || last.Status != "running" {
 							t.Fatalf("live events arrived after research ended: %+v", report)
 						}
+						t.Logf("research report while agent events arrived: %s", last.Status)
 						if _, err := release.WriteString("continue\n"); err != nil {
 							t.Fatal(err)
 						}
