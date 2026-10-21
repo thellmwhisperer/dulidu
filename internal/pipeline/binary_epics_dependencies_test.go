@@ -53,7 +53,8 @@ func TestBinaryRunDropsBadDependencies(t *testing.T) {
 					answers[i] = path
 				}
 			}
-			answers = append(answers, filepath.Join(binaryExample, "answers", "15-epics-E2.md"))
+			// E3's stories come after E2's, before the design answers.
+			answers = slices.Insert(answers, len(answers)-len(binaryDesign), filepath.Join(binaryExample, "answers", "15-epics-E2.md"))
 			replay := fakeReplay(t, answers)
 			cmd := exec.Command(bin, "init")
 			cmd.Dir = repo
@@ -75,7 +76,7 @@ func TestBinaryRunDropsBadDependencies(t *testing.T) {
 				if runErr == nil || !strings.Contains(string(out), "duplicate epic: E2") {
 					t.Fatalf("duplicate epic: %v\n%s", runErr, out)
 				}
-				if r.Report.Status != "failed" || r.Epics != nil || binaryLines(filepath.Join(replay, "calls")) != len(answers)-3 {
+				if r.Report.Status != "failed" || r.Epics != nil || binaryLines(filepath.Join(replay, "calls")) != len(answers)-3-len(binaryDesign) {
 					t.Fatalf("duplicate must fail before stories: %+v", r.Report)
 				}
 				return

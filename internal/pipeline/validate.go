@@ -163,6 +163,9 @@ func (r Run) Validate() error {
 	if r.Epics != nil {
 		errs = append(errs, r.Epics.Validate())
 	}
+	for _, s := range r.Screens {
+		errs = append(errs, need(!blank(s.Name), "screens: a screen has no name"))
+	}
 	for id, s := range r.Tickets {
 		errs = append(errs, need(plain(id), "tickets: bad id "+id), s.Validate())
 	}

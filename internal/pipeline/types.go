@@ -137,6 +137,19 @@ type Story struct {
 	SplitTriggers   []string `json:"split_triggers,omitempty"`
 }
 
+// Screen is one screen of the product as the design step drew it: why it exists, its ASCII wireframe, its
+// components, how the user gets to and from it, its states as "<state>: <description>", and how it works for a user who
+// cannot rely on colour.
+type Screen struct {
+	Name          string   `json:"name"`
+	Purpose       string   `json:"purpose"`
+	Wireframe     string   `json:"wireframe"`
+	Components    []string `json:"components"`
+	Navigation    string   `json:"navigation"`
+	States        []string `json:"states"`
+	Accessibility string   `json:"accessibility"`
+}
+
 // Report is report.json: how the run and each of its steps went.
 type Report struct {
 	Status  string    `json:"status"`
@@ -167,6 +180,7 @@ type Run struct {
 	Research    *Research         // research.json
 	Analysis    *Analysis         // analysis.json
 	Epics       Epics             // epics.json
+	Screens     []Screen          // screens.json
 	Tickets     map[string]Story  // tickets/<id>.json
 	Spec        string            // spec.md
 	Plan        json.RawMessage   // plan.json, byte for byte

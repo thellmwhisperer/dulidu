@@ -27,8 +27,8 @@ func TestMain(m *testing.M) {
 
 // Model answers use plain-text blocks; only the agent transport wraps them in a structured result event.
 // fakeClaude answers the triage prompt with $FAKE_TRIAGE's line, a research prompt with a valid dimension and an
-// analysis list's or epics phase's prompt validly. Each call adds a line to $FAKE_LOG.<step>, the analysis and epics
-// ones to $FAKE_LOG.graph; the last research prompt is kept in $FAKE_LOG.research.prompt.
+// analysis list's, epics phase's or design phase's prompt validly. Each call adds a line to $FAKE_LOG.<step>, the
+// analysis, epics and design ones to $FAKE_LOG.graph; the last research prompt is kept in $FAKE_LOG.research.prompt.
 const fakeClaude = `#!/bin/sh
 prompt=$(cat)
 a=
@@ -39,6 +39,8 @@ case "$prompt" in
 *'Extract project constraints'*) a='- Teams of five' ;;
 *'Identify open questions'*) a='- Which calendar?' ;;
 *'who thinks about HOW'*) a='## E1 Sprints\nDepends on: none\nTeams plan sprints.' ;;
+*'maps a product into its screens'*) a='## Board\nA lead sees the sprint.' ;;
+*'creating screen skeletons'*) a='## Board\n### Components\n- Sprint list' ;;
 *'implementation-ready tickets'*) a='## S1 Plan a sprint\nFunctionalities: F1\nA lead plans a sprint.\n### Acceptance\n- The sprint shows up.\n### First test\nTestPlanSprint' ;;
 esac
 if [ -n "$a" ]; then
@@ -170,7 +172,7 @@ func TestBinaryRunNeverStopsAtTriage(t *testing.T) {
 			t.Errorf("step %s: %s", s.Name, s.Status)
 		}
 	}
-	if r.Report.Status != "done" || strings.Join(names, " ") != "input triage research analysis epics export" {
+	if r.Report.Status != "done" || strings.Join(names, " ") != "input triage research analysis epics design export" {
 		t.Errorf("dulidu run: status %s, steps %v, want done through the export", r.Report.Status, names)
 	}
 	if got := read(t, filepath.Join(dir, "triage.json")); strings.Contains(got, "missing_questions") || !strings.Contains(got, `"epics": 2`) {
@@ -232,8 +234,8 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	steps := r.Report.Steps
-	if r.Report.Status != "done" || len(steps) != 6 || steps[1].Name != "triage" || steps[2].Name != "research" ||
-		steps[3].Name != "analysis" || steps[4].Name != "epics" || steps[5].Name != "export" {
+	if r.Report.Status != "done" || len(steps) != 7 || steps[1].Name != "triage" || steps[2].Name != "research" ||
+		steps[3].Name != "analysis" || steps[4].Name != "epics" || steps[5].Name != "design" || steps[6].Name != "export" {
 		t.Fatalf("report.json: %+v", r.Report)
 	}
 	for _, s := range steps[1:] {
@@ -257,7 +259,7 @@ func TestThinTriageGoesOnToTheExport(t *testing.T) {
 	if strings.Contains(r.Context, "## Answers") {
 		t.Errorf("contexto.md has answers:\n%s", r.Context)
 	}
-	if lines(log+".graph") != 7 || r.Analysis == nil || len(r.Epics) != 1 || r.Spec == "" || len(r.Plan) == 0 ||
+	if lines(log+".graph") != 9 || r.Analysis == nil || len(r.Epics) != 1 || r.Spec == "" || len(r.Plan) == 0 ||
 		r.DesignBrief == "" {
 		t.Fatalf("the run did not reach export: %+v", r)
 	}

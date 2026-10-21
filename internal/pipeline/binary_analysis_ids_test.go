@@ -49,6 +49,7 @@ func TestBinaryAnalysisKeepsModelIDs(t *testing.T) {
 		recorded("11-analysis-constraints.md"), recorded("12-analysis-questions.md"), recorded("13-epics-outlines.md"),
 		answer("stories-E1.md", strings.Replace(binaryRead(t, recorded("14-epics-E1.md")), "Functionalities: F1", "Functionalities: F9", 1)),
 		answer("stories-E2.md", strings.Replace(binaryRead(t, recorded("15-epics-E2.md")), "Functionalities: F2", "Functionalities: F7", 1)))
+	answers = append(answers, binaryDesign...)
 	replay := fakeReplay(t, answers)
 	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
 		cmd := exec.Command(bin, args...)

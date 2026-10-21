@@ -1,5 +1,5 @@
-// Package export turns a run's research, analysis and epics into spec.md, tickets/<n>.md in the ten-point contract,
-// plan.json and brief-diseno.md, by code alone: the same run gives the same bytes.
+// Package export turns a run's research, analysis, epics and screens into spec.md, tickets/<n>.md in the ten-point
+// contract, plan.json and brief-diseno.md, by code alone: the same run gives the same bytes.
 package export
 
 import (
@@ -25,7 +25,7 @@ func Write(dir string, r *pipeline.Run) error {
 		return err
 	}
 	project := filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(abs))))
-	r.Spec, r.Plan, r.DesignBrief = spec(*r, nums, project), plan(r.Epics, nums), design(*r.Analysis)
+	r.Spec, r.Plan, r.DesignBrief = spec(*r, nums, project), plan(r.Epics, nums), design(r.Screens)
 	if err := pipeline.Write(dir, *r); err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ import (
 // $FAKE_LOG.prompt and answers with $FAKE_TRIAGE's line, else a valid plain-text triage, simple with no epics line, so
 // simple's cap of 3. The nth research prompt's call it appends to $FAKE_LOG.research, keeps its prompt in $FAKE_LOG.research.<n> and answers with $FAKE_RESEARCH/<n>'s line,
 // else a valid dimension. An analysis list's or epics phase's call it appends to $FAKE_LOG.graph, as the list or phase
-// and its arguments, and answers validly, failing the agent for the one named $FAKE_FAIL. Every other call is the
+// and its arguments, the design phases' as screens and screen, and answers validly, failing the agent for the one named $FAKE_FAIL. Every other call is the
 // input step's: it appends its arguments to $FAKE_LOG and describes any image the same.
 const fakeDescriber = `#!/bin/sh
 prompt=$(mktemp)
@@ -50,6 +50,8 @@ const fakeGraph = `case $(head -n 1 "$prompt") in
 *'Extract project constraints'*) list=constraints a='- Spain only' ;;
 *'Identify open questions'*) list=questions a='- Which payments?' ;;
 *'who thinks about HOW'*) list=outlines a='## E1 Listings\nDepends on: none\nBikes get listed.' ;;
+*'maps a product into its screens'*) list=screens a='## Listings\nA seller sees their bikes.' ;;
+*'creating screen skeletons'*) list=screen a='## Listings\n### Components\n- Bike list\n### States\n- Empty: no bike yet' ;;
 *'implementation-ready tickets'*) list=stories a='## S1 List a bike\nFunctionalities: F1\nA seller lists a bike.\n### Acceptance\n- The bike shows up.\n### First test\nTestListBike' ;;
 *) list= ;;
 esac

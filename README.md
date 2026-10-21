@@ -41,6 +41,7 @@ triage passed 0 min 00 s
 research passed 0 min 00 s
 analysis passed 0 min 00 s
 epics passed 0 min 00 s
+design passed 0 min 00 s
 export passed 0 min 00 s
 $ ls .dulidu/runs/*/ .dulidu/runs/*/tickets/
 .dulidu/runs/20261017-071309-1746844562/:
@@ -54,6 +55,7 @@ input
 plan.json
 report.json
 research.json
+screens.json
 spec.md
 tickets
 triage.json
@@ -122,7 +124,7 @@ exported files listed in `docs/example-run/`.
 ## What comes out
 
 The run folder `.dulidu/runs/<label>/` keeps the inputs in `input/`, `contexto.md`, each step's answer
-(`triage.json`, `research.json`, `analysis.json`, `epics.json`) and `report.json`, then the export, written by
+(`triage.json`, `research.json`, `analysis.json`, `epics.json`, `screens.json`) and `report.json`, then the export, written by
 code alone. Clay Corner's export is in [docs/example-run/](docs/example-run/):
 
 - [`spec.md`](docs/example-run/spec.md): titled with the repository folder's name, research in five named
@@ -130,8 +132,8 @@ code alone. Clay Corner's export is in [docs/example-run/](docs/example-run/):
   constraints, open questions and the epics with their tickets.
 - [`tickets/`](docs/example-run/tickets/): one ticket per story, `<n>.md`, in the ten-point contract.
 - [`plan.json`](docs/example-run/plan.json): each ticket's issue number and the tickets it depends on.
-- [`brief-diseno.md`](docs/example-run/brief-diseno.md): personas, flows, functionalities and constraints, for
-  design.
+- [`brief-diseno.md`](docs/example-run/brief-diseno.md): for a design tool, screen by screen: its purpose, an ASCII
+  wireframe, its components, navigation, states and accessibility.
 
 ## Handing a ticket on
 
@@ -158,7 +160,7 @@ The result is [PR #43](https://github.com/thellmwhisperer/dulidu/pull/43), merge
 dulidu init     # writes dulidu.yaml and ignores .dulidu/
 dulidu doctor   # checks git, the config layers, pdftotext and video tools
 dulidu doctor --agent # asks the configured agent to say OK and reports elapsed time
-dulidu run brief.md --attach notes.pdf --attach shot.png --attach clip.mp4 # writes contexto.md, triage.json, research.json, analysis.json, epics.json, then spec.md, tickets/, plan.json and brief-diseno.md
+dulidu run brief.md --attach notes.pdf --attach shot.png --attach clip.mp4 # writes contexto.md, triage.json, research.json, analysis.json, epics.json, screens.json, then spec.md, tickets/, plan.json and brief-diseno.md
 dulidu attach <label> # pipeline box and Agent box, scroll; q detaches, t folds tools, Tab moves focus; piped, one line per step
 dulidu status [label] # a run's label and status, one line per step; the newest run's without a label
 dulidu runs     # lists .dulidu/runs/ newest first: label, status, last step, started
@@ -179,7 +181,7 @@ After triage, `steps.research` is called once for each of business, users, marke
 
 A whole answer wrapped in a code fence is read as its inner text. Forms starting with a known key or `## ` heading ignore introductory prose; forms starting with list items keep those items. Research keeps its lead prose as content. Incomplete fences are not repaired.
 
-After research, `steps.analysis` asks for five plain-text lists: personas, functionalities, flows, constraints and questions. Each call receives the same brief and research context; the [analysis prompt templates](internal/pipeline/prompts/) define each answer's form. It writes `analysis.json`, still JSON: personas are objects with `name`, `role`, `goals` and `pain_points`; functionalities are objects with id, name, description and priority; flows are objects with id, name and steps; constraints and questions remain lists of strings. The model's functionality IDs carry through to epics, stories and tickets. A functionality without an ID gets the first unused `F<n>` starting at its position, recorded in the analysis step's `note` in `report.json`. Any list may be empty, stored as `[]`, with `- None.` in the corresponding `spec.md` section; the first invalid list stops the run with `failed at analysis: <list>`. Then `steps.epics` asks for plain-text epic outlines and, in one call per kept epic, plain-text stories. Each story needs an ID and title; its description, type, functionalities, acceptance criteria, first test, use cases, invariants, non-goals and split triggers may be absent. Each nonempty line indented by at least two spaces immediately after a list item or its continuation joins that item with one space, unless the line is another item, field or heading. An unindented line remains prose. A story without an ID or title stops the step. If a story names a functionality absent from the analysis, the step drops that ID and records a note such as `dropped functionality F9 from US2 in E1` in the epics step's `note` in `report.json`. If the agent returns more outlines than triage's epic count, or more stories than a positive `max_stories_per_epic`, the step keeps the first N of each list. It drops dependencies on unknown epic IDs and edges that would close a cycle, recording each dropped edge in the epics step's `note` in `report.json`. It also removes dependencies on discarded epics and records each epic or story cap in that note. Duplicate epic IDs still fail the step. Must functionalities without kept stories leave a note such as `uncovered must: F2, F5` in the epics step's `note` in `report.json`; if every must has a story, they add no note. It writes `epics.json`, still JSON; a failed check stops the run with `failed at epics: <check>`. Last, the export writes `spec.md`, `tickets/`, `plan.json` and `brief-diseno.md` by code alone. Tickets use each story's fields, default an absent type to `feature`, and show `- None.` for empty sections. A failed step writes nothing after it. `report.json` records every step; agent steps include their effective harness, model and effort, while export records its status without agent settings.
+After research, `steps.analysis` asks for five plain-text lists: personas, functionalities, flows, constraints and questions. Each call receives the same brief and research context; the [analysis prompt templates](internal/pipeline/prompts/) define each answer's form. It writes `analysis.json`, still JSON: personas are objects with `name`, `role`, `goals` and `pain_points`; functionalities are objects with id, name, description and priority; flows are objects with id, name and steps; constraints and questions remain lists of strings. The model's functionality IDs carry through to epics, stories and tickets. A functionality without an ID gets the first unused `F<n>` starting at its position, recorded in the analysis step's `note` in `report.json`. Any list may be empty, stored as `[]`, with `- None.` in the corresponding `spec.md` section; the first invalid list stops the run with `failed at analysis: <list>`. Then `steps.epics` asks for plain-text epic outlines and, in one call per kept epic, plain-text stories. Each story needs an ID and title; its description, type, functionalities, acceptance criteria, first test, use cases, invariants, non-goals and split triggers may be absent. Each nonempty line indented by at least two spaces immediately after a list item or its continuation joins that item with one space, unless the line is another item, field or heading. An unindented line remains prose. A story without an ID or title stops the step. If a story names a functionality absent from the analysis, the step drops that ID and records a note such as `dropped functionality F9 from US2 in E1` in the epics step's `note` in `report.json`. If the agent returns more outlines than triage's epic count, or more stories than a positive `max_stories_per_epic`, the step keeps the first N of each list. It drops dependencies on unknown epic IDs and edges that would close a cycle, recording each dropped edge in the epics step's `note` in `report.json`. It also removes dependencies on discarded epics and records each epic or story cap in that note. Duplicate epic IDs still fail the step. Must functionalities without kept stories leave a note such as `uncovered must: F2, F5` in the epics step's `note` in `report.json`; if every must has a story, they add no note. It writes `epics.json`, still JSON; a failed check stops the run with `failed at epics: <check>`. Then `steps.design` asks, from the analysis' personas, functionalities and flows, for the product's screens, one `## <name>` block each with its purpose as prose, and, in one call per screen, for its skeleton: a `### Wireframe` in a fenced block, drawn in box-drawing characters, `### Components` and `### States` (`- <state>: <description>`) lists, and `### Navigation` and `### Accessibility` prose. It writes `screens.json`; no screen block passes the step with the note `no screens`, and a failed call or a screen answer with no block stops the run with `failed at design: <screen>`, or `screens` for the first call. Last, the export writes `spec.md`, `tickets/`, `plan.json` and `brief-diseno.md` by code alone; `brief-diseno.md` is each screen with its purpose, wireframe, components, navigation, states and accessibility, or `No screens.` Tickets use each story's fields, default an absent type to `feature`, and show `- None.` for empty sections. A failed step writes nothing after it. `report.json` records every step; agent steps include their effective harness, model and effort, while export records its status without agent settings.
 
 PDF extraction uses `pdftotext` (`brew install poppler`, `apt install poppler-utils`); missing `pdftotext` or a PDF with no text leaves a note in the PDF section. Image dimensions require `ffprobe` (`brew install ffmpeg`, `apt install ffmpeg`) and positive width and height. Missing `ffmpeg` or `ffprobe` leaves a note in the video section; missing `whisper-cli` leaves a transcript note when the video has audio. Ordinary `doctor` checks `pdftotext` and these video tools and gives install hints; `doctor --agent` checks the agent without requiring them. An empty `steps.input.model` delegates model selection to the agent.
 

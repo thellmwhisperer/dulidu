@@ -18,20 +18,22 @@ var sample = map[string]any{
 	"Flows":               "- Booking: choose court → choose hour → pay",
 	"Constraints":         "- Budget under $50k",
 	"Epic":                pipeline.EpicOutline{ID: "E1", Title: "Book a court end-to-end", Text: "A player books and pays."},
+	"Screen":              pipeline.Screen{Name: "Court list", Purpose: "A player picks a free court."},
+	"Screens":             "- Court list: A player picks a free court.\n- Booking: A player pays for the court.",
 	"Epics":               3,
 	"Stories":             5,
 }
 
 func TestAllRender(t *testing.T) {
 	all := templates.Templates()
-	if len(all) != 17 {
-		t.Fatalf("%d templates, want the 16 P01-P16 and triage", len(all))
+	if len(all) != 19 {
+		t.Fatalf("%d templates, want the 18 P01-P18 and triage", len(all))
 	}
 	for _, step := range []string{"p01-triage-classifier", "p02-research-full", "p03-research-business",
 		"p04-research-users", "p05-research-market", "p06-research-technical", "p07-research-project",
 		"p08-analysis-full", "p09-analysis-personas", "p10-analysis-functionalities", "p11-analysis-flows",
 		"p12-analysis-constraints", "p13-analysis-questions", "p14-epics-full", "p15-epics-outlines",
-		"p16-epics-stories", "triage"} {
+		"p16-epics-stories", "p17-design-screens", "p18-design-screen", "triage"} {
 		if templates.Lookup(step+".md.tmpl") == nil {
 			t.Errorf("no template %s", step)
 		}

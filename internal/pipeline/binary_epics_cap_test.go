@@ -52,6 +52,7 @@ func TestBinaryRunTrimsOverCap(t *testing.T) {
 		answer("stories-E1.md", story("US1", "F1")+story("US2", "F1")+story("US3", "F1")),
 		recorded("15-epics-E2.md"),
 		recorded("15-epics-E2.md"))
+	answers = append(answers, binaryDesign...)
 	replay := fakeReplay(t, answers)
 	run := func(args ...string) {
 		t.Helper()

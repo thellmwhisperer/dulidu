@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -149,8 +150,10 @@ func TestTemplateDeclaresEveryKeyEmpty(t *testing.T) {
 			t.Errorf("dulidu init still declares removed key %s", key)
 		}
 	}
-	if steps := fields["steps"].(map[string]any); len(steps) != 5 || steps["stories"] != nil {
+	if steps := fields["steps"].(map[string]any); len(steps) != 6 || steps["stories"] != nil {
 		t.Errorf("dulidu init steps must omit stories: %v", steps)
+	} else if fmt.Sprint(steps["design"]) != fmt.Sprint(steps["analysis"]) {
+		t.Errorf("dulidu init steps.design %v, want analysis' suggestion %v", steps["design"], steps["analysis"])
 	}
 	want := []string{"harness", "model", "effort", "agent_timeout"}
 	project := []string{"max_epics", "max_stories_per_epic",

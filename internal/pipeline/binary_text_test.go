@@ -35,7 +35,7 @@ func TestBinaryRunReadsPlainText(t *testing.T) {
 				}
 			}
 			answers, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
-			if err != nil || len(answers) != 15 {
+			if err != nil || len(answers) != 18 {
 				t.Fatalf("recorded answers: %v, %v", answers, err)
 			}
 			for i, path := range answers {
@@ -87,7 +87,7 @@ func TestBinaryRunReadsPlainText(t *testing.T) {
 			if runErr != nil {
 				t.Fatalf("plain-text run must exit 0: %v\n%s", runErr, out)
 			}
-			if r.Report.Status != "done" || len(r.Report.Steps) != 6 || len(r.Epics) != 2 {
+			if r.Report.Status != "done" || len(r.Report.Steps) != 7 || len(r.Epics) != 2 {
 				t.Fatalf("incomplete run: %+v", r)
 			}
 			for _, step := range r.Report.Steps {

@@ -16,6 +16,7 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/config"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/analysis"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/design"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/epics"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/export"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/input"
@@ -27,7 +28,7 @@ import (
 
 // runCmd is dulidu run: a new run folder in .dulidu/runs with the brief and its attachments in input/ and
 // contexto.md, the input step, packaged from them, then triage.json, the triage step, read from contexto.md, then
-// research.json, analysis.json and epics.json, each its step, then the export: spec.md, tickets/, plan.json and
+// research.json, analysis.json, epics.json and screens.json, each its step, then the export: spec.md, tickets/, plan.json and
 // brief-diseno.md. The first step to fail stops the run. It prints contexto.md's path. On a terminal it runs in the
 // background instead, and attaches to it.
 func runCmd() *cobra.Command {
@@ -131,6 +132,9 @@ func runCmd() *cobra.Command {
 			}
 			if err == nil {
 				err = epics.Run(dir, &r, next("epics", c.Steps.Epics), ask)
+			}
+			if err == nil {
+				err = design.Run(dir, &r, next("design", c.Steps.Design), ask)
 			}
 			if err == nil {
 				r.Report.Status = "running"

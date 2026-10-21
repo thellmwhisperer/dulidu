@@ -13,7 +13,7 @@ import (
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 )
 
-// recorded is a run whose epics passed: two epics, the second on the first, three stories.
+// recorded is a run whose design passed: two epics, the second on the first, three stories, and one screen.
 func recorded() pipeline.Run {
 	at := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 	return pipeline.Run{Report: pipeline.Report{Status: "done", Started: at, Steps: []pipeline.Step{
@@ -46,7 +46,12 @@ func recorded() pipeline.Run {
 					Text:       "As Tom I want to pay when I collect so that I see the bike first",
 					Acceptance: []string{"Given a reserved bike, when Tom collects it, then his card is charged once"},
 					FirstTest:  "Write a test that collects a reserved bike and expects one charge.", Functionalities: []string{"F3"}}}},
-		}}
+		},
+		Screens: []pipeline.Screen{{Name: "Listing", Purpose: "Rosa lists a red-74 bike by scanning its tag.",
+			Wireframe:  "┌────────────┐\n│ Scan a tag │\n│ [Publish]  │\n└────────────┘",
+			Components: []string{"Tag scanner", "Publish button"}, Navigation: "From the home tab; Publish goes to the bike's page.",
+			States:        []string{"Empty: no tag scanned yet", "Refused: the tag is not red-74"},
+			Accessibility: "A refused tag says so in words, not only in red."}}}
 }
 
 // The recorded run's folder, in a repository folder named bikeswap and exported by testdata/export.go, has every file

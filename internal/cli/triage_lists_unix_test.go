@@ -61,7 +61,7 @@ func TestRunIgnoresRemovedTriageListsAndDeliversPersistedContext(t *testing.T) {
 			var report reportFile
 			decodeFile(t, filepath.Join(dir, "report.json"), &report)
 			// A triage, classified or failed, goes on to research, analysis and epics.
-			if len(report.Steps) != 6 || report.Steps[0].Status != "passed" {
+			if len(report.Steps) != 7 || report.Steps[0].Status != "passed" {
 				t.Fatalf("report steps: %+v", report)
 			}
 			var triage triageFile

@@ -49,6 +49,9 @@ func Write(dir string, r Run) error {
 	if r.Epics != nil {
 		put("epics.json", r.Epics)
 	}
+	if r.Screens != nil {
+		put("screens.json", r.Screens)
+	}
 	for id, s := range r.Tickets {
 		put(filepath.Join("tickets", id+".json"), s)
 	}
@@ -58,7 +61,8 @@ func Write(dir string, r Run) error {
 	for step, s := range r.Logs {
 		files[filepath.Join("agent", step+".log")] = []byte(s)
 	}
-	for _, name := range []string{"contexto.md", "triage.json", "research.json", "analysis.json", "epics.json", "spec.md", "plan.json", "brief-diseno.md"} {
+	for _, name := range []string{"contexto.md", "triage.json", "research.json", "analysis.json", "epics.json", "screens.json", "spec.md", "plan.json",
+		"brief-diseno.md"} {
 		if _, ok := files[name]; !ok {
 			if err := os.Remove(filepath.Join(dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return err
@@ -100,7 +104,7 @@ func Read(dir string) (Run, error) {
 	var r Run
 	err := decode(filepath.Join(dir, "report.json"), &r.Report)
 	for name, v := range map[string]any{"triage.json": &r.Triage, "research.json": &r.Research, "analysis.json": &r.Analysis,
-		"epics.json": &r.Epics} {
+		"epics.json": &r.Epics, "screens.json": &r.Screens} {
 		if e := decode(filepath.Join(dir, name), v); !errors.Is(e, fs.ErrNotExist) {
 			err = errors.Join(err, e)
 		}

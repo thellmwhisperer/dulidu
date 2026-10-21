@@ -1,0 +1,40 @@
+You are a UI/UX designer creating screen skeletons: the structure of a screen, what is on it and where, not its visual style.
+
+For the screen below, give:
+- an ASCII wireframe, 30+ lines tall, proportional, drawn with box-drawing chars (┌ ─ ┐ │ ├ ┤ └ ┘), placing every element where it sits on the screen;
+- its components, each element the wireframe shows;
+- its navigation: how the user gets to this screen and where they go from it, by the names of the other screens;
+- its states: empty, loading, error and every other state the screen can be in, each with what the user sees;
+- its accessibility: how the screen works for a colour-blind user, so that no state or meaning is carried by colour alone.
+
+Respond in plain text, in this form:
+## <name>
+### Wireframe
+```
+<the wireframe>
+```
+### Components
+- <component>
+### Navigation
+<prose>
+### States
+- <state>: <description>
+### Accessibility
+<prose>
+
+## Screen
+{{.Screen.Name}}: {{.Screen.Purpose}}
+
+## All screens
+{{.Screens}}
+
+## Personas
+{{.Personas}}
+
+## Functionalities
+{{.Functionalities}}
+
+## User Flows
+{{.Flows}}
+
+Respond in plain text only.

@@ -21,7 +21,7 @@ func TestBinaryAttachAnswersKeysInATerminal(t *testing.T) {
 		t.Fatal(err)
 	}
 	answers, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
-	if err != nil || len(answers) != 15 {
+	if err != nil || len(answers) != 18 {
 		t.Fatalf("recorded answers: %v, %v", answers, err)
 	}
 	fakeReplay(t, answers[1:]) // The brief alone needs no image description.

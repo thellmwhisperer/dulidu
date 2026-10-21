@@ -12,6 +12,7 @@ import (
 
 	"github.com/thellmwhisperer/dulidu/internal/pipeline"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/analysis"
+	"github.com/thellmwhisperer/dulidu/internal/pipeline/design"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/epics"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/export"
 	"github.com/thellmwhisperer/dulidu/internal/pipeline/input"
@@ -68,6 +69,7 @@ func TestEndToEndRecorded(t *testing.T) {
 		func() error { return research.Run(dir, &r, step("research"), replay("research")) },
 		func() error { return analysis.Run(dir, &r, step("analysis"), replay("analysis")) },
 		func() error { return epics.Run(dir, &r, step("epics"), replay("epics")) },
+		func() error { return design.Run(dir, &r, step("design"), replay("design")) },
 		func() error { return export.Write(dir, &r) },
 	} {
 		if err := run(); err != nil {
@@ -82,7 +84,7 @@ func TestEndToEndRecorded(t *testing.T) {
 		t.Errorf("the agent replayed %d of %d recorded answers", used, len(answers))
 	}
 	for _, name := range []string{"report.json", "contexto.md", "triage.json", "research.json", "analysis.json", "epics.json",
-		"spec.md", "plan.json", "brief-diseno.md", "tickets/1.md", "tickets/2.md", "tickets/3.md"} {
+		"screens.json", "spec.md", "plan.json", "brief-diseno.md", "tickets/1.md", "tickets/2.md", "tickets/3.md"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Error(err)
 		}
@@ -91,7 +93,7 @@ func TestEndToEndRecorded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Report.Status != "done" || len(got.Report.Steps) != 5 {
+	if got.Report.Status != "done" || len(got.Report.Steps) != 6 {
 		t.Errorf("report.json: %+v", got.Report)
 	}
 	for _, s := range got.Report.Steps {

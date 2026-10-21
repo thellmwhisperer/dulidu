@@ -1,20 +1,30 @@
 # Brief de diseño
 
-## Personas
+## Listing
 
-- Rosa (seller)
-- Tom (buyer)
+Rosa lists a red-74 bike by scanning its tag.
 
-## Flows
+```
+┌────────────┐
+│ Scan a tag │
+│ [Publish]  │
+└────────────┘
+```
 
-- Listing: Scan the tag → Publish
+**Components:**
 
-## Functionalities
+- Tag scanner
+- Publish button
 
-- [must] List a bike: Only red-74 bikes
-- [could] Search: Find bikes by size
-- [must] Pay: Card at pickup
+**Navigation:**
 
-## Constraints
+From the home tab; Publish goes to the bike's page.
 
-- Only bicycles tagged red-74 can be listed
+**States:**
+
+- Empty: no tag scanned yet
+- Refused: the tag is not red-74
+
+**Accessibility:**
+
+A refused tag says so in words, not only in red.
