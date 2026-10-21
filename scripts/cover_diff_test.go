@@ -92,6 +92,22 @@ func main() {
 	want := "cover-diff: these changed lines are not executed by any end-to-end run of the real dulidu binary. Delete them, or write the end-to-end test that reaches them from a real dulidu command.\nmain.go:9\nmain.go:10\n"
 	check(t, want, 1)
 	check(t, want, 1)
+	for _, config := range []struct{ key, value string }{
+		{"diff.noprefix", "true"},
+		{"diff.mnemonicPrefix", "true"},
+		{"color.ui", "always"},
+	} {
+		t.Run(config.key, func(t *testing.T) {
+			t.Setenv("GOCOVERDIR", t.TempDir())
+			t.Setenv("GIT_CONFIG_COUNT", "1")
+			t.Setenv("GIT_CONFIG_KEY_0", config.key)
+			t.Setenv("GIT_CONFIG_VALUE_0", config.value)
+			run(bin, "a")
+			check(t, want, 1)
+			run(bin, "b")
+			check(t, "cover-diff: 3 changed lines inside covered blocks, all executed by an end-to-end run\n", 0)
+		})
+	}
 	// Even a blank line and a brace count when an unexecuted block spans them.
 	for _, source := range []string{
 		strings.Replace(strings.ReplaceAll(base, "before", "after"), "\t\t// Inside b, after.", "", 1),

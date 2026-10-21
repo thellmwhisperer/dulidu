@@ -9,7 +9,11 @@ example=$root/internal/pipeline/testdata/run-example
 tmp=$(mktemp -d /tmp/dulidu-readme.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
 mkdir "$tmp/bin" "$tmp/home" "$tmp/clay-corner"
-(cd "$root" && go build -o "$tmp/bin/dulidu" ./cmd/dulidu)
+if [ -n "${GOCOVERDIR:-}" ]; then
+  (cd "$root" && go build -cover -coverpkg=./... -o "$tmp/bin/dulidu" ./cmd/dulidu)
+else
+  (cd "$root" && go build -o "$tmp/bin/dulidu" ./cmd/dulidu)
+fi
 cat > "$tmp/bin/claude" <<'EOF'
 #!/bin/sh
 cat > /dev/null

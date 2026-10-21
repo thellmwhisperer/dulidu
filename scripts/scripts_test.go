@@ -34,6 +34,16 @@ func TestReadmeFirstRunReplays(t *testing.T) {
 	}
 }
 
+func TestBuiltDuliduReadmeWritesCoverage(t *testing.T) {
+	coverage := t.TempDir()
+	t.Setenv("GOCOVERDIR", coverage)
+	TestReadmeFirstRunReplays(t)
+	counters, err := filepath.Glob(filepath.Join(coverage, "covcounters.*"))
+	if err != nil || len(counters) == 0 {
+		t.Fatalf("README dulidu commands wrote no coverage: counters=%v, error=%v", counters, err)
+	}
+}
+
 // TestLeakScan passes on the README and docs/, and fails on each kind of leak, naming it.
 func TestLeakScan(t *testing.T) {
 	if out, err := sh(t, "leak-scan.sh", "README.md", "docs/"); err != nil {

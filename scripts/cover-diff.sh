@@ -14,7 +14,7 @@ if [ -z "$base" ] || ! git rev-parse --verify "$base^{commit}" >/dev/null 2>&1; 
     exit 1
 fi
 
-diff=$(git -c core.quotePath=false diff --no-ext-diff -U0 "$base" -- '*.go' ':(exclude)*_test.go' ':(exclude)**/testdata/**' ':(exclude)testdata/**')
+diff=$(git -c core.quotePath=false diff --no-ext-diff --no-color --src-prefix=a/ --dst-prefix=b/ -U0 "$base" -- '*.go' ':(exclude)*_test.go' ':(exclude)**/testdata/**' ':(exclude)testdata/**')
 changed=$(printf '%s\n' "$diff" | awk '
     /^diff --git / { file = ""; next }
     /^\+\+\+ b\// { file = substr($0, 7); sub(/\t$/, "", file); next }
