@@ -4,7 +4,7 @@ effort: high
 # Installs the dependencies in a fresh clone
 install: sh scripts/reference.sh && go mod download && mkdir -p .tmp/cos && { [ -f .tmp/cos/no-mistakes-deliver.sh ] || cp "$(git remote get-url origin)/.tmp/cos/deliver.sh" .tmp/cos/no-mistakes-deliver.sh; }
 # Runs the whole test suite
-test: "go test ./... -count=1"
+test: "sh scripts/test.sh"
 # Typechecks
 typecheck: "go vet ./..."
 # Lints
