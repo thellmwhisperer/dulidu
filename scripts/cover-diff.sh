@@ -27,7 +27,6 @@ if [ -z "$changed" ]; then
     exit 0
 fi
 
-# Use scratch space, never the checked tree, and refuse an existing scratch file.
 root=$(git rev-parse --show-toplevel)
 scratch=$(cd "${TMPDIR:-/tmp}" && pwd -P)
 case "$scratch/" in
@@ -35,6 +34,8 @@ case "$scratch/" in
 esac
 profile=$scratch/dulidu-cover-diff.$$.txt
 (umask 077; set -C; : > "$profile")
+trap 'rm -f "$profile"' 0
+trap 'exit 1' HUP INT TERM
 go tool covdata textfmt -i="${GOCOVERDIR:?GOCOVERDIR must name the binary coverage directory}" -o "$profile"
 module=$(go list -m)
 result=$(printf '%s\n' '--changed--' "$changed" | awk -v module="$module/" -v root="$root/" '

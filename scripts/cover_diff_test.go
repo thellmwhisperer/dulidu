@@ -68,12 +68,22 @@ func main() {
 	bin := filepath.Join(t.TempDir(), "example")
 	run("go", "build", "-cover", "-o", bin, ".")
 	run(bin, "a")
+	scratch := t.TempDir()
+	t.Setenv("TMPDIR", scratch)
 	check := func(t *testing.T, want string, code int) {
 		t.Helper()
 		before := run("git", "status", "--porcelain")
+		beforeEntries, err := os.ReadDir(scratch)
+		if err != nil {
+			t.Fatal(err)
+		}
 		cmd := exec.Command("sh", script)
 		cmd.Dir = repo
 		out, err := cmd.CombinedOutput()
+		entries, readErr := os.ReadDir(scratch)
+		if readErr != nil || len(entries) != len(beforeEntries) {
+			t.Fatalf("checker left scratch files: entries=%v, error=%v", entries, readErr)
+		}
 		gotCode := 0
 		if err != nil {
 			if exit, ok := err.(*exec.ExitError); ok {
@@ -92,6 +102,22 @@ func main() {
 	want := "cover-diff: these changed lines are not executed by any end-to-end run of the real dulidu binary. Delete them, or write the end-to-end test that reaches them from a real dulidu command.\nmain.go:9\nmain.go:10\n"
 	check(t, want, 1)
 	check(t, want, 1)
+	t.Run("invalid coverage", func(t *testing.T) {
+		t.Setenv("GOCOVERDIR", filepath.Join(coverage, "missing"))
+		beforeEntries, err := os.ReadDir(scratch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("sh", script)
+		cmd.Dir = repo
+		if out, err := cmd.CombinedOutput(); err == nil {
+			t.Fatalf("checker accepted missing coverage: %s", out)
+		}
+		entries, err := os.ReadDir(scratch)
+		if err != nil || len(entries) != len(beforeEntries) {
+			t.Fatalf("failed checker left scratch files: entries=%v, error=%v", entries, err)
+		}
+	})
 	for _, config := range []struct{ key, value string }{
 		{"diff.noprefix", "true"},
 		{"diff.mnemonicPrefix", "true"},
