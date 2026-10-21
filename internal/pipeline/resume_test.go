@@ -22,7 +22,11 @@ func TestMain(m *testing.M) {
 	if os.Getenv("DULIDU_MAIN") != "" {
 		cli.Execute()
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	if built != "" {
+		os.RemoveAll(filepath.Dir(built))
+	}
+	os.Exit(code)
 }
 
 // Model answers use plain-text blocks; only the agent transport wraps them in a structured result event.
