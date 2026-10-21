@@ -1,8 +1,8 @@
 # dulidu
 
 dulidu turns a product brief and what comes with it (pdfs, images, videos, notes) into a spec, tickets in the
-ten-point contract, a `plan.json` and a design brief, one agent call per step, in a run folder inside your Git
-repository. Each ticket is ready to hand on.
+ten-point contract, a `plan.json` and a design brief in a run folder inside your Git repository. Each ticket is
+ready to hand on.
 
 ## Install
 
@@ -116,7 +116,7 @@ As Ana I want to book a free wheel so that one waits for me
 Revert the PR.
 ```
 
-With a real agent each step calls `claude`, so the label and timings differ. The output above is `sh scripts/readme-check.sh`'s: it runs this
+With a real agent, agent steps call their configured CLI, so the label and timings differ. The output above is `sh scripts/readme-check.sh`'s: it runs this
 block's `$` lines in a new repository, `clay-corner`, holding the example, against a fresh build, with a `claude` that replays
 the example's recorded answers in `answers/`, offline, and checks that the run folder contains the
 exported files listed in `docs/example-run/`.
@@ -171,7 +171,7 @@ dulidu release vX.Y.Z # builds and publishes a tagged release
 `runs` reads each folder's `report.json`, so it also lists older runs whose `analysis.json` has string lists without rewriting their files.
 
 Configuration is layered: built-in defaults, `~/.config/dulidu/config.yaml`, then the repository's `dulidu.yaml`.
-`dulidu init` writes a template with every required run and step key. Each step has its own agent CLI, model and effort, with suggested defaults. Top-level harness, model and effort configure `doctor --agent`. Every required key must be present across the layers, even when empty; unknown keys are rejected. Errors name the key as `config incomplete: <key>`. The removed keys `platform`, `project_type`, `ticket_size`, `exclusions` and `steps.stories` fail with `<key> is no longer read; delete it`; delete their entries from any config layer. Stories use the epics agent. The agent uses its installed CLI and existing authentication.
+`dulidu init` writes a template with every required run and step key. Each step has its own agent CLI, model and effort, with suggested defaults. An existing configuration also needs `steps.design.harness`, `steps.design.model` and `steps.design.effort`; `dulidu init` does not rewrite it. Top-level harness, model and effort configure `doctor --agent`. Every required key must be present across the layers, even when empty; unknown keys are rejected. Errors name the key as `config incomplete: <key>`. The removed keys `platform`, `project_type`, `ticket_size`, `exclusions` and `steps.stories` fail with `<key> is no longer read; delete it`; delete their entries from any config layer. Stories use the epics agent. The agent uses its installed CLI and existing authentication.
 
 `run` writes a new `.dulidu/runs/<label>/` with the brief and its attachments in `input/` and `contexto.md`: an index, then one section per file. It reads pdf, docx, md, txt and json as text; png, jpg, webp and heic as images. Videos in mp4, mov or webm format produce an initial frame, further frames every `video_frame_seconds` seconds (10 when empty), and one contact sheet in `input/frames/<video>/`. The `steps.input` agent describes each image and each video contact sheet once. A video with audio also has a transcript from `whisper-cli`, using local weights from `WHISPER_MODEL` or `models/ggml-base.en.bin` by default. For videos longer than 30 minutes, frames and the transcript cover only the first 1800 seconds; the video section notes how many seconds were read out of the full duration. A file of any other extension is kept in `input/`, and its section says it was not read.
 
