@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/thellmwhisperer/dulidu/compare/v0.1.13...v0.1.14) (2026-10-21)
+
+
+### Bug Fixes
+
+* **pipeline:** remove built binary after end-to-end tests ([#133](https://github.com/thellmwhisperer/dulidu/issues/133)) ([047fc5e](https://github.com/thellmwhisperer/dulidu/commit/047fc5ed3d889e3c615e6f34c77ce5856ba6f5ac))
+
 ## [0.1.13](https://github.com/thellmwhisperer/dulidu/compare/v0.1.12...v0.1.13) (2026-10-21)
 
 
