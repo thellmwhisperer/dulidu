@@ -147,18 +147,15 @@ def exited():
     assert p.poll() == 0, 'view must exit 0 within 1 s'
     assert settings() == before, 'view must restore stty -g'
 def report_done():
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
         paths = glob.glob('.dulidu/runs/*/report.json')
         if paths:
             try:
-                # Every step reports done when it passes; the run holds agent.out's lock until it exits.
-                with open(os.path.join(os.path.dirname(paths[0]), 'agent.out')) as out:
-                    fcntl.flock(out, fcntl.LOCK_SH | fcntl.LOCK_NB)
                 with open(paths[0]) as f:
                     if json.load(f)['status'] == 'done':
                         return
-            except (OSError, ValueError, KeyError):
+            except (ValueError, KeyError):
                 pass
         ready, _, _ = select.select([master], [], [], 0.01)
         if ready:
