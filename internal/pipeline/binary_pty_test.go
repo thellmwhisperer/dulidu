@@ -120,8 +120,9 @@ def frame_until(description, predicate):
         if b'\x1b[6n' in pending:
             os.write(master, b'\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[1;1R')
             pending = pending.replace(b'\x1b[6n', b'')
-        while b'\x1b[2J\x1b[H' in pending:
-            _, frame = pending.split(b'\x1b[2J\x1b[H', 1)
+        assert b'\x1b[2J' not in pending, 'the view cleared the screen'
+        while b'\x1b[H' in pending:
+            _, frame = pending.split(b'\x1b[H', 1)
             end = re.search(rb'detach.*?tools\x1b\[0m', frame)
             if end is None:
                 break

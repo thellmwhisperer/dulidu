@@ -1,0 +1,18 @@
+schema: 1
+id: T-PONYTAIL-20261021-021432-1
+status: accepted
+category: alien_code
+title: "Reverted the changes to report_done: the 10 s deadline goes back to 2 s, and the fcntl.flock wait on agent.out's lock and the extra OSError catch are deleted. The original check that report.json says done replaces them."
+created_at: 2026-10-21
+incident:
+  pattern: "Reverted the changes to report_done: the 10 s deadline goes back to 2 s, and the fcntl.flock wait on agent.out's lock and the extra OSError catch are deleted. The original check that report.json says done replaces them."
+  what_went_wrong: "A coding agent wrote it and the ponytail pass cut it before delivery."
+  root_cause: "The coding agent wrote more than the issue needed."
+  rule_established: "Cut by the ponytail pass; it does not come back."
+  evidence:
+    - family: speculative_hardening
+      example: "Reverted the changes to report_done: the 10 s deadline goes back to 2 s, and the fcntl.flock wait on agent.out's lock and the extra OSError catch are deleted. The original check that report.json says done replaces them."
+      artifact: "internal/pipeline/binary_pty_test.go"
+match:
+  family: speculative_hardening
+  artifact: "internal/pipeline/binary_pty_test.go"

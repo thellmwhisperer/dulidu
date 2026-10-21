@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // tick is how often a live screen reads the run folder again and advances the spinner.
@@ -30,6 +31,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 		cols, rows = size()
 	}
 	m := New("", cols, rows)
+	last := ""
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -43,7 +45,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 		}
 		m.width, m.height, m.spin = cols, rows, m.spin+1
 		m.Load(snap)
-		if err := redraw(w, m.View()); err != nil {
+		if err := redraw(w, m.View(), cols, &last); err != nil {
 			return err
 		}
 		if err == io.EOF {
@@ -65,7 +67,7 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 					return nil
 				}
 				m.Update(msg)
-				if err := redraw(w, m.View()); err != nil {
+				if err := redraw(w, m.View(), cols, &last); err != nil {
 					timer.Stop()
 					return err
 				}
@@ -77,8 +79,26 @@ func Poll(ctx context.Context, w io.Writer, keys io.Reader, size func() (int, in
 	}
 }
 
-func redraw(w io.Writer, view string) error {
-	_, err := fmt.Fprint(w, "\x1b[2J\x1b[H"+view)
+// redraw paints view over last in place from the top, so the terminal never shows a blank screen.
+// An unchanged view writes nothing. A line as wide as the screen keeps its last cell: erasing there would blank it.
+func redraw(w io.Writer, view string, cols int, last *string) error {
+	if view == *last {
+		return nil
+	}
+	*last = view
+	var b strings.Builder
+	b.WriteString("\x1b[H")
+	for i, line := range strings.Split(view, "\n") {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(line)
+		if ansi.StringWidth(line) < cols {
+			b.WriteString("\x1b[K")
+		}
+	}
+	b.WriteString("\x1b[J")
+	_, err := io.WriteString(w, b.String())
 	return err
 }
 
