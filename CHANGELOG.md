@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.13](https://github.com/thellmwhisperer/dulidu/compare/v0.1.12...v0.1.13) (2026-10-21)
+
+
+### Features
+
+* **cli:** stream run events with --follow ([#128](https://github.com/thellmwhisperer/dulidu/issues/128)) ([d0ed3c6](https://github.com/thellmwhisperer/dulidu/commit/d0ed3c6e0623e08e456daef810b273129d2c2f6f))
+* **scripts:** check changed Go lines against end-to-end coverage ([#129](https://github.com/thellmwhisperer/dulidu/issues/129)) ([c7b7d8d](https://github.com/thellmwhisperer/dulidu/commit/c7b7d8dd16ef6911b447cc5f91f9b2ffaa550adb))
+
+
+### Bug Fixes
+
+* **tui:** stop live screen flickering on refresh ([#130](https://github.com/thellmwhisperer/dulidu/issues/130)) ([574ed4c](https://github.com/thellmwhisperer/dulidu/commit/574ed4cd68a3819c2627642d5e814a790a15fd94))
+
 ## [0.1.12](https://github.com/thellmwhisperer/dulidu/compare/v0.1.11...v0.1.12) (2026-10-21)
 
 
