@@ -3,6 +3,7 @@
 package pipeline_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -42,11 +43,7 @@ func binaryLines(path string) int {
 // binary is ./cmd/dulidu built with go build, once per test process.
 func binary(t *testing.T) string {
 	t.Helper()
-	// The test runner uses its own GOCOVERDIR. Keep binary coverage separate.
-	coverage := os.Getenv("DULIDU_TEST_COVERDIR")
-	if coverage != "" {
-		t.Setenv("GOCOVERDIR", coverage)
-	}
+	coverage := os.Getenv("GOCOVERDIR")
 	builtOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "dulidu-bin-")
 		if err != nil {
@@ -56,10 +53,12 @@ func binary(t *testing.T) string {
 		built = filepath.Join(dir, "dulidu")
 		args := []string{"build"}
 		if coverage != "" {
-			args = append(args, "-cover")
+			args = append(args, "-cover", "-coverpkg=./...")
 		}
-		args = append(args, "-o", built, "../../cmd/dulidu")
-		if out, err := exec.Command("go", args...).CombinedOutput(); err != nil {
+		args = append(args, "-o", built, "./cmd/dulidu")
+		cmd := exec.Command("go", args...)
+		cmd.Dir = "../.."
+		if out, err := cmd.CombinedOutput(); err != nil {
 			buildErr = fmt.Errorf("go build: %v\n%s", err, out)
 		}
 	})
@@ -73,6 +72,55 @@ func binary(t *testing.T) string {
 // answers one by one.
 var binaryDesign = []string{filepath.Join(binaryExample, "answers", "16-design-screens.md"),
 	filepath.Join(binaryExample, "answers", "17-design-Home.md"), filepath.Join(binaryExample, "answers", "18-design-History.md")}
+
+func TestBuiltDuliduInstrumentsOnlyUnderGoCoverDir(t *testing.T) {
+	if os.Getenv("DULIDU_BUILD_PROBE") != "" {
+		bin := binary(t)
+		if out, err := exec.Command(bin, "--version").CombinedOutput(); err != nil {
+			t.Fatalf("dulidu --version: %v\n%s", err, out)
+		}
+		if os.Getenv("GOCOVERDIR") == "" {
+			plain := filepath.Join(t.TempDir(), "dulidu")
+			cmd := exec.Command("go", "build", "-o", plain, "./cmd/dulidu")
+			cmd.Dir = "../.."
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("plain build: %v\n%s", err, out)
+			}
+			if !bytes.Equal([]byte(binaryRead(t, bin)), []byte(binaryRead(t, plain))) {
+				t.Fatal("without GOCOVERDIR the binary differs from plain go build")
+			}
+		}
+		return
+	}
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, instrumented := range []bool{false, true} {
+		t.Run(fmt.Sprint(instrumented), func(t *testing.T) {
+			coverage := t.TempDir()
+			cmd := exec.Command(self, "-test.run=^TestBuiltDuliduInstrumentsOnlyUnderGoCoverDir$")
+			for _, env := range os.Environ() {
+				if !strings.HasPrefix(env, "GOCOVERDIR=") && !strings.HasPrefix(env, "DULIDU_TEST_COVERDIR=") {
+					cmd.Env = append(cmd.Env, env)
+				}
+			}
+			cmd.Env = append(cmd.Env, "DULIDU_BUILD_PROBE=1")
+			if instrumented {
+				cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverage)
+			}
+			// A separate test process gives each environment its own once-only build.
+			cmd.Dir = "."
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("build probe: %v\n%s", err, out)
+			}
+			counters, err := filepath.Glob(filepath.Join(coverage, "covcounters.*"))
+			if err != nil || (len(counters) > 0) != instrumented {
+				t.Fatalf("instrumented=%v: counters=%v, error=%v", instrumented, counters, err)
+			}
+		})
+	}
+}
 
 // replayClaude is a claude whose nth call answers with $FAKE_REPLAY/<n>, a stream-json result line; with none it
 // fails. Each call adds a line to $FAKE_REPLAY/calls and saves its prompt in $FAKE_REPLAY/prompt-<n>.
