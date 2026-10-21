@@ -58,7 +58,6 @@ func TestRunningRunAt120HasTwoBoxesIconsAndDurations(t *testing.T) {
 		t.Errorf("a short screen was cut:\n%s", s)
 	}
 	for _, size := range [][2]int{{120, 40}, {80, 24}} {
-		m := New("design-run", size[0], size[1])
 		for _, state := range []string{"pending", "running", "passed", "failed"} {
 			r := pipeline.Report{Status: "running", Steps: []pipeline.Step{
 				{Name: "epics", Status: "passed"},
@@ -69,8 +68,7 @@ func TestRunningRunAt120HasTwoBoxesIconsAndDurations(t *testing.T) {
 			if state == "failed" {
 				r.Status = "failed"
 			}
-			m.Load(Snap{Report: r, Now: at.Add(time.Minute)})
-			frame := plain(m.View())
+			frame := plain(render("design-run", r, nil, nil, size[0], size[1], at.Add(time.Minute)))
 			if size[0] == 120 {
 				lines := strings.Split(frame, "\n")
 				for i, line := range lines {
