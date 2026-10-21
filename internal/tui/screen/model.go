@@ -191,11 +191,11 @@ func (m *Model) apply(r pipeline.Report, questions []string) {
 }
 
 // stepOrder is the pipeline, top to bottom.
-var stepOrder = []string{"input", "triage", "research", "analysis", "epics", "export"}
+var stepOrder = []string{"input", "triage", "research", "analysis", "epics", "design", "export"}
 
 var stepLabel = map[string]string{
 	"input": "Input", "triage": "Triage", "research": "Research",
-	"analysis": "Analysis", "epics": "Epics", "export": "Export",
+	"analysis": "Analysis", "epics": "Epics", "design": "Design", "export": "Export",
 }
 
 func stepRow(name string, s pipeline.Step, ok bool, now time.Time) *row {
