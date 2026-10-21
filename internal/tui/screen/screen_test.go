@@ -561,3 +561,43 @@ func itoa(n int) string {
 	}
 	return string(b[i:])
 }
+
+func TestLiveScreenNeverClears(t *testing.T) {
+	at := time.Date(2026, 10, 17, 1, 0, 0, 0, time.UTC)
+	passed := Snap{Label: "lumpa", Report: pipeline.Report{Status: "done", Steps: []pipeline.Step{
+		{Name: "triage", Status: "passed", Started: at, Finished: at.Add(time.Minute)},
+	}}, Log: []string{"FIRST"}, Now: at}
+	waiting := Snap{Label: "lumpa", Report: pipeline.Report{Status: "waiting_answers", Steps: []pipeline.Step{
+		{Name: "triage", Status: "passed", Started: at, Finished: at.Add(time.Minute)},
+	}}, Questions: []string{"Who pays?"}, Now: at}
+	var buf bytes.Buffer
+	var marks []int // buf's length when each tick loads, so frame i is buf[marks[i]:marks[i+1]]
+	snaps := []Snap{passed, passed, waiting}
+	load := func(time.Time) (Snap, error) {
+		marks = append(marks, buf.Len())
+		if len(marks) > len(snaps) {
+			return Snap{}, errStop
+		}
+		return snaps[len(marks)-1], nil
+	}
+	const cols = 120
+	if err := Poll(context.Background(), &buf, strings.NewReader(""), func() (int, int) { return cols, 40 }, load); err != errStop {
+		t.Fatalf("Poll: %v", err)
+	}
+	raw := buf.String()
+	if strings.Contains(raw[marks[1]:], "\x1b[2J") {
+		t.Fatalf("a frame after the first clears the screen: %q", raw[marks[1]:])
+	}
+	if same := raw[marks[1]:marks[2]]; same != "" {
+		t.Fatalf("an unchanged tick wrote %q", same)
+	}
+	changed := raw[marks[2]:marks[3]]
+	if !strings.HasPrefix(changed, "\x1b[H") || !strings.Contains(changed, "Who pays?") {
+		t.Fatalf("the changed tick is not repainted from the top: %q", changed)
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(changed, "\x1b[J"), "\n") {
+		if !strings.HasSuffix(line, "\x1b[K") && ansi.StringWidth(line) != cols {
+			t.Fatalf("line %q keeps the old line's tail", line)
+		}
+	}
+}

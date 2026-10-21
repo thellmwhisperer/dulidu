@@ -120,8 +120,9 @@ def frame_until(description, predicate):
         if b'\x1b[6n' in pending:
             os.write(master, b'\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[1;1R')
             pending = pending.replace(b'\x1b[6n', b'')
-        while b'\x1b[2J\x1b[H' in pending:
-            _, frame = pending.split(b'\x1b[2J\x1b[H', 1)
+        assert b'\x1b[2J' not in pending, 'the view cleared the screen'
+        while b'\x1b[H' in pending:
+            _, frame = pending.split(b'\x1b[H', 1)
             end = re.search(rb'detach.*?tools\x1b\[0m', frame)
             if end is None:
                 break
@@ -146,15 +147,18 @@ def exited():
     assert p.poll() == 0, 'view must exit 0 within 1 s'
     assert settings() == before, 'view must restore stty -g'
 def report_done():
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         paths = glob.glob('.dulidu/runs/*/report.json')
         if paths:
             try:
+                # Every step reports done when it passes; the run holds agent.out's lock until it exits.
+                with open(os.path.join(os.path.dirname(paths[0]), 'agent.out')) as out:
+                    fcntl.flock(out, fcntl.LOCK_SH | fcntl.LOCK_NB)
                 with open(paths[0]) as f:
                     if json.load(f)['status'] == 'done':
                         return
-            except (ValueError, KeyError):
+            except (OSError, ValueError, KeyError):
                 pass
         ready, _, _ = select.select([master], [], [], 0.01)
         if ready:
