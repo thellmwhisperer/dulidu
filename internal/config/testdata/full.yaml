@@ -8,3 +8,4 @@ steps:
   research: {harness: pi, model: medium, effort: medium}
   analysis: {harness: claude, model: medium, effort: medium}
   epics: {harness: claude, model: medium, effort: medium}
+  design: {harness: claude, model: medium, effort: medium}

@@ -106,7 +106,7 @@ func TestRunTriagesContextoOnceAndClampsItsCaps(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Name != "input" ||
+	if report.Status != "done" || len(report.Steps) != 7 || report.Steps[0].Name != "input" ||
 		report.Steps[0].Status != "passed" || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" ||
 		report.Steps[1].Model != "opus" || report.Steps[1].Harness != "claude" ||
 		report.Steps[1].Note != "clamped epics from 8 to max_epics 6" || report.Steps[2].Name != "research" {
@@ -153,7 +153,7 @@ func TestRunGoesOnAfterTriageWithMissingQuestions(t *testing.T) {
 	}
 	var report reportFile
 	decodeFile(t, filepath.Join(dir, "report.json"), &report)
-	if report.Status != "done" || len(report.Steps) != 6 || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" {
+	if report.Status != "done" || len(report.Steps) != 7 || report.Steps[1].Name != "triage" || report.Steps[1].Status != "passed" {
 		t.Errorf("report.json: %+v", report)
 	}
 	if got := read(t, calls+".triage"); strings.Count(got, "\n") != 1 {
@@ -185,7 +185,7 @@ func TestRunGoesOnModerateAfterInvalidTriage(t *testing.T) {
 			dir := runs(t)[0]
 			var report reportFile
 			decodeFile(t, filepath.Join(dir, "report.json"), &report)
-			if report.Status != "done" || len(report.Steps) != 6 || report.Steps[0].Status != "passed" ||
+			if report.Status != "done" || len(report.Steps) != 7 || report.Steps[0].Status != "passed" ||
 				report.Steps[1].Status != "passed" || report.Steps[1].Note != "classification failed, moderate: unrecognized classification" {
 				t.Errorf("report.json: %+v", report)
 			}

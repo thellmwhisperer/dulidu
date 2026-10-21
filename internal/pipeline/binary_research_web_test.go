@@ -54,7 +54,7 @@ func TestBinaryResearchWebOtherHarness(t *testing.T) {
 			}
 			// Claude still answers every step except research.
 			var answers []string
-			for _, step := range []string{"triage", "analysis", "epics"} {
+			for _, step := range []string{"triage", "analysis", "epics", "design"} {
 				paths, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*-"+step+"*"))
 				if err != nil || len(paths) == 0 {
 					t.Fatalf("%s answers: %v, %v", step, paths, err)

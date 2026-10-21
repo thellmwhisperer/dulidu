@@ -59,6 +59,11 @@ steps:
     harness: claude
     model: sonnet
     effort: medium
+  # design draws each screen for the design brief: a medium model
+  design:
+    harness: claude
+    model: sonnet
+    effort: medium
 `
 
 // initCmd is dulidu init: dulidu.yaml from template unless there is one, and .dulidu/ in .gitignore unless it is.

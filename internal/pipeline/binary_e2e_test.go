@@ -69,6 +69,11 @@ func binary(t *testing.T) string {
 	return built
 }
 
+// binaryDesign is the example's recorded design answers, the screens and then each screen's, for runs that list their
+// answers one by one.
+var binaryDesign = []string{filepath.Join(binaryExample, "answers", "16-design-screens.md"),
+	filepath.Join(binaryExample, "answers", "17-design-Home.md"), filepath.Join(binaryExample, "answers", "18-design-History.md")}
+
 // replayClaude is a claude whose nth call answers with $FAKE_REPLAY/<n>, a stream-json result line; with none it
 // fails. Each call adds a line to $FAKE_REPLAY/calls and saves its prompt in $FAKE_REPLAY/prompt-<n>.
 const replayClaude = `#!/bin/sh
@@ -146,6 +151,7 @@ triage passed 0 min 00 s
 research passed 0 min 00 s
 analysis passed 0 min 00 s
 epics passed 0 min 00 s
+design passed 0 min 00 s
 export passed 0 min 00 s
 `
 	if got := regexp.MustCompile(`\d+ min \d\d s`).ReplaceAllString(run("status"), "0 min 00 s"); got != want {
@@ -188,6 +194,7 @@ func TestBinarySpecLikeThePrototype(t *testing.T) {
 		recorded("11-analysis-constraints.md"), recorded("12-analysis-questions.md"), recorded("13-epics-outlines.md"),
 		answer("stories-E1.md", strings.Replace(binaryRead(t, recorded("14-epics-E1.md")), "Functionalities: F1", "Functionalities: F9", 1)),
 		answer("stories-E2.md", strings.Replace(binaryRead(t, recorded("15-epics-E2.md")), "Functionalities: F2", "Functionalities: F7", 1)))
+	answers = append(answers, binaryDesign...)
 	replay := fakeReplay(t, answers)
 	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
 		cmd := exec.Command(bin, args...)
@@ -272,6 +279,7 @@ func TestBinaryTicketsCarryTheirStory(t *testing.T) {
 			"### Acceptance\n- Given a piece dropped off on Friday at 17:59, when the kiln fires, then the piece is in that firing\n"+
 			"### First test\nWrite a test that drops a piece off at 17:59 on Friday and expects it in that week's firing.\n"+
 			"### Non-goals\n- Moving the firing day\n"))
+	answers = append(answers, binaryDesign...)
 	replay := fakeReplay(t, answers)
 	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
 		cmd := exec.Command(bin, args...)
@@ -336,7 +344,7 @@ func TestBinaryReadsFencedAnswers(t *testing.T) {
 			t.Fatal(err)
 		}
 		answers, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
-		if err != nil || len(answers) != 15 {
+		if err != nil || len(answers) != 18 {
 			t.Fatalf("recordings: %v, %v", answers, err)
 		}
 		answers = answers[1:]
@@ -469,5 +477,146 @@ func TestBinaryRejectsKeysNobodyReads(t *testing.T) {
 			!strings.Contains(string(out), "dulidu.yaml: "+key+" is no longer read; delete it") {
 			t.Errorf("removed %s: %v\n%s", key, err, out)
 		}
+	}
+}
+
+// TestBinaryDesignBriefHasScreens runs the built dulidu, piped, on the example's recordings, the design step on its own
+// model: with the recorded screens, Home and History, brief-diseno.md draws each with its wireframe, states and
+// accessibility, and the per-screen prompt asks for box-drawing wireframes; with a screens answer of no block, the step
+// passes noting "no screens" and the brief says so. A failed screens call, a Home answer of no block or a failed History
+// call stops the run at design, nothing asked after it and no brief written; a dulidu.yaml without steps.design is
+// incomplete.
+func TestBinaryDesignBriefHasScreens(t *testing.T) {
+	bin := binary(t)
+	for _, c := range []struct {
+		name string
+		// answers is the design answers, the recorded ones given, for the case.
+		answers func(recorded []string, prose string) []string
+		fail    string // the design step's status and the run's error, empty for a passed run
+	}{
+		{"screens", func(recorded []string, _ string) []string { return recorded }, ""},
+		{"no screens", func(_ []string, prose string) []string { return []string{prose} }, ""},
+		{"screens call fails", func([]string, string) []string { return nil }, "screens"},
+		{"Home without a block", func(recorded []string, prose string) []string { return []string{recorded[0], prose} },
+			"Home: no screen block"},
+		{"History call fails", func(recorded []string, _ string) []string { return recorded[:2] }, "History"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			repo := realTempDir(t)
+			t.Setenv("HOME", t.TempDir())
+			if out, err := exec.Command("git", "init", "-q", repo).CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v\n%s", err, out)
+			}
+			if err := os.WriteFile(filepath.Join(repo, "brief.md"), []byte(binaryRead(t, filepath.Join(binaryExample, "brief.md"))), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			answers, _ := filepath.Glob(filepath.Join(binaryExample, "answers", "*"))
+			answers = answers[1 : len(answers)-len(binaryDesign)] // The brief alone has no image, so the input step asks nothing.
+			prose := filepath.Join(t.TempDir(), "prose.md")
+			if err := os.WriteFile(prose, []byte("This product has no screen to draw.\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			design := c.answers(binaryDesign, prose)
+			answers = append(answers, design...)
+			replay := fakeReplay(t, answers)
+			cmd := exec.Command(bin, "init")
+			cmd.Dir = repo
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("dulidu init: %v\n%s", err, out)
+			}
+			config := filepath.Join(repo, "dulidu.yaml")
+			yml := binaryRead(t, config)
+			before, after, ok := strings.Cut(yml, "\n  design:\n")
+			if !ok {
+				t.Fatalf("init writes no steps.design:\n%s", yml)
+			}
+			if c.name == "screens" {
+				if err := os.WriteFile(config, []byte(before+"\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				cmd = exec.Command(bin, "run", "brief.md")
+				cmd.Dir, cmd.Stdin = repo, strings.NewReader("")
+				if out, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(out), "config incomplete: steps.design.harness") {
+					t.Errorf("dulidu run without steps.design: %v\n%s", err, out)
+				}
+			}
+			yml = before + "\n  design:\n" + strings.Replace(after, "model: sonnet", "model: drafter", 1)
+			if err := os.WriteFile(config, []byte(yml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd = exec.Command(bin, "run", "brief.md")
+			cmd.Dir, cmd.Stdin = repo, strings.NewReader("")
+			out, runErr := cmd.CombinedOutput()
+			dirs, _ := filepath.Glob(filepath.Join(repo, ".dulidu", "runs", "*"))
+			if len(dirs) != 1 {
+				t.Fatalf("run folders: %v", dirs)
+			}
+			r, err := pipeline.Read(dirs[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var names []string
+			for _, s := range r.Report.Steps {
+				names = append(names, s.Name)
+			}
+			// A failed call is counted too: the fake had no answer for it.
+			calls, want := binaryLines(filepath.Join(replay, "calls")), len(answers)
+			if c.fail != "" && c.fail != "Home: no screen block" {
+				want++
+			}
+			if calls != want {
+				t.Errorf("claude was called %d times, want %d", calls, want)
+			}
+			if c.fail != "" {
+				check, _, _ := strings.Cut(c.fail, ":")
+				last := r.Report.Steps[len(r.Report.Steps)-1]
+				if runErr == nil || !strings.Contains(string(out), "failed at design: "+c.fail) || r.Report.Status != "failed" ||
+					strings.Join(names, " ") != "input triage research analysis epics design" ||
+					last.Status != "failed at design: "+check || r.Screens != nil || r.DesignBrief != "" {
+					t.Errorf("%s: %v\n%s\nreport.json: %+v", c.name, runErr, out, r.Report)
+				}
+				return
+			}
+			if runErr != nil {
+				t.Fatalf("dulidu run: %v\n%s", runErr, out)
+			}
+			if r.Report.Status != "done" || strings.Join(names, " ") != "input triage research analysis epics design export" {
+				t.Fatalf("report.json: %+v", r.Report)
+			}
+			step, note := r.Report.Steps[5], ""
+			if c.name == "no screens" {
+				note = "no screens"
+			}
+			if step.Status != "passed" || step.Harness != "claude" || step.Model != "drafter" || step.Effort != "medium" ||
+				step.Note != note {
+				t.Errorf("design step: %+v", step)
+			}
+			brief := binaryRead(t, filepath.Join(dirs[0], "brief-diseno.md"))
+			if c.name == "no screens" {
+				if brief != "# Brief de diseño\n\nNo screens.\n" || len(r.Screens) != 0 || r.Screens == nil {
+					t.Errorf("brief-diseno.md with no screens:\n%s\nscreens.json: %v", brief, r.Screens)
+				}
+				return
+			}
+			if len(r.Screens) != 2 {
+				t.Fatalf("screens.json: %+v", r.Screens)
+			}
+			_, home, _ := strings.Cut(brief, "\n## Home\n")
+			home, history, _ := strings.Cut(home, "\n## History\n")
+			for name, screen := range map[string]string{"Home": home, "History": history} {
+				wireframe := regexp.MustCompile("\n```\n┌─+┐\n(│.*│\n|├─+┤\n)+└─+┘\n```\n")
+				states := regexp.MustCompile(`\n\*\*States:\*\*\n\n(- .+\n){3}\n\*\*Accessibility:\*\*\n\n\S`)
+				if !wireframe.MatchString(screen) || !states.MatchString(screen) ||
+					!strings.Contains(screen, "\n**Components:**\n\n- ") || !strings.Contains(screen, "\n**Navigation:**\n\n") {
+					t.Errorf("%s in brief-diseno.md lacks its fenced wireframe, components, navigation, three states or accessibility:\n%s",
+						name, brief)
+				}
+			}
+			// The Home call is the sixteenth: triage, five research dimensions, five lists, outlines, two stories, screens.
+			if prompt := binaryRead(t, filepath.Join(replay, "prompt-16")); !strings.Contains(prompt, "box-drawing") ||
+				!strings.Contains(prompt, "Home: A member sees this week's free hours") {
+				t.Errorf("the Home prompt does not ask for a box-drawing wireframe of Home:\n%s", prompt)
+			}
+		})
 	}
 }

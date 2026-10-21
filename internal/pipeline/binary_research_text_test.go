@@ -53,7 +53,7 @@ func TestBinaryResearchReadsPlainText(t *testing.T) {
 				answers = append(answers, path)
 				want = append(want, d)
 			}
-			for _, step := range []string{"analysis", "epics"} {
+			for _, step := range []string{"analysis", "epics", "design"} {
 				recorded, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*-"+step+"*"))
 				if err != nil || len(recorded) == 0 {
 					t.Fatalf("%s answers: %v, %v", step, recorded, err)

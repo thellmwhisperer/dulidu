@@ -38,7 +38,7 @@ func TestBinaryResearchAsksFiveDimensions(t *testing.T) {
 		}
 		answers = append(answers, path)
 	}
-	for _, step := range []string{"analysis", "epics"} {
+	for _, step := range []string{"analysis", "epics", "design"} {
 		recorded, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*-"+step+"*"))
 		if err != nil || len(recorded) == 0 {
 			t.Fatalf("recorded %s answers: %v, %v", step, recorded, err)
@@ -141,7 +141,7 @@ func TestBinaryResearchSearchesTheWeb(t *testing.T) {
 		}
 		answers = append(answers, path)
 	}
-	for _, step := range []string{"analysis", "epics"} {
+	for _, step := range []string{"analysis", "epics", "design"} {
 		recorded, err := filepath.Glob(filepath.Join(binaryExample, "answers", "*-"+step+"*"))
 		if err != nil || len(recorded) == 0 {
 			t.Fatalf("recorded %s answers: %v, %v", step, recorded, err)

@@ -50,6 +50,7 @@ func TestBinaryRunNotesUncoveredMust(t *testing.T) {
 	}
 	answers = append(answers, answer("stories-E2.md", strings.Replace(binaryRead(t, recorded("15-epics-E2.md")),
 		"Functionalities: F2", "Functionalities: F3", 1)))
+	answers = append(answers, binaryDesign...)
 	replay := fakeReplay(t, answers)
 	for _, args := range [][]string{{"init"}, {"run", "brief.md"}} {
 		cmd := exec.Command(bin, args...)

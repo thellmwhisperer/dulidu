@@ -57,6 +57,35 @@ func TestRunningRunAt120HasTwoBoxesIconsAndDurations(t *testing.T) {
 	if strings.Contains(s, "…") {
 		t.Errorf("a short screen was cut:\n%s", s)
 	}
+	for _, size := range [][2]int{{120, 40}, {80, 24}} {
+		for _, state := range []string{"pending", "running", "passed", "failed"} {
+			r := pipeline.Report{Status: "running", Steps: []pipeline.Step{
+				{Name: "epics", Status: "passed"},
+			}}
+			if state != "pending" {
+				r.Steps = append(r.Steps, pipeline.Step{Name: "design", Status: state})
+			}
+			if state == "failed" {
+				r.Status = "failed"
+			}
+			frame := plain(render("design-run", r, nil, nil, size[0], size[1], at.Add(time.Minute)))
+			if size[0] == 120 {
+				lines := strings.Split(frame, "\n")
+				for i, line := range lines {
+					lines[i] = ansi.Truncate(line, 40, "")
+				}
+				frame = strings.Join(lines, "\n")
+			}
+			epics, design, export := strings.Index(frame, "Epics"), strings.Index(frame, "Design"), strings.Index(frame, "Export")
+			if epics < 0 || design <= epics || export <= design {
+				t.Fatalf("%dx%d %s: want Epics, Design, Export in pipeline order:\n%s", size[0], size[1], state, frame)
+			}
+			line, _, _ := strings.Cut(frame[design:], "\n")
+			if !strings.Contains(line, state) {
+				t.Fatalf("%dx%d: Design row lacks %s:\n%s", size[0], size[1], state, frame)
+			}
+		}
+	}
 }
 
 func TestWaitingAnswersShowsEveryQuestionComplete(t *testing.T) {
