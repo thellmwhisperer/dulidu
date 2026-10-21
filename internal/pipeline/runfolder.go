@@ -61,8 +61,7 @@ func Write(dir string, r Run) error {
 	for step, s := range r.Logs {
 		files[filepath.Join("agent", step+".log")] = []byte(s)
 	}
-	for _, name := range []string{"contexto.md", "triage.json", "research.json", "analysis.json", "epics.json", "screens.json", "spec.md", "plan.json",
-		"brief-diseno.md"} {
+	for _, name := range []string{"contexto.md", "triage.json", "research.json", "analysis.json", "epics.json", "screens.json", "spec.md", "plan.json", "brief-diseno.md"} {
 		if _, ok := files[name]; !ok {
 			if err := os.Remove(filepath.Join(dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return err
