@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/thellmwhisperer/dulidu/compare/v0.1.11...v0.1.12) (2026-10-21)
+
+
+### Bug Fixes
+
+* **pipeline:** generate screen-by-screen design briefs ([#124](https://github.com/thellmwhisperer/dulidu/issues/124)) ([c9427cd](https://github.com/thellmwhisperer/dulidu/commit/c9427cd1002bfb9e64b24ec15b2beefd2ea17966))
+
 ## [0.1.11](https://github.com/thellmwhisperer/dulidu/compare/v0.1.10...v0.1.11) (2026-10-20)
 
 
