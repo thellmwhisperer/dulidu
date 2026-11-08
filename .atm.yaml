@@ -16,4 +16,6 @@ test_patterns: ["**/*_test.go"]
 # Globs of the documentation files
 docs_patterns: ["**/*.md", "docs/**"]
 agent_timeout: 24h
-delivery: sh .tmp/cos/no-mistakes-deliver.sh
+# Delivery only launches the gate, without --yes: whoever launched the run answers it, and ATM's screen paints it.
+# The same script as every repository that uses ATM; see scripts/deliver.sh.
+delivery: sh scripts/deliver.sh
