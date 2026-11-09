@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/thellmwhisperer/dulidu/compare/v0.1.14...v0.1.15) (2026-11-09)
+
+
+### Bug Fixes
+
+* **delivery:** wait up to 24h for the no-mistakes gate ([74e74df](https://github.com/thellmwhisperer/dulidu/commit/74e74dfad091fcdfdfd5e268f195e1eb33bd144a))
+
 ## [0.1.14](https://github.com/thellmwhisperer/dulidu/compare/v0.1.13...v0.1.14) (2026-10-21)
 
 
