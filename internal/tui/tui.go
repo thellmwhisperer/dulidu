@@ -126,11 +126,7 @@ func Follow(dir string, w io.Writer) error {
 // finished run stays open for inspection. A run with no report ends the view once grace has passed, and fails it.
 // Leaving the view never stops the run.
 func Watch(ctx context.Context, dir string, w io.Writer, keys io.Reader, size func() (cols, rows int)) error {
-	cols, rows := 80, 24
-	if size != nil {
-		cols, rows = size()
-	}
-	m := runscreen.New(cols, rows)
+	m := runscreen.New(size())
 	m.SetMarkdown(markdown.Inline)
 	ctx, stop := context.WithCancel(ctx)
 	// bubbletea ends the screen itself on SIGINT and SIGTERM, and a quit sent on the same signal would leave its
