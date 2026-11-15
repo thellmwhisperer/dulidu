@@ -42,7 +42,7 @@ func TestBinaryRunOnATerminalShowsAgentProse(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			cmd := exec.CommandContext(ctx, "python3", "-c", runTerminalCheck, bin, replay, exit)
+			cmd := exec.CommandContext(ctx, "python3", "-c", terminalScreen+runTerminalCheck, bin, replay, exit)
 			cmd.Dir = repo
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("run in a terminal: %v\n%s", err, out)
@@ -63,20 +63,16 @@ if [ "$((n))" = 1 ]; then
   done
   python3 - <<'EVENTS'
 import json
-print(json.dumps({"type": "result", "result": "Long event survived.\n" + json.dumps({"private": "x" * 70000})}))
+print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Long event survived."}]},
+                  "private": "x" * 70000}))
 EVENTS
-  printf '%s\n' '{"type":"message_end","message":{"content":[{"type":"text","text":"Pi is reading.\n{\"private\":true}"},{"type":"toolCall","id":"pi-read","name":"read","arguments":{"path":"pi.md"}}]}}'
-  printf '%s\n' '{"type":"text","part":{"text":"OpenCode is reading.\n{\"private\":true}"}}'
-  printf '%s\n' '{"type":"tool_use","part":{"tool":"glob","state":{"input":{"pattern":"*.md"},"status":"running"}}}'
-  printf '%s\n' '{"type":"item.completed","item":{"type":"agent_message","text":"Codex is reading.\n{\"private\":true}"}}'
-  printf '%s\n' '{"type":"item.started","item":{"id":"codex-call","type":"command_execution","command":"pwd"}}'
-  printf '%s\n' '{"type":"item.completed","item":{"id":"codex-call","type":"command_execution","command":"pwd","exit_code":0,"aggregated_output":"project"}}'
-  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"agent_message_chunk","content":{"text":"Hermes is reading.\n{\"private\":true}"}}}}'
-  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"agent_thought_chunk","content":{"text":"Checking the brief.\n{\"private\":true}"}}}}'
-  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call","toolCallId":"hermes-call","title":"Inspect","rawInput":{"path":"hermes.md"}}}}'
-  printf '%s\n' '{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call_update","toolCallId":"hermes-call","status":"completed"}}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"Checking the brief."}]},"private":true}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"glob","name":"Glob","input":{"pattern":"*.md"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"glob","content":"brief.md"}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"pwd","name":"Bash","input":{"command":"pwd"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"pwd","content":[{"type":"text","text":"project"}]}]}}'
   printf '%s\n' '{"type":"result","result":"A readable final result."}'
-  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the brief now.\n{\"private\":true}"},{"type":"tool_use","id":"claude-read","name":"Read","input":{"file_path":"brief.md"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the brief now."},{"type":"tool_use","id":"claude-read","name":"Read","input":{"file_path":"brief.md"}}]},"private":true}'
   echo 'stderr must stay out of Agent' >&2
   read release < "$FAKE_REPLAY/gate"
   test -f "$FAKE_REPLAY/released" || exit 1
@@ -106,34 +102,28 @@ os.mkfifo(replay + '/gate')
 gate = os.open(replay + '/gate', os.O_RDWR | os.O_NONBLOCK)
 p = subprocess.Popen([sys.argv[1], 'run', 'brief.md'], stdin=slave, stdout=slave,
                      stderr=slave, preexec_fn=terminal_child)
-pending = b''
+screen = Screen(100, 30)
 last = ''
-seen = []
 def frame_until(description, predicate):
-    global pending, last
+    global last
     deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
         ready, _, _ = select.select([master], [], [], max(0, deadline-time.monotonic()))
         if not ready:
             break
-        pending += os.read(master, 65536)
-        if b'\x1b[6n' in pending:
+        screen.feed(os.read(master, 65536))
+        while screen.asked:
             os.write(master, b'\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[1;1R')
-            pending = pending.replace(b'\x1b[6n', b'')
-        assert b'\x1b[2J' not in pending, 'the view cleared the screen'
-        while b'\x1b[H' in pending:
-            _, frame = pending.split(b'\x1b[H', 1)
-            end = re.search(rb'detach.*?tools\x1b\[0m', frame)
-            if end is None:
-                break
-            pending = frame[end.end():]
-            last = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', frame[:end.end()].decode())
-            seen.append(last)
+            screen.asked -= 1
+        assert screen.clears <= 1, 'the view cleared the screen'
+        frames, screen.frames = screen.frames, []
+        for frame in frames:
+            last = frame
             assert '{"type"' not in last and '"private"' not in last, 'JSON in Agent: ' + last
             assert 'stderr must stay out' not in last, 'stderr in Agent: ' + last
             if predicate(last):
                 return last
-    raise AssertionError(description + '\nlast frame:\n' + last + '\npending: ' + repr(pending[-3000:]))
+    raise AssertionError(description + '\nlast frame:\n' + last)
 def release():
     with open(replay + '/released', 'w') as f:
         f.write('continue')
@@ -162,42 +152,39 @@ def report_done():
             os.read(master, 65536)
     raise AssertionError('run did not reach done after releasing the agent')
 try:
-    frame_until('prose, tool and final result before release', lambda s:
+    frame_until('prose, thinking and tools before release', lambda s:
         all(word in s for word in ['Pipeline', 'Input', 'Triage', 'Research', 'Analysis',
-                                  'Epics', 'Export', 'Reading the brief now.',
-                                  '→ Read', 'A readable final result.', 'Long event survived.',
-                                  'Pi is reading.', 'OpenCode is reading.', 'Codex is reading.',
-                                  'Hermes is reading.', 'Checking the brief.',
-                                  '→ read', '→ glob', '→ bash', '→ Inspect']))
+                                  'Epics', 'Export', 'Agent · claude', 'Reading the brief now.',
+                                  '1 tool: Read · brief.md', 'Long event survived.', '∴ Checking the brief.',
+                                  '2 tools: Glob, Bash']))
     os.write(master, b't')
     frame_until('t unfolds tool arguments and completed calls', lambda s:
-        all(word in s for word in ['running read pi.md', 'running glob *.md',
-                                  'ok bash pwd', 'ok Inspect hermes.md', 'running Read brief.md']))
+        all(word in s for word in ['ok Glob *.md · brief.md', 'ok Bash pwd · project', 'running Read brief.md']))
     os.write(master, b't')
-    frame_until('t folds tool details again', lambda s: '→ Read' in s and 'running Read brief.md' not in s)
+    frame_until('t folds tool details again', lambda s: '1 tool: Read' in s and 'running Read brief.md' not in s)
     assert not os.path.exists(replay + '/released'), 'agent was not held'
     os.write(master, b'\t')
     frame_until('tab focuses Pipeline', lambda s: 'Pipeline*' in s)
     os.write(master, b'\x1b[5~')
     frame_until('page up stays attached', lambda s: 'Pipeline*' in s)
     os.write(master, b'\t\x1b[5~')
-    frame_until('page up scrolls Agent', lambda s: 'Agent*' in s and 'History' in s and '→ Read' not in s)
+    frame_until('page up scrolls Agent', lambda s: re.search(r'Agent[^─]*\*', s) and 'History' in s and '1 tool: Read' not in s)
     os.write(master, b'\x1b[F')
-    frame_until('end follows the agent', lambda s: '→ Read' in s)
+    frame_until('end follows the agent', lambda s: '1 tool: Read' in s)
     os.write(master, b'\x1b[A')
-    frame_until('up scrolls one line', lambda s: '→ Read' not in s and 'Reading the brief now.' in s)
+    frame_until('up scrolls one line', lambda s: '1 tool: Read' not in s and 'Reading the brief now.' in s)
     os.write(master, b'\x1b[B')
-    frame_until('down scrolls one line', lambda s: '→ Read' in s)
+    frame_until('down scrolls one line', lambda s: '1 tool: Read' in s)
     os.write(master, b'\x1b[<64;80;20M')
-    frame_until('wheel up scrolls', lambda s: '→ Read' not in s and 'History' in s)
+    frame_until('wheel up scrolls', lambda s: '1 tool: Read' not in s and 'History' in s)
     os.write(master, b'\x1b[<65;80;20M')
-    frame_until('wheel down scrolls', lambda s: '→ Read' in s)
+    frame_until('wheel down scrolls', lambda s: '1 tool: Read' in s)
     os.write(master, b'\x1b[5~\x1b[6~')
-    frame_until('page down returns to end', lambda s: '→ Read' in s)
+    frame_until('page down returns to end', lambda s: '1 tool: Read' in s)
     os.write(master, b'\x1b[H')
     frame_until('home retains history before the large event', lambda s: 'History 00' in s)
     os.write(master, b'\x1b[F')
-    frame_until('end returns to the latest tool', lambda s: '→ Read' in s)
+    frame_until('end returns to the latest tool', lambda s: '1 tool: Read' in s)
     assert p.poll() is None, 'a navigation key left the view'
     if sys.argv[3] == 'finished':
         release()
