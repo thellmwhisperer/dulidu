@@ -12,8 +12,8 @@ For a public repository:
 curl -fsSL https://raw.githubusercontent.com/thellmwhisperer/dulidu/main/install.sh | sh
 ```
 
-While the repository is private, that curl line returns 404. If you already have a clone of the private repository,
-run the `install.sh` that is in the clone, with `DULIDU_PREFIX` set to the directory you choose for the binary:
+If you already have a clone, for example of a private fork, run the `install.sh` that is in the clone, with
+`DULIDU_PREFIX` set to the directory you choose for the binary:
 
 ```sh
 DULIDU_PREFIX=$HOME/.local/bin sh ./install.sh
